@@ -59,30 +59,47 @@ class Main {
 	}
 
 
-	// build and store a syllable (modeled as process -ation rather than entity -ator)
-	public class NameGeneration {
+	// abstraction of a language's phonology: inventory, syllable structure, formation
+	public class Phonology {
 		Syllable syllable;
 		Inventory inventory;
+		// additional affixes added to word for properties
 		Dictionary<string,string> affixes = new Dictionary<string,string>();
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
 		Dictionary<string,string> soundChanges = new Dictionary<string,string>();
 
-		public NameGeneration () {
+		public Phonology () {
 			this.syllable = new Syllable();
 			this.inventory = new Inventory();
 		}
-		public void BuildSyllable () {
-			// recipe
+		public void AddAffix (string property, string affix) {
+			affixes[property] = affix;
+		}
+		public void AddChange (string source, string target) {
+			soundChanges[source] = target;
+		}
+	}
+
+	// build a new name (modeled as process -ation rather than entity -ator)
+	public class NameGeneration {
+		Phonology language;
+
+		public NameGeneration (Phonology lang) {
+			this.language = lang;
+		}
+		private string BuildSyllable () {
 			// ?- internal rules
 			// - build by features
 			// - roll for each part
 			// - choose parts
 			//
+		}
+		public string BuildName () {
 			// - attach syllables->word
-			//
 			// - word affixes
 			// - word-internal changes
 			// - word-edge changes
+			//
 		}
 	}
 
