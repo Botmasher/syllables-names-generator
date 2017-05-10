@@ -36,16 +36,6 @@ class Main {
 			}
 		}
 
-		// store consonant letter and features
-		public void AddConsonant (string[] features, string letter) {
-			// make letter accessible through each feature
-			foreach(f in features) {
-				this.consonants[f].Add(letter);
-			}
-
-			this.AddFeatures(letter, features);
-		}
-
 		// make features per letter equivalences available for later
 		private void AddFeatures (string letter, string[] features) {
 			this.features[letter] = features;
@@ -60,10 +50,19 @@ class Main {
 		}
 
 		// store vowel letter and features
-		public void AddVowel (string[] features, string letter) {
+		public void AddVowel (string letter, string[] features) {
 			// make letter accessible through each of its features
 			foreach(f in features) {
 				this.vowels[f].Add(letter);
+			}
+			this.AddFeatures(letter, features);
+		}
+
+		// store consonant letter and features
+		public void AddConsonant (string letter, string[] features) {
+			// make letter accessible through each feature
+			foreach(f in features) {
+				this.consonants[f].Add(letter);
 			}
 			this.AddFeatures(letter, features);
 		}
@@ -77,6 +76,20 @@ class Main {
 		public string GetLetter (string[] features) {
 			string featureSet = this.FeatureSet(features);
 			return this.letters[featureSet];
+		}
+
+		// return list (set) of all consonants being stored
+		public string[] GetConsonants () {
+			List<string> consonants = new List<string>();
+			this.consonants.Values.ForEach ( c => consonants.Add(c) );
+			return consonants;
+		}
+
+		// return list (set) of all vowels being stored
+		public HashSet<string> GetVowels () {
+			HashSet<string> vowels = new HashSet<string>();
+			this.vowels.Values.ForEach ( v => vowels.Add(v) );
+			return vowels;
 		}
 	}
 
@@ -98,6 +111,7 @@ class Main {
 		public void AddCoda (string coda) {
 			this.codas.Add(coda);
 		}
+		// TODO add syllable internal rules (like if you pick this, pick that next)
 	}
 
 
@@ -107,6 +121,9 @@ class Main {
 	// '#stV' : '#estV' => insert e- at beginning of word
 	// 'VC1C2V' : 'VC1V' => delete second C
 	// 'CVC' : 'CVV' => lengthen vowel
+	// * UPDATE use ONLY one representation:
+	// 		- just features (instead of syll / feat / letters)
+	// 		- OR just letters (can always do feature lookup in Inventory)
 	// * NOTES
 	//  	- C, V, #, _ reserved for syllables
 	// 		- lowercase reserved for letters
@@ -122,15 +139,36 @@ class Main {
 		// additional affixes added to word for properties
 		Dictionary<string,string> affixes = new Dictionary<string,string>();
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		Dictionary<string,string> soundChanges = new Dictionary<string,string>();
+		Dictionary<string, string[]> soundChanges = new Dictionary<string, string[]>();
 
-		public Rules () {
-		}
+		public Rules () {}
+		
 		public void AddAffix (string property, string affix) {
 			affixes[property] = affix;
 		}
+
+		// store "underlying" shape as key and "surface" shape as value
+		// 	- e.g. 'vowel, plosive, vowel' -> ['vowel', 'fricative', 'vowel']
 		public void AddRule (string source, string target) {
-			soundChanges[source] = target;
+			string[] targets = target.Split(', ');
+			soundChanges[source] = targets;
+		}
+
+		public bool RuleApplies (string[] sample, string match) {
+			List<int> sampleIndicesToChange = new List<int>();
+			List<string[]> changeThemToWhat = new List<string[]>(); 
+			// does a single rule (already passed in key from the dict) apply?
+			// sample is, for conceptual purposes, a word broken into letter arrays
+			// (0) check if each letter has feature in rule
+			//		(0.1) need to bring along consonant and vowel lists?
+			// (1) once get to one that does, store those indices for change
+			// (2) also store which of the features needs to be changed
+			//		2.1 get by accessing this matched rule key in the dictionary
+			// (3) now you can just lookup that feature
+			// ** but what about ones that change order like metathesis?
+			// 		- may need to enforce structures, like:
+			//			-  _ for deletion, so surface never shorter than underlying
+			// 			-  array length check, so longer means something added
 		}
 	}
 
@@ -151,11 +189,13 @@ class Main {
 			// - build by features
 			// - roll for each part
 			// - choose parts
+			// - KEEP SYLLABLES SEPARATED in List
 		}
 		public string BuildName () {
 			// - attach syllables->word
-			// 		- keep around word (e.g. gabaa) and syll structure (CVCVV)
-			
+			// 		?- keep around word (e.g. gabaa) and syll structure (CVCVV)
+			// 		- KEEP SYLLABLES SEPARATED in List
+
 			// - word affixes
 
 			// - prepend and append # to word for syllable
