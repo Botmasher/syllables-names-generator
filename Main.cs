@@ -19,7 +19,7 @@ class Main {
 		string[] voicing = new string[] { "voiced", "voiceless" };
 		string[] place = new string[] { "bilabial", "labiodental", "dental", "alveolar", "palatal", "velar", "uvular", "pharyngeal", "glottal" };
 		string[] manner = new string[] { "nasal", "plosive", "affricate", "fricative", "approximant" };
-		string[] height = new string[] { "hi", "mid", "low" };
+		string[] height = new string[] { "close", "mid", "open" };
 		string[] backness = new string[] { "front", "central", "back" };
 		string[] rounding = new string[] { "rounded", "unrounded" };
 
@@ -115,31 +115,34 @@ class Main {
 	}
 
 
-	// basic rule outcomes:
-	// 'CVC' : 'CV' => delete last C
-	// 'VplosiveV' : 'VfricativeV' => change only medial C
-	// '#stV' : '#estV' => insert e- at beginning of word
-	// 'VC1C2V' : 'VC1V' => delete second C
-	// 'CVC' : 'CVV' => lengthen vowel
-	// * UPDATE use ONLY one representation:
-	// 		- just features (instead of syll / feat / letters)
-	// 		- OR just letters (can always do feature lookup in Inventory)
+	// BASIC rule outcomes
+	// V,plosive,V : V,fricative,V => change medial C
+	// C,V,C,C : 
+	//
+	// EXTRA rule outcomes
+	// C,V,C : C,V => delete last C
+	// #,s,t,V : #,e,s,t,V => insert e- at beginning of word
+	// V,C1,C2,V : V,C1,V => delete second C
+	// C,V,C : C,V,V,C => lengthen vowel
+	// C,y,V,C : palatal,V,C => palatalize consonant, delete y
+	// C,V,nasal,C : C,V˜,C => delete nasal, nasalize vowel
+	//
 	// * NOTES
-	//  	- C, V, #, _ reserved for syllables
-	// 		- lowercase reserved for letters
-	// 		- have to match BOTH symbols and letters
-	// 		- also have to match features
-	// 		- better: use array? that way can check:
-	// 			- if string length > 1 and in inventory cons/vowel dicts == FEATURE
-	// 			- if string is C, V, #, _ == SYLL STRUCTURE
-	// 			- otherwise if string is lowercase, len > 0 < 4 == LETTER
+	//  - C, V, #, _ reserved for syllables
+	// 	- lowercase reserved for letters
+	// 	- have to match BOTH symbols and letters
+	// 	- also have to match features
+	// 	- each word's characters broken into list, so we can check:
+	// 		- if string length > 1 and in inventory cons/vowel dicts == FEATURE
+	// 		- if string is C, V, #, _ == SYLL STRUCTURE
+	// 		- otherwise if string is lowercase, len > 0 < 4 == LETTER
 
 	// simple sound & grammar rules to map built syllables to word structure
 	public class Rules {
 		// additional affixes added to word for properties
 		Dictionary<string,string> affixes = new Dictionary<string,string>();
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		Dictionary<string, string[]> soundChanges = new Dictionary<string, string[]>();
+		Dictionary<string, string> soundChanges = new Dictionary<string, string>();
 
 		public Rules () {}
 		
@@ -147,54 +150,121 @@ class Main {
 			affixes[property] = affix;
 		}
 
-		// store "underlying" shape as key and "surface" shape as value
-		// 	- e.g. 'vowel, plosive, vowel' -> ['vowel', 'fricative', 'vowel']
-		public void AddRule (string source, string target) {
-			string[] targets = target.Split(', ');
-			soundChanges[source] = targets;
+		// split csv rule string into array of features
+		private string ConvertRuleStringToArray (string csvFeatureString) {
+			string[] featureArray = string.Split(",", csvFeatureString);
+			return featureArray;
 		}
 
-		public bool RuleApplies (string[] sample, string match) {
-			List<int> sampleIndicesToChange = new List<int>();
-			List<string[]> changeThemToWhat = new List<string[]>(); 
-			// does a single rule (already passed in key from the dict) apply?
-			// sample is, for conceptual purposes, a word broken into letter arrays
-			// (0) check if each letter has feature in rule
-			//		(0.1) need to bring along consonant and vowel lists?
-			// (1) once get to one that does, store those indices for change
-			// (2) also store which of the features needs to be changed
-			//		2.1 get by accessing this matched rule key in the dictionary
-			// (3) now you can just lookup that feature
-			// ** but what about ones that change order like metathesis?
-			// 		- may need to enforce structures, like:
-			//			-  _ for deletion, so surface never shorter than underlying
-			// 			-  array length check, so longer means something added
+		// split csv rule feature array into string
+		private string ConvertRuleArrayToString (string[] featureArray) {
+			string csvFeatureString = string.Join(",", featureArray);
+			return csvFeatureString;
+		}		
+
+		// store "underlying" shape as key and "surface" shape as value
+		// e.g. 'vowel,plosive,vowel' -> 'vowel,fricative,vowel'
+		public void AddRule (string[] source, string[] target) {
+			// format rules and store them
+			source = this.ConvertRuleToString(source);
+			target = this.ConvertRuleToString(target);
+			soundChanges[source] = target;
+		}
+
+		// take underlying and return surface as an array
+		public string[] GetRule (string source) {
+			// not found - just return underlying as surface
+			if !this.soundChanges.ContainsKey(source) {
+				string[] sources = sources.Split(",");
+				return sources;
+			}
+			// found - format and return surface
+			string[] targets = this.ConvertRule(this.soundChanges[source]);
+			return targets;
 		}
 	}
 
-	// build a new name (modeled as process -ation rather than entity -ator)
-	public class NameGeneration {
+
+	// a language for passing  
+	public class Language () {
 
 		Inventory inventory;
 		Syllable syllable;
 		Rules rules;
+		public Inventory { get { return inventory; } set { inventory = value; } }
+		public Syllable { get { return syllable; } set { syllable = value; } }
+		public Rules { get { return rules; } set { rules = value; } }
+
+		public Language (Inventory inventory, Syllable syllable, Rules rules) {
+			this.inventory = inventory;
+			this.syllable = syllable;
+			this.rules = rules;
+		}
+
+		// properties used above instead
+		//public void SetSyllable (Syllable syllable) {
+		//	this.syllable = syllable;
+		//}
+		//public void SetInventory (Inventory inventory) {
+		//	this.inventory = inventory;
+		//}
+		//public void SetRules (Rules rules) {
+		//	this.rules = rules;
+		//}
+
+		public string ApplyRules (List<string> sample, string syllableStructure) {
+			// DECIDE: use word char LIST or ARRAY?
+			// convert word into list of feature arrays
+			// pass that list into Rules class (build ApplyAllRules && ApplyRule)
+			
+			// 	- ApplyAllRules method iterates through rules
+			//		- for each rule, it passes sourcerule and sample to ApplyRule
+			// 		- EXTRA: add support for ranking/ordering rules
+			// 		- EXTRA: handle deletion, insertion and metathesis
+			
+			// 	- ApplyRule iterates through word's arrays for matches
+			// 		- may need to convert rule to array (use Rules.ConvertRule)
+			// 		- does this array in word have my property?
+			//		  (e.g. is this letter a vowel?)
+			//			- if it's just vowel/consonant, check syllable structure
+			//				next_looking_for == 'consonant' && syll[i] == 'C'
+			// 			... or check inventory keys?
+			// 				this.nventory.consonant.ContainsKey("plosive")
+			// 			- if it's a specific property, dig into the list
+			// 				sample[i].Contains("plosive")
+			// 			- count up the found_count until we find all el in rule
+			// 		- if it finds n arrays in a row containing its n rule features
+			// 		- then it returns the new target features
+			// 			- it has to understand how the source/target rules differ
+			// 			- then returns word array list with change (updated array)
+			
+			// back out in this function, need to turn those back into a string[]
+			// to do this, look up each feature array in inventory and concat letters
+			// return the word string[]
+		}
+	}
+
+
+	// build names in a language
+	public class NameGeneration {
+
+		Language language;
 
 		public NameGeneration () {
-			this.inventory = new Inventory();
-			this.syllable = new Syllable();
-			this.rules = new Rules();
+			this.language = new Language();
 		}
+
 		private string BuildSyllable () {
 			// ?- internal rules
 			// - build by features
 			// - roll for each part
 			// - choose parts
-			// - KEEP SYLLABLES SEPARATED in List
+			// - KEEP SYLLABLES as SEPARATE LIST
 		}
 		public string BuildName () {
 			// - attach syllables->word
-			// 		?- keep around word (e.g. gabaa) and syll structure (CVCVV)
-			// 		- KEEP SYLLABLES SEPARATED in List
+			// 		- keep around word (e.g. gabaa) and syll structure (CVCVV)
+			// 		- KEEP SYLLABLES as SEPARATE LIST
 
 			// - word affixes
 
