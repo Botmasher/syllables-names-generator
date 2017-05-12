@@ -79,8 +79,8 @@ class Main {
 		}
 
 		// return list (set) of all consonants being stored
-		public string[] GetConsonants () {
-			List<string> consonants = new List<string>();
+		public HashSet<string> GetConsonants () {
+			HashSet<string> consonants = new HashSet<string>();
 			this.consonants.Values.ForEach ( c => consonants.Add(c) );
 			return consonants;
 		}
@@ -182,6 +182,43 @@ class Main {
 			string[] targets = this.ConvertRule(this.soundChanges[source]);
 			return targets;
 		}
+
+		// go through word looking for rule pattern matches
+		public List<string> ApplyRule (
+			string[] sourceRule,
+			List<string> sampleLetters,
+			List<string[]> sampleFeatures,
+			string sampleSyllables)
+		{
+			// 	- does this array in word have my property?
+			//	  (e.g. is this letter a vowel?)
+			//		- if it's just vowel/consonant, check syllable structure
+			//			next_looking_for == 'consonant' && syll[i] == 'C'
+			// 		... or check inventory keys?
+			// 			this.nventory.consonant.ContainsKey("plosive")
+			// 		- if it's a specific property, dig into the list
+			// 			sample[i].Contains("plosive")
+			// 		- count up the found_count until we find all el in rule
+			// 	- if it finds n arrays in a row containing its n rule features
+			// 	- then it returns the new target features
+			// 		- it has to understand how the source/target rules differ
+			// 		- then returns word array list with change (updated array)
+		}
+
+		//  EXTRA:	add support for ranking/ordering rules
+		//  EXTRA: 	handle deletion, insertion and metathesis
+		public List<string> ApplyAllRules (
+			List<string> sampleLetters,
+			List<string[]> sampleFeatures,
+			string sampleSyllables)
+		{
+			// go through and apply every rule to the sample word
+			foreach (KeyValuePair<string,string> change in soundChanges) {
+				string[] source = this.ConvertRuleStringToArray(change.Key);
+				this.ApplyRule(source, sampleLetters, sampleFeatures, sampleSyllables);
+			}
+			//	- for each rule, it passes sourcerule and sample to ApplyRule
+		}
 	}
 
 
@@ -212,34 +249,21 @@ class Main {
 		//	this.rules = rules;
 		//}
 
-		public string ApplyRules (List<string> sample, string syllableStructure) {
-			// DECIDE: use word char LIST or ARRAY?
+		public List<string> ApplyRules (List<string> sample, string syllableStructure) {
 			// convert word into list of feature arrays
-			// pass that list into Rules class (build ApplyAllRules && ApplyRule)
+			List<string[]> sampleFeatures = new List<string[]>();
+			for (int i=0; i < sample.Count; i++) {
+				string thisLetter = sample[i];
+				string[] letterFeatures = this.inventory.GetFeatures (thisLetter);
+				sampleFeatures.Add(letterFeatures);
+			}
+
+			// run rules with the word's letters, features and syllables
+			List<string> newSample;
+			newSample = this.rules.ApplyAllRules(sample, sampleFeatures, syllableStructure);
 			
-			// 	- ApplyAllRules method iterates through rules
-			//		- for each rule, it passes sourcerule and sample to ApplyRule
-			// 		- EXTRA: add support for ranking/ordering rules
-			// 		- EXTRA: handle deletion, insertion and metathesis
-			
-			// 	- ApplyRule iterates through word's arrays for matches
-			// 		- may need to convert rule to array (use Rules.ConvertRule)
-			// 		- does this array in word have my property?
-			//		  (e.g. is this letter a vowel?)
-			//			- if it's just vowel/consonant, check syllable structure
-			//				next_looking_for == 'consonant' && syll[i] == 'C'
-			// 			... or check inventory keys?
-			// 				this.nventory.consonant.ContainsKey("plosive")
-			// 			- if it's a specific property, dig into the list
-			// 				sample[i].Contains("plosive")
-			// 			- count up the found_count until we find all el in rule
-			// 		- if it finds n arrays in a row containing its n rule features
-			// 		- then it returns the new target features
-			// 			- it has to understand how the source/target rules differ
-			// 			- then returns word array list with change (updated array)
-			
-			// back out in this function, need to turn those back into a string[]
-			// to do this, look up each feature array in inventory and concat letters
+			// back out in this function, need to turn those back into letters list
+			//  	- look up each feature array in inventory and concat letters
 			// return the word string[]
 		}
 	}
