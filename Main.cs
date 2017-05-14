@@ -142,7 +142,7 @@ class Main {
 		// additional affixes added to word for properties
 		Dictionary<string,string> affixes = new Dictionary<string,string>();
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		Dictionary<string, string> soundChanges = new Dictionary<string, string>();
+		Dictionary<List<string[]>, List<string[]>> soundChanges = new Dictionary<List<string[]>, List<string[]>>();
 
 		public Rules () {}
 		
@@ -151,35 +151,41 @@ class Main {
 		}
 
 		// split csv rule string into array of features
-		public string ConvertRuleStringToArray (string csvFeatureString) {
-			string[] featureArray = string.Split(",", csvFeatureString);
-			return featureArray;
+		public string ConvertStringToArray (string csvString) {
+			string[] arr = string.Split(",", csvString);
+			return arr;
 		}
 
 		// split csv rule feature array into string
-		public string ConvertRuleArrayToString (string[] featureArray) {
-			string csvFeatureString = string.Join(",", featureArray);
-			return csvFeatureString;
+		public string ConvertArrayToString (string[] arr) {
+			string csvString = string.Join(",", arr);
+			return csvString;
 		}		
 
 		// store "underlying" shape as key and "surface" shape as value
 		// e.g. 'vowel,plosive,vowel' -> 'vowel,fricative,vowel'
-		public void AddRule (string[] source, string[] target) {
-			// format rules and store them
-			source = this.ConvertRuleToString(source);
-			target = this.ConvertRuleToString(target);
+		public void AddRule (List<string[]> source, List<string[]> target) {
+			// // format rules and store them as strings
+			//source = this.ConvertRuleToString(source);
+			//target = this.ConvertRuleToString(target);
 			soundChanges[source] = target;
 		}
 
-		// take underlying and return surface as an array
-		public string[] GetRule (string source) {
-			// not found - just return underlying as surface
+		// TODO take rule set and output a formatted string
+		private List<string> FormatRules () {
+			List<string> rulesList = new List<string>();
+			string rulesFormatted = "";
+			// TODO format each string[] as a string
+			foreach (KeyValuePair<List<string[]>,List<string[]>> rule in this.soundChanges) {
+				List.Add (String.Format("{0}, {1}", rule.Key, rule.Value));
+				rulesFormatted += String.Format("{0} -> {1}\n", rule.Key, rule.Value);
+			}
+			return rulesFormatted;
+
+			// TODO List keys check for ref not for value so won't be equal 
 			if !this.soundChanges.ContainsKey(source) {
-				string[] sources = sources.Split(",");
 				return sources;
 			}
-			// found - format and return surface
-			string[] targets = this.ConvertRule(this.soundChanges[source]);
 			return targets;
 		}
 	}
@@ -206,6 +212,7 @@ class Main {
 		public List<string> ApplyRulesToWord (List<string> word, string wordSyllables) {
 			
 			// convert word into list of feature arrays
+			// TODO just do this in .ApplyRule for each letter as it's checked
 			List<string[]> wordFeatures = new List<string[]>();
 			for (int i=0; i < word.Count; i++) {
 				string letter = word[i];
@@ -218,8 +225,8 @@ class Main {
 			changedWord = this.ApplyRule (word, wordFeatures, wordSyllables);
 			
 			// go through and apply every rule to the sample word
-			foreach (KeyValuePair<string,string> rule in this.rules.soundChanges) {
-				string[] source = this.rules.ConvertRuleStringToArray(rule.Key);
+			foreach (KeyValuePair<List<string[]>,List<string[]>> rule in this.rules.soundChanges) {
+				string[] source = rule.Key;
 				string[] target = rule.Value;
 				this.ApplyRule(source, target, sampleLetters, sampleFeatures, sampleSyllables);
 			}
@@ -231,29 +238,46 @@ class Main {
 
 		// go through word looking for rule pattern matches
 		private List<string> ApplyRuleToWord (
-			string[] sourceRule,
-			string[] targetRule,
+			List<string[]> sourceRule,
+			List<string[]> targetRule,
 			List<string> wordLetters,
 			List<string[]> wordFeatures,
 			string wordSyllables)
 		{
-			// count up how many SOURCE feature matches found in a row in WORD
-			int contiguousMatchCount = 0;
+			// count up SOURCE feature matches found adjacently in WORD features
+			int matchCount = 0;
 			// 
 			List<string[]> matchList = new List<string[]>();
 
 			// iterate through each letter in word hunting for sourcerule
 			for (int i=0; i < wordLetters.Count; i++) {
-				if (contiguousMatchCount >= sourceRule.Length) {
-					contiguousMatchCount = 0;
-					// actually, only subtract 1 for each match before changed sound
-					// from match count instead, because e.g.
-					// V,plos,V -> V,fric,V
-					// 		- if followed by -CV we wouldn't catch VCVCV
-					//		- we want to count new fric as orig plosive for checks
-					// - alternatively, just iterate through again from orig match?
+
+				// move to end to avoid last iter non-coverage (e.g. word-final #)
+				if (matchCount >= sourceRule.Length && matchCount > 0) {
+					// catch overlapping by setting iter just after start of match
+					i -= (matchCount-1);
+					// reset adjacent matches
+					matchCount = 0;
 				}
-				// 	does this array in word have my property?	
+
+				// if rule is a consonant or vowel, see if the one in word is also
+				// if rule is '#' and word is '#', CONTINUE but still matchCount+=1
+				// otherwise go through checking for features in list
+
+				// WAIT! RULES CAN BE NESTED!! Rethink this:
+				// 	['V','plosive','V'] -> ['V','fricative','V']
+				// 	['V','voiceless,plosive','V'] -> ['V','voiced,fricative','V']
+				//
+				// List<string[]> to avoid flat arrays or overformated strings?
+				//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
+
+				// does this array in word have my property?
+				foreach (string feature in ssourceRule[matchCount]) {
+					if () {
+
+					}
+				}
+					
 				//	  (e.g. is this letter a vowel?)
 				//		- if it's just vowel/consonant, check syllable structure
 				//			next_looking_for == 'consonant' && syll[i] == 'C'
