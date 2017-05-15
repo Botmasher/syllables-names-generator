@@ -151,23 +151,20 @@ class Main {
 		}
 
 		// split csv rule string into array of features
-		public string ConvertStringToArray (string csvString) {
+		private string ConvertStringToArray (string csvString) {
 			string[] arr = string.Split(",", csvString);
 			return arr;
 		}
 
 		// split csv rule feature array into string
-		public string ConvertArrayToString (string[] arr) {
+		private string ConvertArrayToString (string[] arr) {
 			string csvString = string.Join(",", arr);
 			return csvString;
 		}		
 
 		// store "underlying" shape as key and "surface" shape as value
-		// e.g. 'vowel,plosive,vowel' -> 'vowel,fricative,vowel'
+		// e.g. vowel, plosive, vowel -> vowel, fricative, vowel
 		public void AddRule (List<string[]> source, List<string[]> target) {
-			// // format rules and store them as strings
-			//source = this.ConvertRuleToString(source);
-			//target = this.ConvertRuleToString(target);
 			soundChanges[source] = target;
 		}
 
@@ -209,7 +206,7 @@ class Main {
 			this.rules = rules;
 		}
 
-		public List<string> ApplyRulesToWord (List<string> word, string wordSyllables) {
+		public List<string> ApplyRulesToWord (List<string> word, string syllables) {
 			
 			// convert word into list of feature arrays
 			// TODO just do this in .ApplyRule for each letter as it's checked
@@ -222,13 +219,13 @@ class Main {
 
 			// run rules with the word's letters, features and syllables
 			List<string> changedWord;
-			changedWord = this.ApplyRule (word, wordFeatures, wordSyllables);
-			
+			//changedWord = this.ApplyRule (word, wordFeatures, wordSyllables);
+
 			// go through and apply every rule to the sample word
 			foreach (KeyValuePair<List<string[]>,List<string[]>> rule in this.rules.soundChanges) {
 				string[] source = rule.Key;
 				string[] target = rule.Value;
-				this.ApplyRule(source, target, sampleLetters, sampleFeatures, sampleSyllables);
+				changedWord = this.ApplyRule(source, target, word, syllables);
 			}
 
 			// back out in this function, need to turn those back into letters list
@@ -237,20 +234,26 @@ class Main {
 		}
 
 		// go through word looking for rule pattern matches
-		private List<string> ApplyRuleToWord (
+		// TODO document user guidelines for formatting a readable rule
+		private List<string[]> ApplyRuleToWord (
 			List<string[]> sourceRule,
 			List<string[]> targetRule,
-			List<string> wordLetters,
-			List<string[]> wordFeatures,
+			List<string> word,
 			string wordSyllables)
 		{
+			// no rule to apply or no word to apply it to
+			if (sourceRule.Count == 0 || word.Count == 0) {
+				List<string[]> emptyChange = new List<string[]>();
+				return emptyChange;
+			}
+
 			// count up SOURCE feature matches found adjacently in WORD features
 			int matchCount = 0;
-			// 
+			// store features/letters found and to change in word
 			List<string[]> matchList = new List<string[]>();
 
 			// iterate through each letter in word hunting for sourcerule
-			for (int i=0; i < wordLetters.Count; i++) {
+			for (int i=0; i < word.Count; i++) {
 
 				// move to end to avoid last iter non-coverage (e.g. word-final #)
 				if (matchCount >= sourceRule.Length && matchCount > 0) {
@@ -260,35 +263,45 @@ class Main {
 					matchCount = 0;
 				}
 
-				// if rule is a consonant or vowel, see if the one in word is also
-				// if rule is '#' and word is '#', CONTINUE but still matchCount+=1
-				// otherwise go through checking for features in list
-
-				// WAIT! RULES CAN BE NESTED!! Rethink this:
+				// Keep rule structure in mind and remember rules can nest:
 				// 	['V','plosive','V'] -> ['V','fricative','V']
 				// 	['V','voiceless,plosive','V'] -> ['V','voiced,fricative','V']
 				//
-				// List<string[]> to avoid flat arrays or overformated strings?
+				// Recently changed to this structure:
 				//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
 
-				// does this array in word have my property?
-				foreach (string feature in ssourceRule[matchCount]) {
-					if () {
+				// the current feature set to search for in the word
+				featureSet = sourceRule[matchCount];
 
-					}
+				// merely checking for a consonant or vowel
+				if (featureSet.Length == 1 && featureSet == ['C'] || featureSet == ['V']) {
+				 	matchCount += wordSyllables[i] == featureSet ? 1 : 0;
+					continue;
 				}
-					
-				//	  (e.g. is this letter a vowel?)
-				//		- if it's just vowel/consonant, check syllable structure
-				//			next_looking_for == 'consonant' && syll[i] == 'C'
-				// 		... or check inventory keys?
-				// 			this.nventory.consonant.ContainsKey("plosive")
-				// 		- if it's a specific property, dig into the list
-				// 			sample[i].Contains("plosive")
-				// 		- count up the found_count until we find all el in rule
-				// 	- if it finds n arrays in a row containing its n rule features
-				// 	- then it returns the new target features
-				// 		- it has to understand how the source/target rules differ
+				// checking for specific features
+				else {
+					// does this letter in word match the searched features?
+					string[] theseFeatures = this.inventory.features[word[i]];
+					int matches = 0;
+					// tally any found matches so that any pos return means >0 hits
+					Array.ForEach(featureSet, f => matches+=theseFeatures.IndexOf(f)+1);
+					//foundMatch = false;
+					//foreach (string f in featureSet) {
+					//	foundMatch = thisLetterFeatures.IndexOf(f) == -1? true: foundMatch;
+					//}
+
+					// end pass if no letter features match rule features
+					if (matches <= 0) {
+						continue;
+					}
+					matchCount += 1;
+					// success! we have at least one rule match
+					// - add rulefeature (source or target?) to the found feature set
+					// - decide which letter this should be
+					// 		- based on change in features from above
+					// - use letter to construct new word
+					// - it has to understand how the source/target rules differ
+				}
 			}
 			// - then returns word array list with change (updated array)
 		}
