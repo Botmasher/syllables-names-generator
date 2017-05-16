@@ -194,11 +194,13 @@ class Main {
 		Inventory inventory;
 		Syllable syllable;
 		Rules rules;
-		List<string> names;
+		string name;
+		List<string[]> words;
 		public Inventory { get { return inventory; } set { inventory = value; } }
 		public Syllable { get { return syllable; } set { syllable = value; } }
 		public Rules { get { return rules; } set { rules = value; } }
-		public Names { get; set; }
+		public Name { get; set; }
+		public Words { get; set; }
 
 		public Language (Inventory inventory, Syllable syllable, Rules rules) {
 			this.inventory = inventory;
@@ -223,8 +225,8 @@ class Main {
 
 			// go through and apply every rule to the sample word
 			foreach (KeyValuePair<List<string[]>,List<string[]>> rule in this.rules.soundChanges) {
-				string[] source = rule.Key;
-				string[] target = rule.Value;
+				List<string[]> source = rule.Key;
+				List<string[]> target = rule.Value;
 				changedWord = this.ApplyRule(source, target, word, syllables);
 			}
 
@@ -247,21 +249,18 @@ class Main {
 				return emptyChange;
 			}
 
-			// count up SOURCE feature matches found adjacently in WORD features
+			// count up SOURCE letter matches found adjacently in WORD letters
 			int matchCount = 0;
-			// store features/letters found and to change in word
-			List<string[]> matchList = new List<string[]>();
+
+			// store letters to change in word
+			List<string> newWord = new List<string>();
+
+			// source vs target letters to add to newWord depending if find adjacent matches
+			List<string> unmatchedLetters = new List<string>;
+			List<string> matchedLetters = new List<string>;
 
 			// iterate through each letter in word hunting for sourcerule
 			for (int i=0; i < word.Count; i++) {
-
-				// move to end to avoid last iter non-coverage (e.g. word-final #)
-				if (matchCount >= sourceRule.Length && matchCount > 0) {
-					// catch overlapping by setting iter just after start of match
-					i -= (matchCount-1);
-					// reset adjacent matches
-					matchCount = 0;
-				}
 
 				// Keep rule structure in mind and remember rules can nest:
 				// 	['V','plosive','V'] -> ['V','fricative','V']
@@ -270,37 +269,87 @@ class Main {
 				// Recently changed to this structure:
 				//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
 
+				isMatch = false;
+				unmatchedLetters.Add(word[i]);
+
 				// the current feature set to search for in the word
 				featureSet = sourceRule[matchCount];
 
-				// merely checking for a consonant or vowel
-				if (featureSet.Length == 1 && featureSet == ['C'] || featureSet == ['V']) {
+				// merely check for a consonant or vowel match
+				if (featureSet.Length == 1 && (featureSet == ['C'] || featureSet == ['V']) ) {
+				 	// report and tally if this is a match
+				 	isMatch = wordSyllables[i] == featureSet ? true : isMatch;
 				 	matchCount += wordSyllables[i] == featureSet ? 1 : 0;
-					continue;
+				 	// match or not, new word only needs the original C or V letter
+				 	matchedLetters.Add(word[i]);
 				}
-				// checking for specific features
+				// check for specific features and look for changes
 				else {
 					// does this letter in word match the searched features?
 					string[] theseFeatures = this.inventory.features[word[i]];
-					int matches = 0;
-					// tally any found matches so that any pos return means >0 hits
-					Array.ForEach(featureSet, f => matches+=theseFeatures.IndexOf(f)+1);
-					//foundMatch = false;
-					//foreach (string f in featureSet) {
-					//	foundMatch = thisLetterFeatures.IndexOf(f) == -1? true: foundMatch;
-					//}
+					int fmatches = 0;
+					// tally any found matches so that any positive value means >0 hits
+					Array.ForEach(featureSet, f => fmatches += theseFeatures.IndexOf(f)+1);
 
-					// end pass if no letter features match rule features
-					if (matches <= 0) {
-						continue;
+					// success - one or more rule features match letter features
+					if (fmatches > 0) {
+						matchCount += 1;
+
+						// the new letter to add to the list (based on source -> target change)
+						string newLetter = '';
+						foreach (string feature in sourceRule) {}
+
+						// - use src/target features to find what new letter should be
+						// - it has to understand how the source/target rules differ
+
+						// store it in newWord list.
+						matchedLetters.Add(newLetter);
 					}
-					matchCount += 1;
-					// success! we have at least one rule match
-					// - add rulefeature (source or target?) to the found feature set
-					// - decide which letter this should be
-					// 		- based on change in features from above
-					// - use letter to construct new word
-					// - it has to understand how the source/target rules differ
+
+					// oh but how are you going to build a word???
+					//  - chop off matchCount entries from end of newWord
+					// 	- replace them with word[i-matchCount:i]
+				}
+
+				// rule in the middle of applying does not apply - add original letters
+				if (!isMatch && matchCount > 0) {
+					newWord.AddRange(unmatchedLetters);
+					// reset adjacent matches
+					matchCount = 0;
+					matchedLetters.Clear();
+					unmatchedLetters.Clear();
+				}
+				// rule in the middle of applying does fully apply - add new letters
+				else if (matchCount >= sourceRule.Length && matchCount > 0) {
+					newWord.AddRange(matchedLetters);
+					
+					// /!\ TODO before resetting, check matchedLetters for submatches
+					// e.g. found VCV, don't chuck the rest, store as start of new match
+					// 		and subtract the removed letters from the matchcount
+					//	- keep track of all indices added from word
+					// 	- if you have added letter at index, never add that source letter again
+					// 	- if you have added but rule changes, that's ok, overwrite
+					//		- this is where it can be good to lop off end of newWord list
+					/*
+					 * 	INTERIM SOLUTION
+					 * 	// in all branches that have been counting up matches
+					 * 	i -= matchCount-1; 	// start at the next letter (after initial match)
+					 * 	// avoid duplicating letters while iterating back through word again
+					 * 	newWord keeps a list of string[]
+					 * 	every time you add a new letter, it's really a string[]
+					 * 	flatten newWord at the end
+					 */
+
+					// reset adjacent matches
+					matchCount = 0;
+					matchedLetters.Clear();
+					unmatchedLetters.Clear();
+				}
+				// rule did not apply and is not in middle of applying (or fails at word end)
+				else if (matchCount == 0 || i == word.Count-1) {
+					newWord.Add(word[i]);
+					matchedLetters.Clear();
+					unmatchedLetters.Clear();
 				}
 			}
 			// - then returns word array list with change (updated array)
