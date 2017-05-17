@@ -208,7 +208,7 @@ class Main {
 			this.rules = rules;
 		}
 
-		public List<string> ApplyRulesToWord (List<string> word, string syllables) {
+		public List<string> ApplyRules (List<string> word, string syllables) {
 			
 			// convert word into list of feature arrays
 			// TODO just do this in .ApplyRule for each letter as it's checked
@@ -237,7 +237,7 @@ class Main {
 
 		// go through word looking for rule pattern matches
 		// TODO document user guidelines for formatting a readable rule
-		private List<string[]> ApplyRuleToWord (
+		private List<string[]> ApplyRule (
 			List<string[]> sourceRule,
 			List<string[]> targetRule,
 			List<string> word,
@@ -249,15 +249,20 @@ class Main {
 				return emptyChange;
 			}
 
-			// count up SOURCE letter matches found adjacently in WORD letters
+			// track adjacent matches of SOURCE features within WORD letters
+			bool isMatch = false;
 			int matchCount = 0;
 
 			// store letters to change in word
 			List<string> newWord = new List<string>();
 
-			// source vs target letters to add to newWord depending if find adjacent matches
-			List<string> unmatchedLetters = new List<string>;
-			List<string> matchedLetters = new List<string>;
+			// letters to change in newWord if find adjacent matches
+			// e.g. ( {"t", "2"}, {"", "4"}, ) contains one change, one delete
+			List<string[]> lettersToModify = new List<string[]>();
+			List<string[]> lettersToInsert = new List<string[]>();
+			// letter holding tanks while testing full match (then added to above)
+			List<string[]> insertionMatches = new List<string[]>();
+			List<string[]> modificationMatches = new List<string[]>();
 
 			// iterate through each letter in word hunting for sourcerule
 			for (int i=0; i < word.Count; i++) {
@@ -269,9 +274,6 @@ class Main {
 				// Recently changed to this structure:
 				//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
 
-				isMatch = false;
-				unmatchedLetters.Add(word[i]);
-
 				// the current feature set to search for in the word
 				featureSet = sourceRule[matchCount];
 
@@ -280,90 +282,90 @@ class Main {
 				 	// report and tally if this is a match
 				 	isMatch = wordSyllables[i] == featureSet ? true : isMatch;
 				 	matchCount += wordSyllables[i] == featureSet ? 1 : 0;
-				 	// match or not, new word only needs the original C or V letter
-				 	matchedLetters.Add(word[i]);
 				}
+				// TODO account for CC or VV gemination
+				// TODO account for C or V insertion incl metathesis
+
 				// check for specific features and look for changes
 				else {
 					// does this letter in word match the searched features?
 					string[] theseFeatures = this.inventory.features[word[i]];
-					int fmatches = 0;
-					// tally any found matches so that any positive value means >0 hits
-					Array.ForEach(featureSet, f => fmatches += theseFeatures.IndexOf(f)+1);
+					string[] thisTarget = targetRule[matchCount];
+					int fmatches = true;
 
-					// success - one or more rule features match letter features
-					if (fmatches > 0) {
-						matchCount += 1;
-
-						// the new letter to add to the list (based on source -> target change)
-						string newLetter = '';
-						foreach (string feature in sourceRule) {}
-
-						// - use src/target features to find what new letter should be
-						// - it has to understand how the source/target rules differ
-
-						// store it in newWord list.
-						matchedLetters.Add(newLetter);
+					// check features in word and set them to match target features
+					foreach (string f in featureSet) {
+						// identify target signaling removal "_"
+						if (theseFeatures.IndexOf(f) > -1 && thisTarget[0] == '_') {
+							string newFeature = "_";
+						// identify target features
+						} else if (theseFeatures.IndexOf(f) > -1) {
+							string newFeature = thisTarget[featureSet.IndexOf(f)];
+						// source did not match - rule does not apply
+						} else {
+							fmatches = false;
+							string newFeature = f;
+						}
+						theseFeatures[theseFeatures.IndexOf(f)] = newFeature;
 					}
 
-					// oh but how are you going to build a word???
-					//  - chop off matchCount entries from end of newWord
-					// 	- replace them with word[i-matchCount:i]
+					// letter match if all features found
+					if (fmatches) {
+						isMatch = true;
+						string newLetter = this.inventory.GetLetter(theseFeatures);
+						
+						// store new letter in temp list until check rest of rule
+						modificationMatches.Add(new[] {newLetter, i});
+						insertionMatches.Add(new[] {newLetter, i});
+					}
 				}
 
-				// rule in the middle of applying does not apply - add original letters
+				// rule in the middle of applying does not apply
 				if (!isMatch && matchCount > 0) {
-					newWord.AddRange(unmatchedLetters);
 					// reset adjacent matches
 					matchCount = 0;
-					matchedLetters.Clear();
-					unmatchedLetters.Clear();
 				}
 				// rule in the middle of applying does fully apply - add new letters
 				else if (matchCount >= sourceRule.Length && matchCount > 0) {
-					newWord.AddRange(matchedLetters);
+					// add letters from temp lists and empty lists for next match
+					lettersToModify.AddRange(modificationMatches);
+					lettersToInsert.AddRange(insertionMatches);
+					modificationMatches.Clear();
+					insertionMatches.Clear();
 					
-					// /!\ TODO before resetting, check matchedLetters for submatches
-					// e.g. found VCV, don't chuck the rest, store as start of new match
-					// 		and subtract the removed letters from the matchcount
-					//	- keep track of all indices added from word
-					// 	- if you have added letter at index, never add that source letter again
-					// 	- if you have added but rule changes, that's ok, overwrite
-					//		- this is where it can be good to lop off end of newWord list
-					/*
-					 * 	INTERIM SOLUTION
-					 * 	// in all branches that have been counting up matches
-					 * 	i -= matchCount-1; 	// start at the next letter (after initial match)
-					 * 	// avoid duplicating letters while iterating back through word again
-					 * 	newWord keeps a list of string[]
-					 * 	every time you add a new letter, it's really a string[]
-					 * 	flatten newWord at the end
-					 */
+					// rewind to just after match start to catch possible overlaps
+					i -= matchCount-1;
 
 					// reset adjacent matches
 					matchCount = 0;
-					matchedLetters.Clear();
-					unmatchedLetters.Clear();
 				}
 				// rule did not apply and is not in middle of applying (or fails at word end)
-				else if (matchCount == 0 || i == word.Count-1) {
-					newWord.Add(word[i]);
-					matchedLetters.Clear();
-					unmatchedLetters.Clear();
+				else {
+					continue;
 				}
 			}
-			// - then returns word array list with change (updated array)
+
+			// change letters at stored indices
+			foreach (string[] modification in modificationMatches) {
+				int modId = -1;
+				if (Int32.TryParse(modification[1], out modId)) {
+					word[modId] = modification[0];
+				}
+			}
+			// insert new letters at stored indices ( /!\ expects ascending index!)
+			int numInserted = 0;
+			foreach (string[] insertion in insertionMatches) {
+				int insertId = -1;
+				if (Int32.TryParse(insertion[1], out insertId)) {
+					word.Insert(insertId+numInserted, insertion[0]);
+				}
+			}
+
+			// output updated word letters list
+			return word;
 		}
 
 		//  EXTRA:	add support for ranking/ordering rules
-		//  EXTRA: 	handle deletion, insertion and metathesis
-		public List<string> ApplyAllRules (
-			List<string> sampleLetters,
-			List<string[]> sampleFeatures,
-			string sampleSyllables)
-		{
-			
-		}
 	}
 
 
