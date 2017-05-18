@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 class Main {
 	
+	Random random = new Random();
+
 	// model sound structure
 	public class Inventory {
 		// letters per feature
@@ -96,22 +98,26 @@ class Main {
 
 	// model syllable structure as onset, nucleus, coda
 	public class Syllable {
-		List<string> nuclei = new List<string>();
-		List<string> onsets = new List<string>();
-		List<string> codas = new List<string>();
+		List<string[]> nuclei = new List<string[]>();
+		List<string[]> onsets = new List<string[]>();
+		List<string[]> codas = new List<string[]>();
 
 		public Syllable () {
 		}
-		public void AddOnset (string onsets) {
+		public void AddOnset (string[] onset) {
 			this.onsets.Add(onset);
 		}
-		public void AddNucleus (string nucleus) {
+		public void AddNucleus (string[] nucleus) {
 			this.nuclei.Add(nucleus);
 		}
-		public void AddCoda (string coda) {
+		public void AddCoda (string[] coda) {
 			this.codas.Add(coda);
 		}
-		// TODO add syllable internal rules (like if you pick this, pick that next)
+		
+		// TODO add syll weights (like you have a n% chance of picking this)
+		// TODO add syll internal rules (like if you pick this, pick that next)
+		// 		OR do similar with a blacklist (e.g. zv, aa, ii, uu, Vh) 
+		
 	}
 
 
@@ -208,8 +214,45 @@ class Main {
 			this.rules = rules;
 		}
 
+		private string PickSyllableCharacter (char c, HashSet<string> consonants, HashSet<string> vowels) {
+			switch (c) {
+				// find a specific vowel
+				case "V":
+					string character = vowels[random.Next(0, vowels.Count)];
+				// find a specific consonant
+				case "C":
+					string character = consonants[random.Next(0, consonants.Count)];
+				// if just a letter add the letter
+				default:
+					string character = c.ToString();
+			}
+			return character;
+		}
+
+		public List<string> BuildSyllable () {
+			HashSet<string> consonants = this.inventory.GetConsonants();
+			HashSet<string> vowels = this.inventory.GetVowels();
+
+			// pick syllable parts
+			string newOnset = this.syllable.onsets[random.Next(0, this.syllable.onsets.Count)];
+			string newNucleus = this.syllable.nuclei[random.Next(0, this.syllable.nuclei.Count)];
+			string newCoda = this.syllable.codas[random.Next(0, this.syllable.codas.Count)];
+
+			// pick letters for each part
+			List<string> newSyllable = new List<string>();
+			foreach (char o in newOnset) {
+				newSyllable.Add(this.PickSyllableCharacter(o, consonants, vowels));
+			}
+			foreach (char n in newNucleus) {
+				newSyllable.Add(this.PickSyllableCharacter(n, consonants, vowels));
+			}
+			foreach (char c in newCoda) {
+				newSyllable.Add(this.PickSyllableCharacter(c, consonants, vowels));
+			}
+			return newSyllable;
+		}
+
 		public List<string> ApplyRules (List<string> word, string syllables) {
-			
 			// convert word into list of feature arrays
 			// TODO just do this in .ApplyRule for each letter as it's checked
 			List<string[]> wordFeatures = new List<string[]>();
@@ -230,9 +273,7 @@ class Main {
 				changedWord = this.ApplyRule(source, target, word, syllables);
 			}
 
-			// back out in this function, need to turn those back into letters list
-			//  	- look up each feature array in inventory and concat letters
-			// return the word string[]
+			return changedWord;
 		}
 
 		// go through word looking for rule pattern matches
@@ -365,7 +406,8 @@ class Main {
 			return word;
 		}
 
-		//  EXTRA:	add support for ranking/ordering rules
+		//  TODO add support for ranking/ordering rules
+
 	}
 
 
