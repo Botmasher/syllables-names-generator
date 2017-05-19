@@ -146,14 +146,29 @@ class Main {
 	// simple sound & grammar rules to map built syllables to word structure
 	public class Rules {
 		// additional affixes added to word for properties
-		Dictionary<string,string> affixes = new Dictionary<string,string>();
+		Dictionary<string,List<string>> affixes = new Dictionary<string,List<string>>();
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
 		Dictionary<List<string[]>, List<string[]>> soundChanges = new Dictionary<List<string[]>, List<string[]>>();
 
 		public Rules () {}
 		
-		public void AddAffix (string property, string affix) {
+		public void AddAffix (string property, List<string> affix) {
 			affixes[property] = affix;
+		}
+
+		// currently handle prefixing or suffixing (only)
+		public List<string> AttachAffix (List<string> word, string property) {
+			List<string> affix = this.affixes[property];
+			// attach as prefix
+			if (affix[affix.Count-1] == "-") {
+				affix.RemoveAt(affix.Count-1);
+				affix.AddRange(word);
+			// attach as suffix
+			} else {
+				affix.RemoveAt(0);
+				word.AddRange(affix);
+			}
+			return word;
 		}
 
 		// split csv rule string into array of features
@@ -196,12 +211,11 @@ class Main {
 
 	// a language for building and storing words
 	public class Language () {
-
 		Inventory inventory;
 		Syllable syllable;
 		Rules rules;
 		string name;
-		List<string[]> words;
+		List<List<string>> words;
 		public Inventory { get { return inventory; } set { inventory = value; } }
 		public Syllable { get { return syllable; } set { syllable = value; } }
 		public Rules { get { return rules; } set { rules = value; } }
@@ -214,44 +228,73 @@ class Main {
 			this.rules = rules;
 		}
 
-		private string PickSyllableCharacter (char c, HashSet<string> consonants, HashSet<string> vowels) {
-			switch (c) {
+		// take syllable topography and return a letter
+		private string PickSyllableLetter (string letter, HashSet<string> consonants, HashSet<string> vowels) {
+			switch (letter) {
 				// find a specific vowel
 				case "V":
-					string character = vowels[random.Next(0, vowels.Count)];
+					return vowels[random.Next(0, vowels.Count)];
 				// find a specific consonant
 				case "C":
-					string character = consonants[random.Next(0, consonants.Count)];
+					return consonants[random.Next(0, consonants.Count)];
 				// if just a letter add the letter
 				default:
-					string character = c.ToString();
+					return letter;
 			}
-			return character;
 		}
 
-		public List<string> BuildSyllable () {
-			HashSet<string> consonants = this.inventory.GetConsonants();
-			HashSet<string> vowels = this.inventory.GetVowels();
-
+		// use syllable structure to construct a single syllable
+		private List<string> BuildSyllable (HashSet<string> consonants, HashSet<string> vowels) {
 			// pick syllable parts
-			string newOnset = this.syllable.onsets[random.Next(0, this.syllable.onsets.Count)];
-			string newNucleus = this.syllable.nuclei[random.Next(0, this.syllable.nuclei.Count)];
-			string newCoda = this.syllable.codas[random.Next(0, this.syllable.codas.Count)];
+			string[] newOnset = this.syllable.onsets[random.Next(0, this.syllable.onsets.Count)];
+			string[] newNucleus = this.syllable.nuclei[random.Next(0, this.syllable.nuclei.Count)];
+			string[] newCoda = this.syllable.codas[random.Next(0, this.syllable.codas.Count)];
 
 			// pick letters for each part
 			List<string> newSyllable = new List<string>();
-			foreach (char o in newOnset) {
-				newSyllable.Add(this.PickSyllableCharacter(o, consonants, vowels));
+			foreach (string o in newOnset) {
+				newSyllable.Add(this.PickSyllableLetter(o, consonants, vowels));
 			}
-			foreach (char n in newNucleus) {
-				newSyllable.Add(this.PickSyllableCharacter(n, consonants, vowels));
+			foreach (string n in newNucleus) {
+				newSyllable.Add(this.PickSyllableLetter(n, consonants, vowels));
 			}
-			foreach (char c in newCoda) {
-				newSyllable.Add(this.PickSyllableCharacter(c, consonants, vowels));
+			foreach (string c in newCoda) {
+				newSyllable.Add(this.PickSyllableLetter(c, consonants, vowels));
 			}
 			return newSyllable;
 		}
 
+		// build root with a certain number of syllables
+		public List<string> BuildRoot (int minSyllables, int maxSyllables) {
+			// grab inventory letters to fill in C, V symbols
+			HashSet<string> consonants = this.inventory.GetConsonants();
+			HashSet<string> vowels = this.inventory.GetVowels();
+			
+			// TODO add ability to build by features in BuildWord + BuildSyllable
+
+			// create chosen number of syllables and add to word
+			List<string> newRoot = new List<string>();
+			int numSyllables = random.Next(minSyllables, maxSyllables+1);
+			for (int i=0, i < numSyllables; i++) {
+				List<string> newSyllable = this.BuildSyllable(consonants, vowels);
+				newRoot.AddRange(newSyllable);
+			}
+			return newRoot;
+		}
+
+		// convert word into a formatted proper name
+		public List<string> FormatName (List<string> word) {
+			// caps the zeroth character in the zeroth graph/letter
+			string firstLetter = word[0][0].ToUpper().ToString().Concat(word[0][1:word[0].Length]);
+			word[0] = firstLetter;
+			// uncaps the rest of the word
+			for (int i=1; i < word.Count; i++) {
+				word[i] = word[i].ToLower();
+			}
+			return word;
+		}
+
+		// apply every single rule in the ruleset to a built word
 		public List<string> ApplyRules (List<string> word, string syllables) {
 			// convert word into list of feature arrays
 			// TODO just do this in .ApplyRule for each letter as it's checked
@@ -272,7 +315,6 @@ class Main {
 				List<string[]> target = rule.Value;
 				changedWord = this.ApplyRule(source, target, word, syllables);
 			}
-
 			return changedWord;
 		}
 
