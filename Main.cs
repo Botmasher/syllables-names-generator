@@ -232,14 +232,56 @@ class Main {
 		private string PickSyllableLetter (string letter, HashSet<string> consonants, HashSet<string> vowels) {
 			switch (letter) {
 				// find a specific vowel
-				case "V":
-					return vowels[random.Next(0, vowels.Count)];
-				// find a specific consonant
-				case "C":
-					return consonants[random.Next(0, consonants.Count)];
-				// if just a letter add the letter
-				default:
-					return letter;
+			if (letter == "V") {
+				return vowels[random.Next(0, vowels.Count)];
+			}
+			// find a specific consonant
+			else if (letter == "C") {
+				return consonants[random.Next(0, consonants.Count)];
+			}
+			// if just a letter add the letter
+			else if (consonants.Contains(letter) || vowels.Contains(letter)) {
+				return letter;
+			}
+			// return letter matching features
+			// TODO break this out into a method for Inventory
+			else {
+				// set up possibilities based on multiple features
+				if (letter.IndexOf[","] > -1) {
+					string[] features = letter.Split(",")
+					HashSet<string> possibleLetters = new HashSet<string>();
+				// pick a consonant based on a single feature
+				} else if (this.inventory.consonants.ContainsKey(letter)) {
+					HashSet<string> possibleLetters = this.inventory.consonants[letter];
+					return possibleLetters[random.Next(0, possibleLetters.Count)];
+				// pick a vowel based on a single feature
+				} else if (this.inventory.vowels.ContainsKey(letter)) {
+					HashSet<string> possibleLetters = this.inventory.vowels[letter];
+					return possibleLetters[random.Next(0, possibleLetters.Count)];
+				}
+				// find possibilities based on multiple features
+				foreach (string f in features) {
+					f = f.Trim();
+					// initial feature - add all letters
+					if (possibleLetters.Count <= 0) {
+						if (this.inventory.vowels.ContainsKey(f)) {
+							possibleLetters = this.inventory.vowels[f];
+						} else if (this.inventory.consonants.ContainsKey(f)) {
+							possibleLetters = this.inventory.consonants[f];
+						} else{
+							return null;
+						}
+					// subsequent features - only intersecting letters
+					} else if (this.inventory.vowels.ContainsKey(f)) {
+						possibleLetters.IntersectWith(this.inventory.vowels[f]);
+					} else if (this.inventory.consonants.ContainsKey(f)) {
+						possibleLetters.IntersectWith(this.inventory.consonants[f]);
+					} else {
+						continue;
+					}
+				}
+				// select one of the letters that matches all given features
+				return possibleLetters[random.Next(0, possibleLetters.Count)];
 			}
 		}
 
