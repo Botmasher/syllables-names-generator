@@ -101,9 +101,19 @@ class Main {
 		List<string[]> nuclei = new List<string[]>();
 		List<string[]> onsets = new List<string[]>();
 		List<string[]> codas = new List<string[]>();
+		float averageCount;
+		float minCount;
+		float maxCount;
 
-		public Syllable () {
+		public Syllable (int min, int average, int max) {
+			this.averageCount = average;
+			this.minCount = min;
+			this.maxCount = max;
 		}
+		// TODO use avg, min, max to roll for word length
+		public void HowManySyllables () {
+		}
+
 		public void AddOnset (string[] onset) {
 			this.onsets.Add(onset);
 		}
@@ -215,7 +225,8 @@ class Main {
 		Syllable syllable;
 		Rules rules;
 		string name;
-		List<List<string>> words;
+		Dictionary<string, List<string>> words = new Dictionary<string, List<string>>();
+		Dictionary<string, string> translations = new Dictionary<string, string>();
 		public Inventory { get { return inventory; } set { inventory = value; } }
 		public Syllable { get { return syllable; } set { syllable = value; } }
 		public Rules { get { return rules; } set { rules = value; } }
@@ -226,6 +237,31 @@ class Main {
 			this.inventory = inventory;
 			this.syllable = syllable;
 			this.rules = rules;
+		}
+
+		// dictionary string with each word entry on a newline
+		// TODO format sorted A-Z
+		public PrintDictionary () {
+			string dict;
+			foreach (KeyValuePair<string, string> w in this.translations) {
+				dict += w.Key + ": " + w.Value + "\n";
+			}
+			return dict;
+		}
+
+		// add a word and translation pair to the language's two-way dictionary
+		public AddEntry (List<string> word, string translation) {
+			this.words[translation] = word;
+			this.translations[string.Join("", word.ToArray())] = translation;
+		}
+
+		public BuildWord (bool properName) {
+			// choose syllables
+			// build root
+			// attach affixes
+			// format name
+			// add to dictionary
+			// return the word
 		}
 
 		// take syllable topography and return a letter
@@ -307,7 +343,7 @@ class Main {
 		}
 
 		// build root with a certain number of syllables
-		public List<string> BuildRoot (int minSyllables, int maxSyllables) {
+		private List<string> BuildRoot (int minSyllables, int maxSyllables) {
 			// grab inventory letters to fill in C, V symbols
 			HashSet<string> consonants = this.inventory.GetConsonants();
 			HashSet<string> vowels = this.inventory.GetVowels();
@@ -325,7 +361,7 @@ class Main {
 		}
 
 		// convert word into a formatted proper name
-		public List<string> FormatName (List<string> word) {
+		private List<string> FormatName (List<string> word) {
 			// caps the zeroth character in the zeroth graph/letter
 			string firstLetter = word[0][0].ToUpper().ToString().Concat(word[0][1:word[0].Length]);
 			word[0] = firstLetter;
