@@ -106,12 +106,13 @@ class Main {
 		float maxCount;
 
 		public Syllable (int min, int average, int max) {
-			this.averageCount = average;
-			this.minCount = min;
-			this.maxCount = max;
+			this.average = average;
+			this.min = min;
+			this.max = max;
 		}
 		// TODO use avg, min, max to roll for word length
-		public void HowManySyllables () {
+		public int HowManySyllables () {
+			return this.average;
 		}
 
 		public void AddOnset (string[] onset) {
@@ -250,18 +251,33 @@ class Main {
 		}
 
 		// add a word and translation pair to the language's two-way dictionary
-		public AddEntry (List<string> word, string translation) {
+		private AddEntry (List<string> word, string translation) {
 			this.words[translation] = word;
 			this.translations[string.Join("", word.ToArray())] = translation;
 		}
 
-		public BuildWord (bool properName) {
-			// choose syllables
-			// build root
-			// attach affixes
+		// overall word building recipe
+		public BuildWord (int length, string translation="", string[] affixes=null, bool proper=false) {
+			
+			// choose syllables and build root word
+			List<string> word = this.BuildRoot(length);
+
+			// attach relevant affixes to root
+			if (affixes != null) {
+				foreach (string property in affixes) {
+					word = this.rules.AttachAffix (word, property);
+				}
+			}
+
 			// format name
-			// add to dictionary
-			// return the word
+			if (proper) {
+				word = this.FormatName (word);
+			}
+			
+			// add to the two-way dictionary
+			this.AddEntry (word, translation);
+
+			return word;
 		}
 
 		// take syllable topography and return a letter
@@ -343,7 +359,7 @@ class Main {
 		}
 
 		// build root with a certain number of syllables
-		private List<string> BuildRoot (int minSyllables, int maxSyllables) {
+		private List<string> BuildRoot (int numSyllables) {
 			// grab inventory letters to fill in C, V symbols
 			HashSet<string> consonants = this.inventory.GetConsonants();
 			HashSet<string> vowels = this.inventory.GetVowels();
@@ -352,7 +368,6 @@ class Main {
 
 			// create chosen number of syllables and add to word
 			List<string> newRoot = new List<string>();
-			int numSyllables = random.Next(minSyllables, maxSyllables+1);
 			for (int i=0, i < numSyllables; i++) {
 				List<string> newSyllable = this.BuildSyllable(consonants, vowels);
 				newRoot.AddRange(newSyllable);
