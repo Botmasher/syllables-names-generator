@@ -20,7 +20,7 @@ class Main {
 		// group features for "feature matrix" setup
 		string[] voicing = new string[] { "voiced", "voiceless" };
 		string[] place = new string[] { "bilabial", "labiodental", "dental", "alveolar", "palatal", "velar", "uvular", "pharyngeal", "glottal" };
-		string[] manner = new string[] { "nasal", "plosive", "affricate", "fricative", "approximant" };
+		string[] manner = new string[] { "nasal", "plosive", "affricate", "fricative", "approximant", "lateral" };
 		string[] height = new string[] { "close", "mid", "open" };
 		string[] backness = new string[] { "front", "central", "back" };
 		string[] rounding = new string[] { "rounded", "unrounded" };
@@ -54,7 +54,7 @@ class Main {
 		// store vowel letter and features
 		public void AddVowel (string letter, string[] features) {
 			// make letter accessible through each of its features
-			foreach(f in features) {
+			foreach(string f in features) {
 				this.vowels[f].Add(letter);
 			}
 			this.AddFeatures(letter, features);
@@ -63,7 +63,7 @@ class Main {
 		// store consonant letter and features
 		public void AddConsonant (string letter, string[] features) {
 			// make letter accessible through each feature
-			foreach(f in features) {
+			foreach(string f in features) {
 				this.consonants[f].Add(letter);
 			}
 			this.AddFeatures(letter, features);
@@ -110,6 +110,12 @@ class Main {
 			this.min = min;
 			this.max = max;
 		}
+		public Syllable () {
+			this.average = 2.5;
+			this.minCount = 1.0;
+			this.maxCount = 4.0;
+		}
+
 		// TODO use avg, min, max to roll for word length
 		public int HowManySyllables () {
 			return this.average;
@@ -154,19 +160,18 @@ class Main {
 	// 		- if string is C, V, #, _ == SYLL STRUCTURE
 	// 		- otherwise if string is lowercase, len > 0 < 4 == LETTER
 
-	// simple sound & grammar rules to map built syllables to word structure
-	public class Rules {
-		// additional affixes added to word for properties
+	// simple affixes mapping to properties supporting formats prefix- or -suffix
+	public class Affixes {
+		// affixes added to word for properties
 		Dictionary<string,List<string>> affixes = new Dictionary<string,List<string>>();
-		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		Dictionary<List<string[]>, List<string[]>> soundChanges = new Dictionary<List<string[]>, List<string[]>>();
 
-		public Rules () {}
+		public Affixes () {}
 		
+		// new property to dictionary
 		public void AddAffix (string property, List<string> affix) {
 			affixes[property] = affix;
 		}
-
+		
 		// currently handle prefixing or suffixing (only)
 		public List<string> AttachAffix (List<string> word, string property) {
 			List<string> affix = this.affixes[property];
@@ -181,6 +186,14 @@ class Main {
 			}
 			return word;
 		}
+	}
+
+	// simple sound & grammar rules to map built syllables to word structure
+	public class Rules {
+		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
+		Dictionary<List<string[]>, List<string[]>> soundChanges = new Dictionary<List<string[]>, List<string[]>>();
+
+		public Rules () {}
 
 		// split csv rule string into array of features
 		private string ConvertStringToArray (string csvString) {
@@ -225,6 +238,7 @@ class Main {
 		Inventory inventory;
 		Syllable syllable;
 		Rules rules;
+		Affixes affixes;
 		string name;
 		Dictionary<string, List<string>> words = new Dictionary<string, List<string>>();
 		Dictionary<string, string> translations = new Dictionary<string, string>();
@@ -233,11 +247,13 @@ class Main {
 		public Rules { get { return rules; } set { rules = value; } }
 		public Name { get; set; }
 		public Words { get; set; }
+		public Translations { get; set; }
 
-		public Language (Inventory inventory, Syllable syllable, Rules rules) {
+		public Language (Inventory inventory, Syllable syllable, Rules rules, Affixes affixes) {
 			this.inventory = inventory;
 			this.syllable = syllable;
 			this.rules = rules;
+			this.affixes = affixes;
 		}
 
 		// dictionary string with each word entry on a newline
@@ -251,13 +267,13 @@ class Main {
 		}
 
 		// add a word and translation pair to the language's two-way dictionary
-		private AddEntry (List<string> word, string translation) {
+		public AddEntry (List<string> word, string translation) {
 			this.words[translation] = word;
 			this.translations[string.Join("", word.ToArray())] = translation;
 		}
 
 		// overall word building recipe
-		public BuildWord (int length, string translation="", string[] affixes=null, bool proper=false) {
+		public BuildWord (int length, bool proper=false, string[] affixes=null) {
 			
 			// choose syllables and build root word
 			List<string> word = this.BuildRoot(length);
@@ -265,7 +281,7 @@ class Main {
 			// attach relevant affixes to root
 			if (affixes != null) {
 				foreach (string property in affixes) {
-					word = this.rules.AttachAffix (word, property);
+					word = this.affixes.AttachAffix (word, property);
 				}
 			}
 
@@ -273,9 +289,8 @@ class Main {
 			if (proper) {
 				word = this.FormatName (word);
 			}
-			
-			// add to the two-way dictionary
-			this.AddEntry (word, translation);
+
+			this.applyRules();
 
 			return word;
 		}
@@ -456,6 +471,7 @@ class Main {
 				// merely check for a consonant or vowel match
 				if (featureSet.Length == 1 && (featureSet == ['C'] || featureSet == ['V']) ) {
 				 	// report and tally if this is a match
+				 	// TODO just check inv C / V hash to avoid passing around syllables
 				 	isMatch = wordSyllables[i] == featureSet ? true : isMatch;
 				 	matchCount += wordSyllables[i] == featureSet ? 1 : 0;
 				}
@@ -548,32 +564,9 @@ class Main {
 
 	// build names in a language
 	public class NameGeneration {
-
 		Language language;
-
 		public NameGeneration () {
 			this.language = new Language();
-		}
-
-		private string BuildSyllable () {
-			// ?- internal rules
-			// - build by features
-			// - roll for each part
-			// - choose parts
-			// - KEEP SYLLABLES as SEPARATE LIST
-		}
-		public string BuildName () {
-			// - attach syllables->word
-			// 		- keep around word (e.g. gabaa) and syll structure (CVCVV)
-			// 		- KEEP SYLLABLES as SEPARATE LIST
-
-			// - word affixes
-
-			// - prepend and append # to word for syllable
-			// - word-internal changes
-			// - word-edge changes
-			// 		- iterate over keys in dict and if they're in syll
-			//
 		}
 	}
 
@@ -582,5 +575,98 @@ class Main {
 
 		Console.WriteLine ("test print");
 
+		// build up a very simple vowel inventory
+		// make sure features are within simple set in Inventory's place/manner/voicing
+		Inventory inventory = new Inventory();
+		inventory.AddConsonant("b", new string[]{"voiced", "bilabial", "plosive"});
+		inventory.AddConsonant("p", new string[]{"voiceless", "bilabial", "plosive"});
+		inventory.AddConsonant("g", new string[]{"voiced", "velar", "plosive"});
+		inventory.AddConsonant("k", new string[]{"voiceless", "velar", "plosive"});
+		inventory.AddConsonant("d", new string[]{"voiced", "dental", "plosive"});
+		inventory.AddConsonant("t", new string[]{"voiceless", "dental", "plosive"});
+		inventory.AddConsonant("h", new string[]{"voiceless", "glottal", "fricative"});
+		inventory.AddConsonant("l", new string[]{"voiced", "alveolar", "lateral"});
+		inventory.AddConsonant("r", new string[]{"voiced", "alveolar", "approximant"});
+		inventory.AddConsonant("w", new string[]{"voiced", "velar", "approximant"});
+		// build up very simple consonant inventory
+		// make sure features are within simple set in Inventory's height/backness/rounding
+		inventory.AddVowel("i", new string[]{"close", "front", "unrounded"});
+		inventory.AddVowel("a", new string[]{"open", "central", "unrounded"});
+		inventory.AddVowel("u", new string[]{"close", "back", "rounded"});
+
+		// recall letters using same feature order, so this finds "b":
+		inventory.GetLetter(new string[]{"voiced", "bilabial", "plosive"});
+		// this does not find "b":
+		inventory.GetLetter(new string[]{"voiced", "plosive", "bilabial"});
+
+		Syllable syllableStructure = new Syllable();
+		syllableStructure.AddOnset("C", "");
+		syllableStructure.AddNucleus("V", "VV");
+		syllableStructure.AddCoda("C", "");
+
+		Rules rules = new Rules();
+		// assimilate consonant clusters
+		rules.AddRule(new List<string[]>(
+			new string[] {"voiced"},
+			new string[] {"voiceless"} ), new List<string[]> (
+			new string[] {"voiceless"},
+			new string[] {"voiceless"}
+			));
+		rules.AddRule(new List<string[]>(
+			new string[] {"voiceless"},
+			new string[] {"voiced"} ), new List<string[]> (
+			new string[] {"voiceless"},
+			new string[] {"voiceless"}
+			));
+		// avoid awkward clusters
+		rules.AddRule(new List<string[]>(
+			new string[] {"h"},
+			new string[] {"C"} ), new List<string[]> (
+			new string[] {""},
+			new string[] {"C"} ));
+		rules.AddRule(new List<string[]>(
+			new string[] {"r"},
+			new string[] {"w"} ), new List<string[]> (
+			new string[] {"r"},
+			new string[] {"r"} ));
+		// simplify long vowels
+		rules.AddRule(new List<string[]>(
+			new string[] {"a"},
+			new string[] {"a"} ), new List<string[]> (
+			new string[] {"a"},
+			new string[] {""} ));
+		rules.AddRule(new List<string[]>(
+			new string[] {"i"},
+			new string[] {"i"} ), new List<string[]> (
+			new string[] {"i"},
+			new string[] {""} ));
+		rules.AddRule(new List<string[]>(
+			new string[] {"u"},
+			new string[] {"u"} ), new List<string[]> (
+			new string[] {"u"},
+			new string[] {""} ));
+
+		Affixes affixes = new Affixes();
+		// add prefixes and suffixes
+		// trusts you to use only characters found in inventory (matters for rule application)
+		affixes.AddAffix("human", new List<string>({ "-", "g", "u", "d" }));
+		affixes.AddAffix("nonhuman", new List<string>({ "-", "i", "d" }));
+		affixes.AddAffix("strong", new List<string>({ "t", "-" }));
+		affixes.AddAffix("small", new List<string>({ "l", "-" }));
+		affixes.AddAffix("strange", new List<string>({ "g", "-" }));
+
+		// TODO structure language 
+		Language language = new Language(inventory, syllableStructure, rules, affixes);
+
+		// build a long proper noun
+		List<string> properName = language.BuildWord(3, true, new string[]{"nonhuman", "strong"});
+		properName = language.ApplyRules(properName);
+		// build a short regular noun
+		List<string> justSomeNoun = language.BuildWord(2);
+		justSomeNoun = language.ApplyRules(justSomeNoun);
+
+		// add both to the dictionary
+		language.AddEntry(properNoun, "Wolf");
+		language.AddEntry(justSomeNoun, "food");
 	}
 }
