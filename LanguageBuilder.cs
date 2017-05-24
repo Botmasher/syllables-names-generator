@@ -1,39 +1,55 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
-class Main {
-	
-	Random random = new Random();
+public class LanguageBuilder {
+
+	System.Random random = new System.Random();
 
 	// model sound structure
 	public class Inventory {
+
+		// TODO methods/properties for accessing inventory info from within dicts
+
 		// letters per feature
-		Dictionary<string, HashSet<string>> consonants = new Dictionary<string, HashSet<string>>();
-		Dictionary<string, HashSet<string>> vowels = new Dictionary<string, HashSet<string>>();
+		public Dictionary<string, HashSet<string>> consonants = new Dictionary<string, HashSet<string>>();
+		public Dictionary<string, HashSet<string>> vowels = new Dictionary<string, HashSet<string>>();
 
 		// feature equivalent to a letter
-		Dictionary<string, string[]> features = new Dictionary<string, string[]>();
+		public Dictionary<string, string[]> features = new Dictionary<string, string[]>();
 
 		// letter equivalent to a feature set
-		Dictionary<string, string> letters = new Dictionary<string, string>();
+		public Dictionary<string, string> letters = new Dictionary<string, string>();
 
-		// group features for "feature matrix" setup
-		string[] voicing = new string[] { "voiced", "voiceless" };
-		string[] place = new string[] { "bilabial", "labiodental", "dental", "alveolar", "palatal", "velar", "uvular", "pharyngeal", "glottal" };
-		string[] manner = new string[] { "nasal", "plosive", "affricate", "fricative", "approximant", "lateral" };
-		string[] height = new string[] { "close", "mid", "open" };
-		string[] backness = new string[] { "front", "central", "back" };
-		string[] rounding = new string[] { "rounded", "unrounded" };
+		// group features to allow for simple phonological "feature matrix" modeling
+		List<string> voicing = new List<string> ( "voiced", "voiceless" );
+		List<string> place = new List<string> ( "bilabial", "labiodental", "dental", "alveolar", "palatal", "velar", "uvular", "pharyngeal", "glottal" );
+		List<string> manner = new List<string> ( "nasal", "plosive", "affricate", "fricative", "approximant", "lateral" );
+		List<string> height = new List<string> ( "close", "mid", "open" );
+		List<string> backness = new List<string> ( "front", "central", "back" );
+		List<string> rounding = new List<string> ( "rounded", "unrounded" );
 
 		public Inventory () {
+			
 			// basic consonant feature keys
-			string[] cFeatures = this.voicing.Concat(this.place).Concat(this.manner).ToArray();
-			foreach (f in cFeatures) {
+			foreach (string f in this.voicing) {
 				this.consonants.Add(f, new HashSet<string>());
 			}
+			foreach (string f in this.place) {
+				this.consonants.Add(f, new HashSet<string>());
+			}
+			foreach (string f in this.manner) {
+				this.consonants.Add(f, new HashSet<string>());
+			}
+
 			// basic vowel feature keys
-			string[] vFeatures = this.height.Concat(this.backness).Concat(this.rounding).ToArray();
-			foreach (f in vFeatures) {
+			foreach (string f in this.height) {
+				this.vowels.Add(f, new HashSet<string>());
+			}
+			foreach (string f in this.backness) {
+				this.vowels.Add(f, new HashSet<string>());
+			}
+			foreach (string f in this.rounding) {
 				this.vowels.Add(f, new HashSet<string>());
 			}
 		}
@@ -47,7 +63,7 @@ class Main {
 
 		// format single string out of array of three features
 		private string FeatureSet (string[] features) {
-			string featureSet = String.Format("{0}, {1}, {2}", features[0], features[1], features[2]);
+			string featureSet = string.Format("{0}, {1}, {2}", features[0], features[1], features[2]);
 			return featureSet;
 		}
 
@@ -82,28 +98,33 @@ class Main {
 
 		// return list (set) of all consonants being stored
 		public HashSet<string> GetConsonants () {
-			HashSet<string> consonants = new HashSet<string>();
-			this.consonants.Values.ForEach ( c => consonants.Add(c) );
-			return consonants;
+			HashSet<string> consonantSet = new HashSet<string>();
+			foreach (HashSet<string> letterSet in this.consonants.Values) {
+				consonantSet.UnionWith(letterSet);
+			}
+			return consonantSet;
 		}
 
 		// return list (set) of all vowels being stored
 		public HashSet<string> GetVowels () {
-			HashSet<string> vowels = new HashSet<string>();
-			this.vowels.Values.ForEach ( v => vowels.Add(v) );
-			return vowels;
+			HashSet<string> vowelSet = new HashSet<string>();
+			foreach (HashSet<string> letterSet in this.vowels.Values) {
+				vowelSet.UnionWith(letterSet);
+			}
+			return vowelSet;
 		}
 	}
 
 
 	// model syllable structure as onset, nucleus, coda
 	public class Syllable {
-		List<string[]> nuclei = new List<string[]>();
-		List<string[]> onsets = new List<string[]>();
-		List<string[]> codas = new List<string[]>();
-		float averageCount;
-		float minCount;
-		float maxCount;
+		// TODO methods/properties for accessing syll parts lists
+		public List<string[]> nuclei = new List<string[]>();
+		public List<string[]> onsets = new List<string[]>();
+		public List<string[]> codas = new List<string[]>();
+		float average;
+		float min;
+		float max;
 
 		public Syllable (int min, int average, int max) {
 			this.average = average;
@@ -112,8 +133,8 @@ class Main {
 		}
 		public Syllable () {
 			this.average = 2.5;
-			this.minCount = 1.0;
-			this.maxCount = 4.0;
+			this.min = 1.0;
+			this.max = 4.0;
 		}
 
 		// TODO use avg, min, max to roll for word length
@@ -130,11 +151,11 @@ class Main {
 		public void AddCoda (string[] coda) {
 			this.codas.Add(coda);
 		}
-		
+
 		// TODO add syll weights (like you have a n% chance of picking this)
 		// TODO add syll internal rules (like if you pick this, pick that next)
 		// 		OR do similar with a blacklist (e.g. zv, aa, ii, uu, Vh) 
-		
+
 	}
 
 
@@ -162,16 +183,18 @@ class Main {
 
 	// simple affixes mapping to properties supporting formats prefix- or -suffix
 	public class Affixes {
+		
+		// TODO methods/properties for accessing dict
 		// affixes added to word for properties
-		Dictionary<string,List<string>> affixes = new Dictionary<string,List<string>>();
+		public Dictionary<string,List<string>> affixes = new Dictionary<string,List<string>>();
 
 		public Affixes () {}
-		
+
 		// new property to dictionary
 		public void AddAffix (string property, List<string> affix) {
 			affixes[property] = affix;
 		}
-		
+
 		// currently handle prefixing or suffixing (only)
 		public List<string> AttachAffix (List<string> word, string property) {
 			List<string> affix = this.affixes[property];
@@ -179,7 +202,7 @@ class Main {
 			if (affix[affix.Count-1] == "-") {
 				affix.RemoveAt(affix.Count-1);
 				affix.AddRange(word);
-			// attach as suffix
+				// attach as suffix
 			} else {
 				affix.RemoveAt(0);
 				word.AddRange(affix);
@@ -190,8 +213,9 @@ class Main {
 
 	// simple sound & grammar rules to map built syllables to word structure
 	public class Rules {
+		// TODO add properties/methods for accessing this dict
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		Dictionary<List<string[]>, List<string[]>> soundChanges = new Dictionary<List<string[]>, List<string[]>>();
+		public Dictionary<List<string[]>, List<string[]>> soundChanges = new Dictionary<List<string[]>, List<string[]>>();
 
 		public Rules () {}
 
@@ -219,35 +243,38 @@ class Main {
 			string rulesFormatted = "";
 			// TODO format each string[] as a string
 			foreach (KeyValuePair<List<string[]>,List<string[]>> rule in this.soundChanges) {
-				List.Add (String.Format("{0}, {1}", rule.Key, rule.Value));
-				rulesFormatted += String.Format("{0} -> {1}\n", rule.Key, rule.Value);
+				rulesList.Add (string.Format("{0}, {1}", rule.Key, rule.Value));
+				rulesFormatted += string.Format("{0} -> {1}\n", rule.Key, rule.Value);
 			}
 			return rulesFormatted;
 
 			// TODO List keys check for ref not for value so won't be equal 
-			if !this.soundChanges.ContainsKey(source) {
-				return sources;
-			}
-			return targets;
+			//if (!this.soundChanges.ContainsKey(source)) {
+			//	return sources;
+			//}
+			//return targets;
 		}
 	}
 
 
 	// a language for building and storing words
-	public class Language () {
-		Inventory inventory;
-		Syllable syllable;
-		Rules rules;
-		Affixes affixes;
-		string name;
+	public class Language {
+
+		// two-way word lookup dictionary
 		Dictionary<string, List<string>> words = new Dictionary<string, List<string>>();
 		Dictionary<string, string> translations = new Dictionary<string, string>();
-		public Inventory { get { return inventory; } set { inventory = value; } }
-		public Syllable { get { return syllable; } set { syllable = value; } }
-		public Rules { get { return rules; } set { rules = value; } }
-		public Name { get; set; }
-		public Words { get; set; }
-		public Translations { get; set; }
+		// language's native name
+		string name;
+		public string Name { get; set; }
+		// components for building words in the language
+		Inventory inventory;
+		public Inventory Inventory { get; set; }
+		Syllable syllable;
+		public Syllable Syllable { get; set; }
+		Rules rules;
+		public Rules Rules { get; set; }
+		Affixes affixes;
+		public Affixes Affixes { get; set; }
 
 		public Language (Inventory inventory, Syllable syllable, Rules rules, Affixes affixes) {
 			this.inventory = inventory;
@@ -258,7 +285,7 @@ class Main {
 
 		// dictionary string with each word entry on a newline
 		// TODO format sorted A-Z
-		public PrintDictionary () {
+		public void PrintDictionary () {
 			string dict;
 			foreach (KeyValuePair<string, string> w in this.translations) {
 				dict += w.Key + ": " + w.Value + "\n";
@@ -267,14 +294,14 @@ class Main {
 		}
 
 		// add a word and translation pair to the language's two-way dictionary
-		public AddEntry (List<string> word, string translation) {
+		public void AddEntry (List<string> word, string translation) {
 			this.words[translation] = word;
 			this.translations[string.Join("", word.ToArray())] = translation;
 		}
 
 		// overall word building recipe
-		public BuildWord (int length, bool proper=false, string[] affixes=null) {
-			
+		public List<string> BuildWord (int length, bool proper=false, string[] affixes=null) {
+
 			// choose syllables and build root word
 			List<string> word = this.BuildRoot(length);
 
@@ -290,15 +317,14 @@ class Main {
 				word = this.FormatName (word);
 			}
 
-			this.applyRules();
+			this.ApplyRules();
 
 			return word;
 		}
 
 		// take syllable topography and return a letter
 		private string PickSyllableLetter (string letter, HashSet<string> consonants, HashSet<string> vowels) {
-			switch (letter) {
-				// find a specific vowel
+			// find a specific vowel
 			if (letter == "V") {
 				return vowels[random.Next(0, vowels.Count)];
 			}
@@ -314,16 +340,17 @@ class Main {
 			// TODO break this out into a method for Inventory
 			else {
 				// set up possibilities based on multiple features
+				HashSet<string> possibleLetters = new HashSet<string>();
+				string[] features = new string[] {};
 				if (letter.IndexOf[","] > -1) {
-					string[] features = letter.Split(",")
-					HashSet<string> possibleLetters = new HashSet<string>();
+					features = letter.Split (",");
 				// pick a consonant based on a single feature
 				} else if (this.inventory.consonants.ContainsKey(letter)) {
-					HashSet<string> possibleLetters = this.inventory.consonants[letter];
+					possibleLetters = this.inventory.consonants[letter];
 					return possibleLetters[random.Next(0, possibleLetters.Count)];
 				// pick a vowel based on a single feature
 				} else if (this.inventory.vowels.ContainsKey(letter)) {
-					HashSet<string> possibleLetters = this.inventory.vowels[letter];
+					possibleLetters = this.inventory.vowels[letter];
 					return possibleLetters[random.Next(0, possibleLetters.Count)];
 				}
 				// find possibilities based on multiple features
@@ -338,7 +365,7 @@ class Main {
 						} else{
 							return null;
 						}
-					// subsequent features - only intersecting letters
+						// subsequent features - only intersecting letters
 					} else if (this.inventory.vowels.ContainsKey(f)) {
 						possibleLetters.IntersectWith(this.inventory.vowels[f]);
 					} else if (this.inventory.consonants.ContainsKey(f)) {
@@ -378,12 +405,12 @@ class Main {
 			// grab inventory letters to fill in C, V symbols
 			HashSet<string> consonants = this.inventory.GetConsonants();
 			HashSet<string> vowels = this.inventory.GetVowels();
-			
+
 			// TODO add ability to build by features in BuildWord + BuildSyllable
 
 			// create chosen number of syllables and add to word
 			List<string> newRoot = new List<string>();
-			for (int i=0, i < numSyllables; i++) {
+			for (int i=0; i < numSyllables; i++) {
 				List<string> newSyllable = this.BuildSyllable(consonants, vowels);
 				newRoot.AddRange(newSyllable);
 			}
@@ -393,7 +420,7 @@ class Main {
 		// convert word into a formatted proper name
 		private List<string> FormatName (List<string> word) {
 			// caps the zeroth character in the zeroth graph/letter
-			string firstLetter = word[0][0].ToUpper().ToString().Concat(word[0][1:word[0].Length]);
+			string firstLetter = word[0][0].ToUpper().ToString() + word[0].Substring(1, word[0].Length);
 			word[0] = firstLetter;
 			// uncaps the rest of the word
 			for (int i=1; i < word.Count; i++) {
@@ -409,7 +436,7 @@ class Main {
 			List<string[]> wordFeatures = new List<string[]>();
 			for (int i=0; i < word.Count; i++) {
 				string letter = word[i];
-				string[] letterFeatures = this.inventory.GetFeatures (thisLetter);
+				string[] letterFeatures = this.inventory.GetFeatures(letter);
 				wordFeatures.Add(letterFeatures);
 			}
 
@@ -466,14 +493,14 @@ class Main {
 				//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
 
 				// the current feature set to search for in the word
-				featureSet = sourceRule[matchCount];
+				string featureSet = sourceRule[matchCount];
 
 				// merely check for a consonant or vowel match
-				if (featureSet.Length == 1 && (featureSet == ['C'] || featureSet == ['V']) ) {
-				 	// report and tally if this is a match
-				 	// TODO just check inv C / V hash to avoid passing around syllables
-				 	isMatch = wordSyllables[i] == featureSet ? true : isMatch;
-				 	matchCount += wordSyllables[i] == featureSet ? 1 : 0;
+			if (featureSet.Length == 1 && (featureSet[0] == 'C' || featureSet[0] == 'V') ) {
+					// report and tally if this is a match
+					// TODO just check inv C / V hash to avoid passing around syllables
+					isMatch = wordSyllables[i] == featureSet ? true : isMatch;
+					matchCount += wordSyllables[i] == featureSet ? 1 : 0;
 				}
 				// TODO account for CC or VV gemination
 				// TODO account for C or V insertion incl metathesis
@@ -487,16 +514,17 @@ class Main {
 
 					// check features in word and set them to match target features
 					foreach (string f in featureSet) {
+						string newFeature = "";
 						// identify target signaling removal "_"
 						if (theseFeatures.IndexOf(f) > -1 && thisTarget[0] == '_') {
-							string newFeature = "_";
-						// identify target features
+							newFeature = "_";
+							// identify target features
 						} else if (theseFeatures.IndexOf(f) > -1) {
-							string newFeature = thisTarget[featureSet.IndexOf(f)];
-						// source did not match - rule does not apply
+							newFeature = thisTarget[featureSet.IndexOf(f)];
+							// source did not match - rule does not apply
 						} else {
 							fmatches = false;
-							string newFeature = f;
+							newFeature = f;
 						}
 						theseFeatures[theseFeatures.IndexOf(f)] = newFeature;
 					}
@@ -505,7 +533,7 @@ class Main {
 					if (fmatches) {
 						isMatch = true;
 						string newLetter = this.inventory.GetLetter(theseFeatures);
-						
+
 						// store new letter in temp list until check rest of rule
 						modificationMatches.Add(new[] {newLetter, i});
 						insertionMatches.Add(new[] {newLetter, i});
@@ -518,13 +546,13 @@ class Main {
 					matchCount = 0;
 				}
 				// rule in the middle of applying does fully apply - add new letters
-				else if (matchCount >= sourceRule.Length && matchCount > 0) {
+				else if (matchCount >= sourceRule.Count && matchCount > 0) {
 					// add letters from temp lists and empty lists for next match
 					lettersToModify.AddRange(modificationMatches);
 					lettersToInsert.AddRange(insertionMatches);
 					modificationMatches.Clear();
 					insertionMatches.Clear();
-					
+
 					// rewind to just after match start to catch possible overlaps
 					i -= matchCount-1;
 
@@ -573,8 +601,6 @@ class Main {
 
 	public static void Main(string[] args) {
 
-		Console.WriteLine ("test print");
-
 		// build up a very simple vowel inventory
 		// make sure features are within simple set in Inventory's place/manner/voicing
 		Inventory inventory = new Inventory();
@@ -609,58 +635,58 @@ class Main {
 		rules.AddRule(new List<string[]>(
 			new string[] {"voiced"},
 			new string[] {"voiceless"} ), new List<string[]> (
-			new string[] {"voiceless"},
-			new string[] {"voiceless"}
+				new string[] {"voiceless"},
+				new string[] {"voiceless"}
 			));
 		rules.AddRule(new List<string[]>(
 			new string[] {"voiceless"},
 			new string[] {"voiced"} ), new List<string[]> (
-			new string[] {"voiceless"},
-			new string[] {"voiceless"}
+				new string[] {"voiceless"},
+				new string[] {"voiceless"}
 			));
 		// avoid awkward clusters
 		rules.AddRule(new List<string[]>(
 			new string[] {"h"},
 			new string[] {"C"} ), new List<string[]> (
-			new string[] {""},
-			new string[] {"C"} ));
+				new string[] {""},
+				new string[] {"C"} ));
 		rules.AddRule(new List<string[]>(
 			new string[] {"r"},
 			new string[] {"w"} ), new List<string[]> (
-			new string[] {"r"},
-			new string[] {"r"} ));
+				new string[] {"r"},
+				new string[] {"r"} ));
 		// simplify long vowels
 		rules.AddRule(new List<string[]>(
 			new string[] {"a"},
 			new string[] {"a"} ), new List<string[]> (
-			new string[] {"a"},
-			new string[] {""} ));
+				new string[] {"a"},
+				new string[] {""} ));
 		rules.AddRule(new List<string[]>(
 			new string[] {"i"},
 			new string[] {"i"} ), new List<string[]> (
-			new string[] {"i"},
-			new string[] {""} ));
+				new string[] {"i"},
+				new string[] {""} ));
 		rules.AddRule(new List<string[]>(
 			new string[] {"u"},
 			new string[] {"u"} ), new List<string[]> (
-			new string[] {"u"},
-			new string[] {""} ));
+				new string[] {"u"},
+				new string[] {""} ));
 
 		Affixes affixes = new Affixes();
 		// add prefixes and suffixes
 		// trusts you to use only characters found in inventory (matters for rule application)
-		affixes.AddAffix("human", new List<string>({ "-", "g", "u", "d" }));
-		affixes.AddAffix("nonhuman", new List<string>({ "-", "i", "d" }));
-		affixes.AddAffix("strong", new List<string>({ "t", "-" }));
-		affixes.AddAffix("small", new List<string>({ "l", "-" }));
-		affixes.AddAffix("strange", new List<string>({ "g", "-" }));
+		affixes.AddAffix("human", new List<string>("-", "g", "u", "d"));
+		affixes.AddAffix("nonhuman", new List<string>("-", "i", "d"));
+		affixes.AddAffix("strong", new List<string>("t", "-"));
+		affixes.AddAffix("small", new List<string>("l", "-"));
+		affixes.AddAffix("strange", new List<string>("g", "-"));
 
 		// TODO structure language 
 		Language language = new Language(inventory, syllableStructure, rules, affixes);
 
 		// build a long proper noun
-		List<string> properName = language.BuildWord(3, true, new string[]{"nonhuman", "strong"});
-		properName = language.ApplyRules(properName);
+		List<string> properNoun = language.BuildWord(3, true, new string[]{"nonhuman", "strong"});
+		properNoun = language.ApplyRules(properNoun);
 		// build a short regular noun
 		List<string> justSomeNoun = language.BuildWord(2);
 		justSomeNoun = language.ApplyRules(justSomeNoun);
