@@ -74,7 +74,8 @@ public class LanguageBuilder {
 		public void AddVowel (string letter, string[] features) {
 			// make letter accessible through each of its features
 			foreach(string f in features) {
-				this.vowels[f].Add(letter);
+				this.vowels[f].Add (letter);
+				this.allVowels.Add (letter);
 			}
 			this.AddFeatures(letter, features);
 		}
@@ -83,7 +84,8 @@ public class LanguageBuilder {
 		public void AddConsonant (string letter, string[] features) {
 			// make letter accessible through each feature
 			foreach(string f in features) {
-				this.consonants[f].Add(letter);
+				this.consonants[f].Add (letter);
+				this.allConsonants.Add (letter);
 			}
 			this.AddFeatures(letter, features);
 		}
@@ -93,10 +95,30 @@ public class LanguageBuilder {
 			return this.features[letter];
 		}
 
-		// find the features equivalent to this letter
-		public string GetLetter (string[] features) {
-			string featureSet = this.FeatureSet(features);
-			return this.letters[featureSet];
+		// find the letter equivalent to these features
+		public string GetLetter (string feature0, string feature1, string feature2) {
+
+			// found a consonant that has all of these features
+			if (this.consonants.ContainsKey (feature0) && this.consonants.ContainsKey (feature1) && this.consonants.ContainsKey (feature2)) {
+				HashSet<string> lettersWithTheseFeatures = this.consonants [feature0];
+				Debug.Log (feature0 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
+				lettersWithTheseFeatures.IntersectWith (this.consonants [feature1]);
+				Debug.Log (feature1 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
+				lettersWithTheseFeatures.IntersectWith (this.consonants [feature2]);
+				Debug.Log (feature2 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
+				return lettersWithTheseFeatures.ToList () [0];
+			
+			// found a vowel that has all of these features
+			} else if (this.vowels.ContainsKey (feature0) && this.vowels.ContainsKey (feature1) && this.vowels.ContainsKey (feature2)) {
+				HashSet<string> lettersWithTheseFeatures = this.vowels [feature0];
+				lettersWithTheseFeatures.IntersectWith (this.vowels [feature1]);
+				lettersWithTheseFeatures.IntersectWith (this.vowels [feature2]);
+				return lettersWithTheseFeatures.ToList () [0];
+			
+			// no letter has all of these features
+			} else {
+				return "";
+			}
 		}
 
 		// return list (set) of all consonants being stored
@@ -314,20 +336,21 @@ public class LanguageBuilder {
 
 		// take syllable topography and return a letter
 		private string PickSyllableLetter (string letter, HashSet<string> consonants, HashSet<string> vowels) {
+			Debug.Log (letter);
 			// find a specific vowel
 			// TODO weighted, Zipf?
 			if (letter == "V") {
-				string[] vowelsList = vowels.ToArray();
-				return vowelsList[this.random.Next(vowelsList.Length)];
+				string[] vowelsList = vowels.ToArray ();
+				return vowelsList [this.random.Next (vowelsList.Length)];
 			}
 			// find a specific consonant
 			// TODO weighted, Zipf?
 			else if (letter == "C") {
-				string[] consonantsList = consonants.ToArray();
-				return consonantsList[this.random.Next(consonantsList.Length)];
+				string[] consonantsList = consonants.ToArray ();
+				return consonantsList [this.random.Next (consonantsList.Length)];
 			}
-			// if just a letter add the letter
-			else if (consonants.Contains(letter) || vowels.Contains(letter)) {
+			// add blank letter (empty string) or known letter as-is
+			else if (letter == "" || consonants.Contains(letter) || vowels.Contains(letter)) {
 				return letter;
 			}
 			// return letter matching features
@@ -359,7 +382,7 @@ public class LanguageBuilder {
 						} else if (this.inventory.consonants.ContainsKey(singleFeature)) {
 							possibleLetters = this.inventory.consonants[singleFeature];
 						} else{
-							return null;
+							return "";
 						}
 						// subsequent features - only intersecting letters
 					} else if (this.inventory.vowels.ContainsKey(singleFeature)) {
@@ -372,7 +395,10 @@ public class LanguageBuilder {
 				}
 				// select one of the letters that matches all given features
 				string[] possibleLetterGroup = possibleLetters.ToArray();
-				return possibleLetterGroup[this.random.Next(possibleLetters.Count)];
+				foreach (string s in possibleLetterGroup) {
+					Debug.Log (s);
+				}
+				return possibleLetterGroup[this.random.Next(0, possibleLetterGroup.Length)];
 			}
 		}
 
@@ -416,10 +442,27 @@ public class LanguageBuilder {
 
 		// convert word into a formatted proper name
 		private List<string> FormatName (List<string> word) {
+			
+			// find the first letter in the word
+			int firstNonEmptyString = -1;
+			for (int i=0; i < word.Count; i++) {
+				if (word[i] != "" && word[i] != null) {
+					firstNonEmptyString = i;
+					break;
+				}
+			}
+			// no identifiable letters in word - return as-is
+			if (firstNonEmptyString == -1) {
+				return word;
+			}
+
 			// caps the zeroth character in the zeroth graph/letter
-			string firstLetter = word[0][0].ToString().ToUpper();
-			firstLetter += word[0].Substring(1, word[0].Length);
-			word[0] = firstLetter;
+			string firstLetter = word[firstNonEmptyString][0].ToString().ToUpper();
+			if (word [firstNonEmptyString].Length > 1) {
+				firstLetter += word[firstNonEmptyString].Substring(1, word[0].Length);
+			}
+			// put back the newly capsed letter
+			word[firstNonEmptyString] = firstLetter;
 			// uncaps the rest of the word
 			for (int i=1; i < word.Count; i++) {
 				word[i] = word[i].ToLower();
@@ -429,13 +472,19 @@ public class LanguageBuilder {
 
 		// apply every single rule in the ruleset to a built word
 		public List<string> ApplyRules (List<string> word) {
+			
 			// convert word into list of feature arrays
 			// TODO just do this in .ApplyRule for each letter as it's checked
 			List<string[]> wordFeatures = new List<string[]>();
 			for (int i=0; i < word.Count; i++) {
-				string letter = word[i];
-				string[] letterFeatures = this.inventory.GetFeatures(letter);
-				wordFeatures.Add(letterFeatures);
+				// pass it up if it's not a recognized letter
+				if (!this.inventory.features.ContainsKey (word [i])) {
+					wordFeatures.Add (new string[] { });
+				// it's a known letter so add the features to the word
+				} else {
+					string[] letterFeatures = this.inventory.GetFeatures (word [i]);
+					wordFeatures.Add (letterFeatures);
+				}
 			}
 
 			// run rules with the word's letters and features
@@ -478,9 +527,6 @@ public class LanguageBuilder {
 			// iterate through each letter in word hunting for sourcerule
 			for (int i=0; i < word.Count; i++) {
 
-				// reset matching letter/feature test
-				isMatch = false;
-
 				// Keep rule structure in mind and remember rules can nest:
 				// 	['V','plosive','V'] -> ['V','fricative','V']
 				// 	['V','voiceless,plosive','V'] -> ['V','voiced,fricative','V']
@@ -492,22 +538,31 @@ public class LanguageBuilder {
 				string[] featureSet = sourceRule[matchCount];
 
 				// merely check for a consonant or vowel match
-				if (featureSet.Length == 1 && (featureSet[0] == "C")) {
+				if (featureSet.Length == 1 && (featureSet [0] == "C")) {
 					// report and tally if this is a consonant where consonant expected
-					isMatch = this.inventory.allVowels.Contains(word[i]);
-					matchCount += Convert.ToInt32(isMatch);
-				}
-				else if (featureSet.Length == 1 && (featureSet[0] == "V")) {
+					isMatch = this.inventory.allVowels.Contains (word [i]);
+					matchCount += Convert.ToInt32 (isMatch);
+				} else if (featureSet.Length == 1 && (featureSet [0] == "V")) {
 					// report and tally if this is a vowel where vowel expected
-					isMatch = this.inventory.allConsonants.Contains(word[i]);
-					matchCount += Convert.ToInt32(isMatch);
+					isMatch = this.inventory.allConsonants.Contains (word [i]);
+					matchCount += Convert.ToInt32 (isMatch);
 				}
 				// TODO account for CC or VV gemination
 				// TODO account for C or V insertion incl metathesis
 
+				// neither a letter nor a feature matrix
+				else if (word[i] == null || word[i] == "") {
+					// keep looking for adjacent matches without adding or removing a match
+					isMatch = isMatch;
+				}
+				// unknown letter
+				else if (!this.inventory.features.ContainsKey(word[i])) {
+					// reset matches
+					isMatch = false;
+				}
 				// check for specific features and look for changes
 				else {
-					// does this letter in word match the searched features?
+					// setup to check that letter in word matches the searched features
 					string[] theseFeatures = this.inventory.features[word[i]];
 					string[] thisTarget = targetRule[matchCount];
 					// does every single feature match?
@@ -516,28 +571,31 @@ public class LanguageBuilder {
 					// check features in word and set them to match target features
 					foreach (string f in featureSet) {
 						string newFeature = "";
-						// identify target signaling removal "_"
+						// letter matches source with target signaling removal "_"
 						if (Array.IndexOf(theseFeatures, f) > -1 && thisTarget[0] == "_") {
 							newFeature = "_";
-						// identify target features
+							theseFeatures[Array.IndexOf(theseFeatures, f)] = newFeature;
+						// letter matches source with target features
 						} else if (Array.IndexOf(theseFeatures, f) > -1) {
 							newFeature = thisTarget[Array.IndexOf(featureSet, f)];
+							theseFeatures[Array.IndexOf(theseFeatures, f)] = newFeature;
 						// source did not match - rule does not apply
 						} else {
 							fmatches = false;
-							newFeature = f;
 						}
-						theseFeatures[Array.IndexOf(theseFeatures, f)] = newFeature;
 					}
 
 					// letter match if all features found
 					if (fmatches) {
 						isMatch = true;
-						string newLetter = this.inventory.GetLetter(theseFeatures);
+						Debug.Log (theseFeatures.Length);
+						string newLetter = this.inventory.GetLetter (theseFeatures [0], theseFeatures [1], theseFeatures [2]);
 
 						// store new letter and its index in temp list until check rest of rule
-						modificationMatches.Add(new string[] { newLetter, i.ToString() });
-						insertionMatches.Add(new string[] { newLetter, i.ToString() });
+						modificationMatches.Add (new string[] { newLetter, i.ToString () });
+						insertionMatches.Add (new string[] { newLetter, i.ToString () });
+					} else {
+						isMatch = false;
 					}
 				}
 
@@ -566,6 +624,9 @@ public class LanguageBuilder {
 				}
 			}
 
+			if (modificationMatches.Count == 0 && insertionMatches.Count == 0) {
+				return word;
+			}
 			// change letters at stored indices
 			foreach (string[] modification in modificationMatches) {
 				int modId = -1;
@@ -573,11 +634,16 @@ public class LanguageBuilder {
 					word[modId] = modification[0];
 				}
 			}
+
+			if (insertionMatches.Count == 0) {
+				return word;
+			}
 			// insert new letters at stored indices ( /!\ expects ascending index!)
 			int numInserted = 0;
 			foreach (string[] insertion in insertionMatches) {
 				int insertId = -1;
 				if (Int32.TryParse(insertion[1], out insertId)) {
+					numInserted += 1;
 					word.Insert(insertId+numInserted, insertion[0]);
 				}
 			}
@@ -612,9 +678,9 @@ public class LanguageBuilder {
 		inventory.AddVowel("u", new string[]{"close", "back", "rounded"});
 
 		// recall letters using same feature order, so this finds "b":
-		inventory.GetLetter(new string[]{"voiced", "bilabial", "plosive"});
+		inventory.GetLetter("voiced", "bilabial", "plosive");
 		// this does not find "b":
-		inventory.GetLetter(new string[]{"voiced", "plosive", "bilabial"});
+		Debug.Log (inventory.GetLetter("voiced", "plosive", "bilabial"));
 
 		Syllable syllableStructure = new Syllable();
 		syllableStructure.AddOnset(new string[] {"C"});
@@ -637,6 +703,15 @@ public class LanguageBuilder {
 			new string[] {"voiced"} }, new List<string[]>{
 			new string[] {"voiceless"},
 			new string[] {"voiceless"}
+		});
+		// a dash of lenition
+		rules.AddRule(new List<string[]>{
+			new string[] {"V"},
+			new string[] {"voiced", "plosive"},
+			new string[] {"V"} }, new List<string[]>{
+			new string[] {"V"},
+			new string[] {"voiced", "fricative"},
+			new string[] {"V"}
 		});
 		// avoid awkward clusters
 		rules.AddRule(new List<string[]>{
