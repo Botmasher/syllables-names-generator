@@ -80,14 +80,61 @@ public class LanguageBuilder {
 			this.AddFeatures(letter, features);
 		}
 
-		// store consonant letter and features
-		public void AddConsonant (string letter, string[] features) {
-			// make letter accessible through each feature
-			foreach(string f in features) {
-				this.consonants[f].Add (letter);
-				this.allConsonants.Add (letter);
+		// consonant and vowel feature sets for storage
+		private string convertFeaturesToString (string[] featureArray) {
+			string featureString = string.Join (",", featureArray);
+			return featureString;
+		}
+		// consonant and vowel feature sets from storage
+		private string[] convertFeaturesToArray (string featureString) {
+			string featureArray = featureString.Split (",");
+			return featureArray;
+		}
+
+		// does this feature set correspond to any known letter?
+		private bool isLetterFetures (string feature0, string feature1, string feature2) {
+			string featureSet = string.Format ("{0},{1},{2}", feature0, feature1, feature2);
+			return this.letters.ContainsKey(featureSet);
+		}
+		private bool isLetterFeatures (string[] featureSet) {
+			return this.letters.ContainsKey (featureSet);
+		}
+
+		// are these three features actually a feature matrix?
+		private bool isFeatureMatrix (string feature0, string feature1, string feature2) {
+			// detect a consonant
+			if (this.voicing.Contains (feature0) || this.voicing.Contains(feature1) || this.voicing.Contains(feature2)) {
+				if (this.manner.Contains (feature0) || this.manner.Contains(feature1) || this.manner.Contains(feature2)) {
+					if (this.place.Contains (feature0) || this.place.Contains(feature1) || this.place.Contains(feature2)) {
+						return true;
+					}
+				}
 			}
+			// detect a vowel
+			if (this.rounding.Contains (feature0) || this.rounding.Contains(feature1) || this.rounding.Contains(feature2)) {
+				if (this.height.Contains (feature0) || this.height.Contains(feature1) || this.height.Contains(feature2)) {
+					if (this.backness.Contains (feature0) || this.backness.Contains(feature1) || this.backness.Contains(feature2)) {
+						return true;
+					}
+				}
+			}
+			// no such set found
+			return false;
+		}
+
+		// store consonant letter and features
+		public bool AddConsonant (string letter, string feature0, string feature1, string feature2) {
+			// not a recognized consonant or vowel feature matrix
+			if (!this.isFeatureMatrix (feature0, feature1, feature2)) {
+				return false;
+			}
+			// make letter accessible through each feature
+			this.consonants[feature0].Add (letter);
+			this.consonants[feature1].Add (letter);
+			this.consonants[feature2].Add (letter);
+			this.allConsonants.Add (letter);
 			this.AddFeatures(letter, features);
+			return true;
 		}
 
 		// find the letter equivalent to these features
@@ -101,11 +148,14 @@ public class LanguageBuilder {
 			// found a consonant that has all of these features
 			if (this.consonants.ContainsKey (feature0) && this.consonants.ContainsKey (feature1) && this.consonants.ContainsKey (feature2)) {
 				HashSet<string> lettersWithTheseFeatures = this.consonants [feature0];
-				Debug.Log (feature0 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
+				Debug.Log (feature0 + ": " + string.Join ("", this.consonants[feature0].ToArray()));
+				//Debug.Log (feature0 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
 				lettersWithTheseFeatures.IntersectWith (this.consonants [feature1]);
-				Debug.Log (feature1 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
+				Debug.Log (feature1 + ": " + string.Join ("", this.consonants[feature1].ToArray()));
+				//Debug.Log (feature1 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
 				lettersWithTheseFeatures.IntersectWith (this.consonants [feature2]);
-				Debug.Log (feature2 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
+				Debug.Log (feature2 + ": " + string.Join ("", this.consonants[feature2].ToArray()));
+				//Debug.Log (feature2 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
 				return lettersWithTheseFeatures.ToList () [0];
 			
 			// found a vowel that has all of these features
@@ -395,9 +445,6 @@ public class LanguageBuilder {
 				}
 				// select one of the letters that matches all given features
 				string[] possibleLetterGroup = possibleLetters.ToArray();
-				foreach (string s in possibleLetterGroup) {
-					Debug.Log (s);
-				}
 				return possibleLetterGroup[this.random.Next(0, possibleLetterGroup.Length)];
 			}
 		}
@@ -588,7 +635,6 @@ public class LanguageBuilder {
 					// letter match if all features found
 					if (fmatches) {
 						isMatch = true;
-						Debug.Log (theseFeatures.Length);
 						string newLetter = this.inventory.GetLetter (theseFeatures [0], theseFeatures [1], theseFeatures [2]);
 
 						// store new letter and its index in temp list until check rest of rule
