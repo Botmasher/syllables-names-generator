@@ -57,29 +57,6 @@ public class LanguageBuilder {
 			}
 		}
 
-		// make features per letter equivalences available for later
-		private void AddFeatures (string letter, string[] features) {
-			this.features[letter] = features;
-			string featureSet = this.FeatureSet (features);
-			this.letters[featureSet] = letter;
-		}
-
-		// format single string out of array of three features
-		private string FeatureSet (string[] features) {
-			string featureSet = string.Format("{0}, {1}, {2}", features[0], features[1], features[2]);
-			return featureSet;
-		}
-
-		// store vowel letter and features
-		public void AddVowel (string letter, string[] features) {
-			// make letter accessible through each of its features
-			foreach(string f in features) {
-				this.vowels[f].Add (letter);
-				this.allVowels.Add (letter);
-			}
-			this.AddFeatures(letter, features);
-		}
-
 		// consonant and vowel feature sets for storage
 		private string convertFeaturesToString (string[] featureArray) {
 			string featureString = string.Join (",", featureArray);
@@ -87,7 +64,7 @@ public class LanguageBuilder {
 		}
 		// consonant and vowel feature sets from storage
 		private string[] convertFeaturesToArray (string featureString) {
-			string featureArray = featureString.Split (",");
+			string[] featureArray = featureString.Split (',');
 			return featureArray;
 		}
 
@@ -97,11 +74,13 @@ public class LanguageBuilder {
 			return this.letters.ContainsKey(featureSet);
 		}
 		private bool isLetterFeatures (string[] featureSet) {
-			return this.letters.ContainsKey (featureSet);
+			string features = this.convertFeaturesToString (featureSet);
+			return this.letters.ContainsKey (features);
 		}
 
 		// are these three features actually a feature matrix?
 		private bool isFeatureMatrix (string feature0, string feature1, string feature2) {
+			
 			// detect a consonant
 			if (this.voicing.Contains (feature0) || this.voicing.Contains(feature1) || this.voicing.Contains(feature2)) {
 				if (this.manner.Contains (feature0) || this.manner.Contains(feature1) || this.manner.Contains(feature2)) {
@@ -122,18 +101,52 @@ public class LanguageBuilder {
 			return false;
 		}
 
-		// store consonant letter and features
-		public bool AddConsonant (string letter, string feature0, string feature1, string feature2) {
+		// store a vowel letter and its features
+		public bool AddVowel (string letter, string rounding, string height, string backness) {
+
 			// not a recognized consonant or vowel feature matrix
-			if (!this.isFeatureMatrix (feature0, feature1, feature2)) {
+			if (!this.isFeatureMatrix (rounding, height, backness)) {
 				return false;
 			}
-			// make letter accessible through each feature
-			this.consonants[feature0].Add (letter);
-			this.consonants[feature1].Add (letter);
-			this.consonants[feature2].Add (letter);
+
+			// make letter accessible through each of its features
+			this.vowels[rounding].Add (letter);
+			this.vowels[height].Add (letter);
+			this.vowels[backness].Add (letter);
+
+			// make features available through letter
+			this.features[letter] = new string[] { rounding, height, backness };
+
+			// make letter available through its feature matrix
+			this.letters[rounding + "," + height + "," + backness] = letter;
+
+			// add to hash of all vowels for word and syllable building
+			this.allVowels.Add (letter);
+
+			return true;
+		}
+
+		// store a consonant letter and its features
+		public bool AddConsonant (string letter, string voicing, string place, string manner) {
+			
+			// not a recognized consonant or vowel feature matrix
+			if (!this.isFeatureMatrix (voicing, place, manner)) {
+				return false;
+			}
+			// make letter accessible through each of its features
+			this.consonants[voicing].Add (letter);
+			this.consonants[place].Add (letter);
+			this.consonants[manner].Add (letter);
+
+			// make features available through letter
+			this.features[letter] = new string[] { voicing, place, manner };
+
+			// make letter available through its feature matrix
+			this.letters[voicing + "," + place + "," + manner] = letter;
+
+			// add to hash of all vowels for word and syllable building
 			this.allConsonants.Add (letter);
-			this.AddFeatures(letter, features);
+
 			return true;
 		}
 
@@ -173,44 +186,25 @@ public class LanguageBuilder {
 
 		// return list (set) of all consonants being stored
 		public HashSet<string> GetConsonants () {
-			HashSet<string> consonantSet = new HashSet<string>();
-			foreach (HashSet<string> letterSet in this.consonants.Values) {
-				consonantSet.UnionWith(letterSet);
-			}
-			return consonantSet;
+			return allConsonants;
 		}
 
 		// return list (set) of all vowels being stored
 		public HashSet<string> GetVowels () {
-			HashSet<string> vowelSet = new HashSet<string>();
-			foreach (HashSet<string> letterSet in this.vowels.Values) {
-				vowelSet.UnionWith(letterSet);
-			}
-			return vowelSet;
+			return allVowels;
 		}
 	}
 
 
 	// model syllable structure as onset, nucleus, coda
 	public class Syllable {
-		// TODO methods/properties for accessing syll parts lists
-		public List<string[]> nuclei = new List<string[]>();
-		public List<string[]> onsets = new List<string[]>();
-		public List<string[]> codas = new List<string[]>();
+		// all possible syllable structures, e.g. C,V,C or C,j,V,V or plosive,V
+		public List<List<string>> structures = new List<List<string>>();
 
-		public Syllable () {}
-
-		// TODO create and use avg, min, max to roll for word length
 		public void HowManySyllables () {}
 
-		public void AddOnset (string[] onset) {
-			this.onsets.Add(onset);
-		}
-		public void AddNucleus (string[] nucleus) {
-			this.nuclei.Add(nucleus);
-		}
-		public void AddCoda (string[] coda) {
-			this.codas.Add(coda);
+		public void AddStructure (List<string> syllableStructure) {
+			this.structures.Add (syllableStructure);
 		}
 
 		// TODO add syll weights (like you have a n% chance of picking this)
@@ -404,7 +398,6 @@ public class LanguageBuilder {
 				return letter;
 			}
 			// return letter matching features
-			// TODO break this out into a method for Inventory
 			else {
 				// set up possibilities based on multiple features
 				HashSet<string> possibleLetters = new HashSet<string>();
@@ -452,20 +445,15 @@ public class LanguageBuilder {
 		// use syllable structure to construct a single syllable
 		private List<string> BuildSyllable (HashSet<string> consonants, HashSet<string> vowels) {
 			// pick syllable parts
-			string[] newOnset = this.syllable.onsets[this.random.Next(0, this.syllable.onsets.Count)];
-			string[] newNucleus = this.syllable.nuclei[this.random.Next(0, this.syllable.nuclei.Count)];
-			string[] newCoda = this.syllable.codas[this.random.Next(0, this.syllable.codas.Count)];
+			List<string> structure = this.syllable.structures[random.Next(this.syllable.structures.Count)];
 
-			// pick letters for each part
+			// pick letters to replace each syllable piece (e.g. "V" -> "a", "C" -> "t")
 			List<string> newSyllable = new List<string>();
-			foreach (string o in newOnset) {
-				newSyllable.Add(this.PickSyllableLetter(o, consonants, vowels));
-			}
-			foreach (string n in newNucleus) {
-				newSyllable.Add(this.PickSyllableLetter(n, consonants, vowels));
-			}
-			foreach (string c in newCoda) {
-				newSyllable.Add(this.PickSyllableLetter(c, consonants, vowels));
+			for (int i=0; i < structure.Count; i++) {
+				string newLetter = this.PickSyllableLetter(structure[i], consonants, vowels);
+				if (newLetter != "" && newLetter != null) {
+					newSyllable.Add (newLetter);
+				}
 			}
 			return newSyllable;
 		}
@@ -484,6 +472,7 @@ public class LanguageBuilder {
 				List<string> newSyllable = this.BuildSyllable(consonants, vowels);
 				newRoot.AddRange(newSyllable);
 			}
+			Debug.Log ("Finished building word: " + string.Join("", newRoot.ToArray()));
 			return newRoot;
 		}
 
@@ -600,7 +589,6 @@ public class LanguageBuilder {
 				// neither a letter nor a feature matrix
 				else if (word[i] == null || word[i] == "") {
 					// keep looking for adjacent matches without adding or removing a match
-					isMatch = isMatch;
 				}
 				// unknown letter
 				else if (!this.inventory.features.ContainsKey(word[i])) {
@@ -707,21 +695,21 @@ public class LanguageBuilder {
 		// build up a very simple vowel inventory
 		// make sure features are within simple set in Inventory's place/manner/voicing
 		Inventory inventory = new Inventory();
-		inventory.AddConsonant("b", new string[]{"voiced", "bilabial", "plosive"});
-		inventory.AddConsonant("p", new string[]{"voiceless", "bilabial", "plosive"});
-		inventory.AddConsonant("g", new string[]{"voiced", "velar", "plosive"});
-		inventory.AddConsonant("k", new string[]{"voiceless", "velar", "plosive"});
-		inventory.AddConsonant("d", new string[]{"voiced", "dental", "plosive"});
-		inventory.AddConsonant("t", new string[]{"voiceless", "dental", "plosive"});
-		inventory.AddConsonant("h", new string[]{"voiceless", "glottal", "fricative"});
-		inventory.AddConsonant("l", new string[]{"voiced", "alveolar", "lateral"});
-		inventory.AddConsonant("r", new string[]{"voiced", "alveolar", "approximant"});
-		inventory.AddConsonant("w", new string[]{"voiced", "velar", "approximant"});
+		inventory.AddConsonant("b", "voiced", "bilabial", "plosive");
+		inventory.AddConsonant("p", "voiceless", "bilabial", "plosive");
+		inventory.AddConsonant("g", "voiced", "velar", "plosive");
+		inventory.AddConsonant("k", "voiceless", "velar", "plosive");
+		inventory.AddConsonant("d", "voiced", "dental", "plosive");
+		inventory.AddConsonant("t", "voiceless", "dental", "plosive");
+		inventory.AddConsonant("h", "voiceless", "glottal", "fricative");
+		inventory.AddConsonant("l", "voiced", "alveolar", "lateral");
+		inventory.AddConsonant("r", "voiced", "alveolar", "approximant");
+		inventory.AddConsonant("w", "voiced", "velar", "approximant");
 		// build up very simple consonant inventory
 		// make sure features are within simple set in Inventory's height/backness/rounding
-		inventory.AddVowel("i", new string[]{"close", "front", "unrounded"});
-		inventory.AddVowel("a", new string[]{"open", "central", "unrounded"});
-		inventory.AddVowel("u", new string[]{"close", "back", "rounded"});
+		inventory.AddVowel("i", "close", "front", "unrounded");
+		inventory.AddVowel("a", "open", "central", "unrounded");
+		inventory.AddVowel("u", "close", "back", "rounded");
 
 		// recall letters using same feature order, so this finds "b":
 		inventory.GetLetter("voiced", "bilabial", "plosive");
@@ -729,12 +717,12 @@ public class LanguageBuilder {
 		Debug.Log (inventory.GetLetter("voiced", "plosive", "bilabial"));
 
 		Syllable syllableStructure = new Syllable();
-		syllableStructure.AddOnset(new string[] {"C"});
-		syllableStructure.AddOnset(new string[] {""});
-		syllableStructure.AddNucleus(new string[] {"V"});
-		syllableStructure.AddNucleus(new string[] {"V", "V"});
-		syllableStructure.AddCoda(new string[] {"C"});
-		syllableStructure.AddCoda(new string[] {""});
+		syllableStructure.AddStructure(new List<string> {"C","V"});
+		syllableStructure.AddStructure(new List<string> {"C","V","V"});
+		syllableStructure.AddStructure(new List<string> {"C","V","C"});
+		syllableStructure.AddStructure(new List<string> {"C","V","V","C"});
+		syllableStructure.AddStructure(new List<string> {"V"});
+		syllableStructure.AddStructure(new List<string> {"V","V"});
 
 		Rules rules = new Rules();
 		// assimilate consonant clusters
@@ -806,14 +794,14 @@ public class LanguageBuilder {
 
 		// build a long proper noun
 		List<string> properNoun = language.BuildWord(3, true, new string[]{"nonhuman", "strong"});
-		properNoun = language.ApplyRules(properNoun);
+		Debug.Log(string.Join("", properNoun.ToArray()));
+		//properNoun = language.ApplyRules(properNoun);
 		// build a short regular noun
 		List<string> justSomeNoun = language.BuildWord(2);
-		justSomeNoun = language.ApplyRules(justSomeNoun);
+		//justSomeNoun = language.ApplyRules(justSomeNoun);
 
 		// add both to the dictionary
 		language.AddEntry(properNoun, "Wolf");
 		language.AddEntry(justSomeNoun, "food");
-		Debug.Log (properNoun);
 	}
 }
