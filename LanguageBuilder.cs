@@ -158,30 +158,15 @@ public class LanguageBuilder {
 		// find the letter equivalent to these features
 		public string GetLetter (string feature0, string feature1, string feature2) {
 
+			// format features as string to match key
+			string features = string.Format("{0},{1},{2}", feature0, feature1, feature2);
+
 			// found a consonant that has all of these features
-			if (this.consonants.ContainsKey (feature0) && this.consonants.ContainsKey (feature1) && this.consonants.ContainsKey (feature2)) {
-				HashSet<string> lettersWithTheseFeatures = this.consonants [feature0];
-				Debug.Log (feature0 + ": " + string.Join ("", this.consonants[feature0].ToArray()));
-				//Debug.Log (feature0 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
-				lettersWithTheseFeatures.IntersectWith (this.consonants [feature1]);
-				Debug.Log (feature1 + ": " + string.Join ("", this.consonants[feature1].ToArray()));
-				//Debug.Log (feature1 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
-				lettersWithTheseFeatures.IntersectWith (this.consonants [feature2]);
-				Debug.Log (feature2 + ": " + string.Join ("", this.consonants[feature2].ToArray()));
-				//Debug.Log (feature2 + ": " + string.Join ("", lettersWithTheseFeatures.ToArray()));
-				return lettersWithTheseFeatures.ToList () [0];
-			
-			// found a vowel that has all of these features
-			} else if (this.vowels.ContainsKey (feature0) && this.vowels.ContainsKey (feature1) && this.vowels.ContainsKey (feature2)) {
-				HashSet<string> lettersWithTheseFeatures = this.vowels [feature0];
-				lettersWithTheseFeatures.IntersectWith (this.vowels [feature1]);
-				lettersWithTheseFeatures.IntersectWith (this.vowels [feature2]);
-				return lettersWithTheseFeatures.ToList () [0];
-			
-			// no letter has all of these features
-			} else {
-				return "";
+			if (this.letters.ContainsKey (features)) {
+				return this.letters[features];
 			}
+			// no letter has all of these features
+			return "";
 		}
 
 		// return list (set) of all consonants being stored
@@ -246,8 +231,12 @@ public class LanguageBuilder {
 		public Affixes () {}
 
 		// new property to dictionary
-		public void AddAffix (string property, List<string> affix) {
-			affixes[property] = affix;
+		public void AddAffix (string property, params string[] affix) {
+			List<string> affixLetters = new List<string> ();
+			foreach (string letter in affix) {
+				affixLetters.Add (letter);
+			}
+			affixes[property] = affixLetters;
 		}
 
 		// currently handle prefixing or suffixing (only)
@@ -257,11 +246,13 @@ public class LanguageBuilder {
 			if (affix[affix.Count-1] == "-") {
 				affix.RemoveAt(affix.Count-1);
 				affix.AddRange(word);
+				word = affix;
 				// attach as suffix
 			} else {
 				affix.RemoveAt(0);
 				word.AddRange(affix);
 			}
+			Debug.Log ("Added affix to root: " + string.Join("", word.ToArray()));
 			return word;
 		}
 	}
@@ -356,7 +347,7 @@ public class LanguageBuilder {
 		}
 
 		// overall word building recipe
-		public List<string> BuildWord (int length, bool proper=false, string[] affixes=null) {
+		public List<string> BuildWord (int length, bool proper=false, params string[] affixes) {
 
 			// choose syllables and build root word
 			List<string> word = this.BuildRoot(length);
@@ -373,14 +364,13 @@ public class LanguageBuilder {
 				word = this.FormatName (word);
 			}
 
-			this.ApplyRules(word);
+			//this.ApplyRules(word);
 
 			return word;
 		}
 
 		// take syllable topography and return a letter
 		private string PickSyllableLetter (string letter, HashSet<string> consonants, HashSet<string> vowels) {
-			Debug.Log (letter);
 			// find a specific vowel
 			// TODO weighted, Zipf?
 			if (letter == "V") {
@@ -455,6 +445,7 @@ public class LanguageBuilder {
 					newSyllable.Add (newLetter);
 				}
 			}
+			Debug.Log ("Finished building syllable: " + string.Join("", newSyllable.ToArray()));
 			return newSyllable;
 		}
 
@@ -472,7 +463,7 @@ public class LanguageBuilder {
 				List<string> newSyllable = this.BuildSyllable(consonants, vowels);
 				newRoot.AddRange(newSyllable);
 			}
-			Debug.Log ("Finished building word: " + string.Join("", newRoot.ToArray()));
+			Debug.Log ("Finished building root: " + string.Join("", newRoot.ToArray()));
 			return newRoot;
 		}
 
@@ -624,10 +615,11 @@ public class LanguageBuilder {
 					if (fmatches) {
 						isMatch = true;
 						string newLetter = this.inventory.GetLetter (theseFeatures [0], theseFeatures [1], theseFeatures [2]);
-
 						// store new letter and its index in temp list until check rest of rule
-						modificationMatches.Add (new string[] { newLetter, i.ToString () });
-						insertionMatches.Add (new string[] { newLetter, i.ToString () });
+						if (newLetter != "") {
+							modificationMatches.Add (new string[] { newLetter, i.ToString () });
+							insertionMatches.Add (new string[] { newLetter, i.ToString () });
+						}
 					} else {
 						isMatch = false;
 					}
@@ -687,10 +679,14 @@ public class LanguageBuilder {
 		}
 
 		//  TODO add support for ranking/ordering rules
+		// 		e.g. apply intervocalic voicing before fricativization
+
+		// 	TODO support rules with # to detect word beginning/ending
+		// 		e.g. allow "attadda" but not "ttadd"
 
 	}
 
-	public static void Main(string[] args) {
+	public static void Main (string[] args) {
 
 		// build up a very simple vowel inventory
 		// make sure features are within simple set in Inventory's place/manner/voicing
@@ -711,18 +707,20 @@ public class LanguageBuilder {
 		inventory.AddVowel("a", "open", "central", "unrounded");
 		inventory.AddVowel("u", "close", "back", "rounded");
 
-		// recall letters using same feature order, so this finds "b":
+		// recall features using any letter
+		Debug.Log (inventory.GetFeatures("b"));
+
+		// /!\ ONLY recall letters using correct feature order /!\
+		// This finds "b":
 		inventory.GetLetter("voiced", "bilabial", "plosive");
-		// this does not find "b":
-		Debug.Log (inventory.GetLetter("voiced", "plosive", "bilabial"));
+		// This will not find "b":
+		//inventory.GetLetter("voiced", "plosive", "bilabial"));
 
 		Syllable syllableStructure = new Syllable();
 		syllableStructure.AddStructure(new List<string> {"C","V"});
 		syllableStructure.AddStructure(new List<string> {"C","V","V"});
 		syllableStructure.AddStructure(new List<string> {"C","V","C"});
 		syllableStructure.AddStructure(new List<string> {"C","V","V","C"});
-		syllableStructure.AddStructure(new List<string> {"V"});
-		syllableStructure.AddStructure(new List<string> {"V","V"});
 
 		Rules rules = new Rules();
 		// assimilate consonant clusters
@@ -783,17 +781,17 @@ public class LanguageBuilder {
 		Affixes affixes = new Affixes();
 		// add prefixes and suffixes
 		// trusts you to use only characters found in inventory (matters for rule application)
-		affixes.AddAffix("human", new List<string>{"-", "g", "u", "d"});
-		affixes.AddAffix("nonhuman", new List<string>{"-", "i", "d"});
-		affixes.AddAffix("strong", new List<string>{"t", "-"});
-		affixes.AddAffix("small", new List<string>{"l", "-"});
-		affixes.AddAffix("strange", new List<string>{"g", "-"});
+		affixes.AddAffix("human", "-", "g", "u", "d");
+		affixes.AddAffix("nonhuman", "-", "i", "d");
+		affixes.AddAffix("strong", "t", "-");
+		affixes.AddAffix("small", "l", "-");
+		affixes.AddAffix("strange", "g", "-");
 
 		// TODO structure language 
 		Language language = new Language(inventory, syllableStructure, rules, affixes);
 
 		// build a long proper noun
-		List<string> properNoun = language.BuildWord(3, true, new string[]{"nonhuman", "strong"});
+		List<string> properNoun = language.BuildWord(3, true, "strong", "nonhuman");
 		Debug.Log(string.Join("", properNoun.ToArray()));
 		//properNoun = language.ApplyRules(properNoun);
 		// build a short regular noun
@@ -803,5 +801,6 @@ public class LanguageBuilder {
 		// add both to the dictionary
 		language.AddEntry(properNoun, "Wolf");
 		language.AddEntry(justSomeNoun, "food");
+		Debug.Log (language.PrintDictionary ());
 	}
 }
