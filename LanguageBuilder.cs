@@ -519,6 +519,9 @@ public class LanguageBuilder {
 
 		// go through word looking for rule pattern matches
 		// TODO document user guidelines for formatting a readable rule
+			// - list of strings expecting "C", "V", "", letter string or csv feature string
+			// - rules that delete go from e.g. "V" -> ""
+			// - rules that change features need matching number of features e.g. "voiced,plosive" -> "voiced,fricative" NOT just "fricative" 
 		private List<string> ApplyRule (
 			List<string> sourceRule,
 			List<string> targetRule,
@@ -546,7 +549,7 @@ public class LanguageBuilder {
 			int sourceMatches = 0;
 
 			// keep track of where rule applies
-			List<int> ruleAppliesAtIndices = new List<int>();
+			List<int> ruleAppliesIndices = new List<int>();
 
 			for (int i = 0; i < word.Count; i ++) {
 				
@@ -570,37 +573,72 @@ public class LanguageBuilder {
 					sourceMatches += ruleElement == word [i] ? 1 : 0;
 				}
 
-				// empty rule element
-				else if (ruleElement == "") {
-					sourceMatches += 0;
+				// empty rule element or some other match
+				else if (ruleElement == "" || ruleElement == word[i]) {
+					sourceMatches += 1;
 				}
 
 				// currently looking for a specific feature
 				else {
 
 					// gather and format feature lists to compare letter to rule
-					string[] ruleFeatures = ruleElement.Split (',');
+					string[] sourceFeatures = sourceRule [sourceMatches].Split (',');
+					string[] targetFeatures = targetRule [sourceMatches].Split (',');
 					string[] letterFeatures = this.inventory.GetFeatures (word [i]);
+					int changedFeature = -1;
 
 					// match test - all rule element features are found in this letter 
-					bool allFeaturesMatch = true;
-					foreach (string feature in ruleFeatures) {
-						if (!letterFeatures.Contains (feature)) {
-							allFeaturesMatch = false;
+					bool isFeatureMismatch = false;
+					for (int f = 0;  f < sourceFeatures.Count; f++) {
+
+						// test for feature mismatch and abandon letter if so
+						if (!letterFeatures.Contains (sourceFeatures[f])) {
+							isFeatureMismatch = true;
+							break;
+						}
+
+						// find matches that must be changed
+						else if (sourceFeatures[f] != targetFeatures[f]) {
+							// set this sourcefeature in the letter to match targetfeature instead
+							letterFeatures [ Array.Find (letterFeatures, sourceFeatures[f]) ] = targetFeatures[f];
 						}
 					}
 
 					// found matching feature set
-					if (allFeaturesMatch) {
+					if (!isFeatureMismatch) {
 						sourceMatches += 1;
 					}
 				}
 
-				// add the starting location of the match
+				// add the starting location of the match and reset rule search
 				if (sourceMatches >= sourceLength) {
-					ruleAppliesAtIndices.Add (i-sourceMatches-1);
+					ruleAppliesIndices.Add (i-sourceMatches-1);
 					sourceMatches = 0;
+					// back up to look for overlapping cases
+					i = i-sourceMatches;
 				}
+			}
+
+			// model letters to change between rule source and rule target
+			string newLetter = "";
+			string newFeatures = "";
+
+			foreach (int ruleStartIndex in ruleAppliesIndices) {
+
+				for (int i = 0; i < sourceRule.Count; i++) {
+					
+					// the rule calls for a change to this letter
+					if (sourceRule[i] != targetRule[i]) {
+						
+						newFeatures = string.Join(",", newFeatures);
+						word [ruleStartIndex + i] = newLetter;
+
+						// what if you're inserting a match?
+							// rule "" -> whatever; insert whatever after letter within match that follows ""
+
+					}
+				}
+				
 			}
 
 			// now we have a full match? if so, let's walk back to that word[i] - matches
