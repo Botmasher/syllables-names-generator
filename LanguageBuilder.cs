@@ -159,7 +159,7 @@ public class LanguageBuilder {
 		}
 
 		// find the letter equivalent to these features
-		public string GetLetter (string feature0, string feature1, string feature2) {
+		public string GetLetter (string feature0, string feature1, string feature2, string nonLetter="") {
 
 			// format features as string to match key
 			string features = string.Format("{0},{1},{2}", feature0, feature1, feature2);
@@ -169,7 +169,7 @@ public class LanguageBuilder {
 				return this.letters[features];
 			}
 			// no letter has all of these features
-			return "";
+			return nonLetter;
 		}
 
 		// return list (set) of all consonants being stored
@@ -349,12 +349,12 @@ public class LanguageBuilder {
 				}
 			}
 
+			this.ApplyRules(word);
+
 			// format name
 			if (proper) {
 				word = this.FormatName (word);
 			}
-
-			this.ApplyRules(word);
 
 			return word;
 		}
@@ -489,24 +489,9 @@ public class LanguageBuilder {
 
 		// apply every single rule in the ruleset to a built word
 		public List<string> ApplyRules (List<string> word) {
-			
-			// convert word into list of feature arrays
-			// TODO just do this in .ApplyRule for each letter as it's checked
-			List<string[]> wordFeatures = new List<string[]>();
-			for (int i=0; i < word.Count; i++) {
-				// pass it up if it's not a recognized letter
-				if (!this.inventory.features.ContainsKey (word [i])) {
-					wordFeatures.Add (new string[] { });
-				// it's a known letter so add the features to the word
-				} else {
-					string[] letterFeatures = this.inventory.GetFeatures (word [i]);
-					wordFeatures.Add (letterFeatures);
-				}
-			}
 
 			// run rules with the word's letters and features
 			List<string> changedWord = word;
-			//changedWord = this.ApplyRule (word, wordFeatures);
 
 			// go through and apply every rule to the sample word
 			foreach (KeyValuePair<List<string>,List<string>> rule in this.rules.soundChanges) {
@@ -532,113 +517,124 @@ public class LanguageBuilder {
 				return word;
 			}
 
-			// track adjacent matches of SOURCE features within WORD letters
-			//bool isMatch = false;
-			//int matchCount = 0;
-
-			// letters to change in newWord if find adjacent matches
-			// e.g. ( {"t", "2"}, {"", "4"}, ) contains one change, one delete
-			List<string[]> lettersToModify = new List<string[]>();
-			List<string[]> lettersToInsert = new List<string[]>();
-			// letter holding tanks while testing full match (then added to above)
-			//List<string[]> insertionMatches = new List<string[]>();
-			//List<string[]> modificationMatches = new List<string[]>();
-
 			// count matches until a source case is found
 			int sourceLength = sourceRule.Count;
 			int sourceMatches = 0;
 
-			// keep track of where rule applies
-			List<int> ruleAppliesIndices = new List<int>();
+			// keep track of indices that need to be changed
+			List<string> newWord = new List<string>();
+			Dictionary<int, string> lettersToChange = new Dictionary<int, string>();
 
+			// REDO this looking for
+			// format rules as source, target, environment strings (all csv)
+				// 		
+				// 		if first is # then search only beginning
+			 	// 		if last is # then search only end
+				// FOR all letters in the word
+				// 		IF single sound to change
+				// 			add to a list of indices of checkworthy sounds
+				// FOR index in that list
+				// 		find the one difference marked by "_" in environment (store as index for later)
+				//		check the sound's environment
+				// 		if all the stuff before it and after it match rule
+				//
 			for (int i = 0; i < word.Count; i ++) {
+
+				newWord.Add (word [i]);
 				
-				Debug.Log ("Applying rule to: "+word[i]);
+//				Debug.Log ("Applying rule to: "+word[i]+", searching for: "+sourceRule[sourceMatches]);
 
 				// the current rule letter/feature to search for
 				string ruleElement = sourceRule [sourceMatches];
 
 				// currently looking for a consonant
-				if (ruleElement == "C") {
-					sourceMatches += this.inventory.allConsonants.Contains (word [i]) ? 1 : 0;
+				if (ruleElement == "C" && this.inventory.allConsonants.Contains (word [i])) {
+					if (targetRule[sourceMatches] == "" || targetRule [sourceMatches] == "_") {
+						lettersToChange[i] = "";
+					}
+					sourceMatches++;
 				}
 
 				// currently looking for a vowel
-				else if (ruleElement == "V") {
-					sourceMatches += this.inventory.allVowels.Contains (word [i]) ? 1 : 0;
+				else if (ruleElement == "V" && this.inventory.allVowels.Contains (word[i])) {
+					if (targetRule[sourceMatches] == "" || targetRule [sourceMatches] == "_") {
+						lettersToChange[i] = "";
+					}
+					sourceMatches++;
 				}
 
 				// currently looking for a specific letter
-				else if (this.inventory.features.ContainsKey (ruleElement)) {
-					sourceMatches += ruleElement == word [i] ? 1 : 0;
+				else if (this.inventory.features.ContainsKey (ruleElement) && ruleElement == word[i]) {
+					if (targetRule[sourceMatches] == "" || targetRule [sourceMatches] == "_") {
+						lettersToChange[i] = "";
+					}
+					sourceMatches++;
 				}
 
 				// empty rule element or some other match
-				else if (ruleElement == "" || ruleElement == word[i]) {
-					sourceMatches += 1;
+				// TODO break this out, e.g.  "", "a" -> "", "y"
+				// TODO account for both source and target are empty
+				else if (ruleElement == "_" || ruleElement == "" || ruleElement == word[i]) {
+					if (targetRule [sourceMatches] == "" || targetRule [sourceMatches] == "_") {
+						lettersToChange[i] = "";
+					}
+					sourceMatches++;
 				}
 
 				// currently looking for a specific feature
-				else {
+				// TODO account for target is letter not features
+				// TODO account for target is empty string
+				else if (this.inventory.consonants.ContainsKey (ruleElement.Split(',')[0]) || this.inventory.vowels.ContainsKey (ruleElement.Split(',')[0])) {
 
 					// gather and format feature lists to compare letter to rule
 					string[] sourceFeatures = sourceRule [sourceMatches].Split (',');
 					string[] targetFeatures = targetRule [sourceMatches].Split (',');
 					string[] letterFeatures = this.inventory.GetFeatures (word [i]);
-					int changedFeature = -1;
 
 					// match test - all rule element features are found in this letter 
 					bool isFeatureMismatch = false;
-					for (int f = 0;  f < sourceFeatures.Count; f++) {
+					for (int f = 0; f < sourceFeatures.Length; f++) {
+
+						Debug.Log ("Broke down " + word [i] + " to look for: " + sourceFeatures [f]);
 
 						// test for feature mismatch and abandon letter if so
-						if (!letterFeatures.Contains (sourceFeatures[f])) {
+						if (sourceFeatures[f].Length > 0 && !letterFeatures.Contains (sourceFeatures [f])) {
+							Debug.Log ("Did not find target features!");
 							isFeatureMismatch = true;
+							sourceMatches = 0;
 							break;
 						}
 
-						// find matches that must be changed
-						else if (sourceFeatures[f] != targetFeatures[f]) {
-							// set this sourcefeature in the letter to match targetfeature instead
-							letterFeatures [ Array.Find (letterFeatures, sourceFeatures[f]) ] = targetFeatures[f];
-						}
+						Debug.Log ("Changing it to: "+targetFeatures[f]);
+						// set this sourcefeature in the letter to match targetfeature instead
+						letterFeatures [Array.IndexOf (letterFeatures, sourceFeatures [f])] = targetFeatures [f];
 					}
 
 					// found matching feature set
 					if (!isFeatureMismatch) {
-						sourceMatches += 1;
+						sourceMatches ++;
+						lettersToChange[i] = this.inventory.GetLetter (letterFeatures[0], letterFeatures[1], letterFeatures[2], word[i]);
 					}
+				// did not find any matches for the rule
+				} else {
+					sourceMatches = 0;
 				}
 
-				// add the starting location of the match and reset rule search
+				// found a full rule match - alter new word and reset rule search
 				if (sourceMatches >= sourceLength) {
-					ruleAppliesIndices.Add (i-sourceMatches-1);
+
+					// add applicable target rule letters to the new word
+					foreach (KeyValuePair<int, string> newLetter in lettersToChange) {
+						newWord [newLetter.Key] = newLetter.Value;
+					}
+					lettersToChange.Clear ();
+
+					// reset rule match search
 					sourceMatches = 0;
+
 					// back up to look for overlapping cases
 					i = i-sourceMatches;
 				}
-			}
-
-			// model letters to change between rule source and rule target
-			string newLetter = "";
-			string newFeatures = "";
-
-			foreach (int ruleStartIndex in ruleAppliesIndices) {
-
-				for (int i = 0; i < sourceRule.Count; i++) {
-					
-					// the rule calls for a change to this letter
-					if (sourceRule[i] != targetRule[i]) {
-						
-						newFeatures = string.Join(",", newFeatures);
-						word [ruleStartIndex + i] = newLetter;
-
-						// what if you're inserting a match?
-							// rule "" -> whatever; insert whatever after letter within match that follows ""
-
-					}
-				}
-				
 			}
 
 			// now we have a full match? if so, let's walk back to that word[i] - matches
@@ -646,132 +642,17 @@ public class LanguageBuilder {
 				// then we'll log which letters in the original need to be changed
 				// finally, we'll make those changes (at the very end?)
 
+			// Keep rule structure in mind and remember rules can nest:
+			// 	['V','plosive','V'] -> ['V','fricative','V']
+			// 	['V','voiceless,plosive','V'] -> ['V','voiced,fricative','V']
+			//
+			// Recently changed to this structure:
+			//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
 
-//			// iterate through each letter in word hunting for sourcerule
-//			for (int i=0; i < word.Count; i++) {
-//
-//				// Keep rule structure in mind and remember rules can nest:
-//				// 	['V','plosive','V'] -> ['V','fricative','V']
-//				// 	['V','voiceless,plosive','V'] -> ['V','voiced,fricative','V']
-//				//
-//				// Recently changed to this structure:
-//				//	(['V'], ['voiceless','plosive'], ['V']) -> (['V'], ['voiced','fricative'], ['V'])
-//
-//				// the current feature set to search for in the word
-//				string[] featureSet = sourceRule[matchCount];
-//
-//				// merely check for a consonant or vowel match
-//				if (featureSet.Length == 1 && (featureSet [0] == "C")) {
-//					// report and tally if this is a consonant where consonant expected
-//					isMatch = this.inventory.allVowels.Contains (word [i]);
-//					matchCount += Convert.ToInt32 (isMatch);
-//				} else if (featureSet.Length == 1 && (featureSet [0] == "V")) {
-//					// report and tally if this is a vowel where vowel expected
-//					isMatch = this.inventory.allConsonants.Contains (word [i]);
-//					matchCount += Convert.ToInt32 (isMatch);
-//				}
-//				// TODO account for CC or VV gemination
-//				// TODO account for C or V insertion incl metathesis
-//
-//				// neither a letter nor a feature matrix
-//				else if (word[i] == null || word[i] == "") {
-//					// keep looking for adjacent matches without adding or removing a match
-//				}
-//				// unknown letter
-//				else if (!this.inventory.features.ContainsKey(word[i])) {
-//					// reset matches
-//					isMatch = false;
-//				}
-//				// check for specific features and look for changes
-//				else {
-//					// setup to check that letter in word matches the searched features
-//					string[] theseFeatures = this.inventory.features[word[i]];
-//					string[] thisTarget = targetRule[matchCount];
-//					// does every single feature match?
-//					bool fmatches = true;
-//
-//					// check features in word and set them to match target features
-//					foreach (string f in featureSet) {
-//						string newFeature = "";
-//						// letter matches source with target signaling removal "_"
-//						if (Array.IndexOf(theseFeatures, f) > -1 && thisTarget[0] == "_") {
-//							newFeature = "_";
-//							theseFeatures[Array.IndexOf(theseFeatures, f)] = newFeature;
-//						// letter matches source with target features
-//						} else if (Array.IndexOf(theseFeatures, f) > -1) {
-//							newFeature = thisTarget[Array.IndexOf(featureSet, f)];
-//							theseFeatures[Array.IndexOf(theseFeatures, f)] = newFeature;
-//						// source did not match - rule does not apply
-//						} else {
-//							fmatches = false;
-//						}
-//					}
-//
-//					// letter match if all features found
-//					if (fmatches) {
-//						isMatch = true;
-//						string newLetter = this.inventory.GetLetter (theseFeatures [0], theseFeatures [1], theseFeatures [2]);
-//						// store new letter and its index in temp list until check rest of rule
-//						if (newLetter != "") {
-//							modificationMatches.Add (new string[] { newLetter, i.ToString () });
-//							insertionMatches.Add (new string[] { newLetter, i.ToString () });
-//						}
-//					} else {
-//						isMatch = false;
-//					}
-//				}
-//
-//				// rule in the middle of applying does not apply
-//				if (!isMatch && matchCount > 0) {
-//					// reset adjacent matches
-//					matchCount = 0;
-//				}
-//				// rule in the middle of applying does fully apply - add new letters
-//				else if (matchCount >= sourceRule.Count && matchCount > 0) {
-//					// add letters from temp lists and empty lists for next match
-//					lettersToModify.AddRange(modificationMatches);
-//					lettersToInsert.AddRange(insertionMatches);
-//					modificationMatches.Clear();
-//					insertionMatches.Clear();
-//					
-//					// rewind to just after match start to catch possible overlaps
-//					i -= matchCount-1;
-//
-//					// reset adjacent matches
-//					matchCount = 0;
-//				}
-//				// rule did not apply and is not in middle of applying (or fails at word end)
-//				else {
-//					continue;
-//				}
-//			}
-//
-//			if (modificationMatches.Count == 0 && insertionMatches.Count == 0) {
-//				return word;
-//			}
-//			// change letters at stored indices
-//			foreach (string[] modification in modificationMatches) {
-//				int modId = -1;
-//				if (Int32.TryParse(modification[1], out modId)) {
-//					word[modId] = modification[0];
-//				}
-//			}
-//
-//			if (insertionMatches.Count == 0) {
-//				return word;
-//			}
-//			// insert new letters at stored indices ( /!\ expects ascending index!)
-//			int numInserted = 0;
-//			foreach (string[] insertion in insertionMatches) {
-//				int insertId = -1;
-//				if (Int32.TryParse(insertion[1], out insertId)) {
-//					numInserted += 1;
-//					word.Insert(insertId+numInserted, insertion[0]);
-//				}
-//			}
+			Debug.Log ("Just applied rule to produce: " + string.Join("", newWord.ToArray()));
 
 			// output updated word letters list
-			return word;
+			return newWord;
 		}
 
 		//  TODO add support for ranking/ordering rules
@@ -819,6 +700,10 @@ public class LanguageBuilder {
 		syllableStructure.AddStructure(new List<string> {"C","V","V","C"});
 
 		Rules rules = new Rules();
+		/*
+		 * 	Make sure you have inventory letters for every feature change otherwise you'll replace with empty
+		 *  	e.g. voiced -> voiceless will change "r" -> "" if you don't have a voiceless r
+		 */
 		// assimilate consonant clusters
 		rules.AddRule ( new List<string>{"voiced", "voiceless"}, new List<string>{"voiceless", "voiceless"} );
 		rules.AddRule ( new List<string>{ "voiceless", "voiced" }, new List<string>{ "voiceless", "voiceless"} );
