@@ -264,7 +264,7 @@ public class LanguageBuilder {
 	public class Rules {
 		// TODO add properties/methods for accessing this dict
 		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		public Dictionary<List<string>, List<string>> soundChanges = new Dictionary<List<string>, List<string>>();
+		public List<List<string>> soundChanges = new List<List<string>>();
 
 		public Rules () {}
 
@@ -282,8 +282,9 @@ public class LanguageBuilder {
 
 		// store "underlying" shape as key and "surface" shape as value
 		// e.g. vowel, plosive, vowel -> vowel, fricative, vowel
-		public void AddRule (List<string> source, List<string> target) {
-			soundChanges[source] = target;
+		public void AddRule (string source, string target, string environment) {
+			List<string> newRule = new List<string> {source, target, environment};
+			soundChanges.Add (newRule);
 		}
 
 		// TODO take rule set and output a formatted string
@@ -494,10 +495,8 @@ public class LanguageBuilder {
 			List<string> changedWord = word;
 
 			// go through and apply every rule to the sample word
-			foreach (KeyValuePair<List<string>,List<string>> rule in this.rules.soundChanges) {
-				List<string> source = rule.Key;
-				List<string> target = rule.Value;
-				changedWord = this.ApplyRule(source, target, changedWord);
+			foreach (List<string> rule in this.rules.soundChanges) {
+				changedWord = this.ApplyRule(rule, changedWord);
 			}
 			return changedWord;
 		}
@@ -522,6 +521,24 @@ public class LanguageBuilder {
 
 			// TODO format rules as source, target, environment:  List<string> rule = { "voiceless plosive", "voiced plosive", "V _ V" };
 
+			// TODO rewrite as recursive solution
+			List<string> wordPiece;
+			wordPiece = this.ApplyRule (rule, wordPiece);
+			// 
+			// base case:
+			// 		- down to one letter OR
+			// 		- down to the smallest chunk that rule can apply to
+			// recurse stack:
+			// 	 	- break the word into every possible letter chunk
+			// 		- each chunk seeks to apply rules in order
+			// 			- look to match C or V
+			// 			- look to match letter
+			// 			- look to match feature
+			// 			- if all things match in environment, then move on to storing match
+			// 		- store letters that need to be changed according to rules
+			// 		- now the word gets put together
+			// 	make sure to account for rule application layering
+
 			// break rule into source sound, target sound and environment
 			string[] source = rule[0].Split(' ');
 			string[] target = rule[1].Split(' ');
@@ -530,8 +547,8 @@ public class LanguageBuilder {
 			int possibleIndex = -1;
 
 			// no known feature to find - exit early
-			for (int i=0; i < source.Length; i++) {
-				if (!this.inventory.letters.ContainsKey (source[i]) || !this.inventory.letters.ContainsKey(target[i]) ) {
+			for (int i = 0; i < source.Length; i++) {
+				if (!this.inventory.letters.ContainsKey (source [i]) || !this.inventory.letters.ContainsKey (target [i])) {
 					return word;
 				}
 			}
@@ -546,13 +563,13 @@ public class LanguageBuilder {
 
 				// store beginning index for evaluation if it matches the rule letter
 				if (sourceIsLetter && word [possibleIndex] == source [0]) {
-					indicesToCheck.Add (word [possibleIndex]);
+					indicesToCheck.Add (possibleIndex);
 				}	
 
 				// store beginning index for evaluation if it matches the one or two rule features
 				// TODO this is limiting on the possible structure of a rule, but /!\ is not yet included in rule howto /!\
 				else if (this.inventory.letters [source [0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.letters [source [1]].Contains (word [possibleIndex]))) {
-					indicesToCheck.Add (word [possibleIndex]);
+					indicesToCheck.Add (possibleIndex);
 				}
 			}
 			// look for source feature or letter at the end of the word
@@ -571,7 +588,7 @@ public class LanguageBuilder {
 					indicesToCheck.Add (possibleIndex);
 				}
 				else if (this.inventory.letters[source[0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.letters[source[1]].Contains (word[possibleIndex]))) {
-					indicesToCheck.Add (word [possibleIndex]);
+					indicesToCheck.Add (possibleIndex);
 				}
 			}
 			// look for source feature or letter within the word
@@ -579,9 +596,9 @@ public class LanguageBuilder {
 				// check each word letter to see if it matches the target letter/feature
 				for (int i = 0; i < word.Count; i++) {
 					if (sourceIsLetter && word [i] == source [0]) {
-						indicesToCheck.Add (word [i]);
+						indicesToCheck.Add (i);
 					} else if (this.inventory.letters [source [0]].Contains (word [i]) && (source.Length < 2 || this.inventory.letters [source [1]].Contains (word [i]))) {
-						indicesToCheck.Add (word [i]);
+						indicesToCheck.Add (i);
 					}
 				}	
 			}
@@ -594,7 +611,7 @@ public class LanguageBuilder {
 			string[] featuresToChange = new string[] {};
 			foreach (int letterIdx in indicesToCheck) {
 				letterIsMatch = true;
-				for (int i = 0; i < environment.Count; i++) {
+				for (int i = 0; i < environment.Length; i++) {
 					letterToCheck = word [ letterIdx + (i - Array.IndexOf (environment, "_")) ];
 					if (environment [i] == "C" && !this.inventory.consonants.Contains(letterToCheck)) {
 						letterIsMatch = false;
@@ -691,17 +708,17 @@ public class LanguageBuilder {
 		 *  	e.g. voiced -> voiceless will change "r" -> "" if you don't have a voiceless r
 		 */
 		// assimilate consonant clusters
-		rules.AddRule ( new List<string>{"voiced", "voiceless"}, new List<string>{"voiceless", "voiceless"} );
-		rules.AddRule ( new List<string>{ "voiceless", "voiced" }, new List<string>{ "voiceless", "voiceless"} );
+		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
+		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
 		// a dash of lenition
-		rules.AddRule ( new List<string>{"V", "voiced,plosive", "V"}, new List<string>{"V","voiced, fricative", "V"} );
+		rules.AddRule ( "voiced plosive", "voiced fricative", "V _ V" );
 		// avoid awkward clusters
-		rules.AddRule ( new List<string>{"h", "C"}, new List<string>{"","C"} );
-		rules.AddRule ( new List<string>{"r", "w"}, new List<string>{"r", "r"} );
+		rules.AddRule ( "h", "", "_ C" );
+		rules.AddRule ( "r", "", "_ w" );
 		// simplify certain long vowels
-		rules.AddRule ( new List<string>{"a", "a"}, new List<string>{"a", ""} );
-		rules.AddRule ( new List<string>{"i", "i"}, new List<string>{"i", ""} );
-		rules.AddRule ( new List<string>{"u", "u"}, new List<string>{"u", ""} );
+		rules.AddRule ( "a", "", "_ a" );
+		rules.AddRule ( "i", "", "_ i" );
+		rules.AddRule ( "u", "", "_ u" );
 
 		Affixes affixes = new Affixes();
 		// add prefixes and suffixes
