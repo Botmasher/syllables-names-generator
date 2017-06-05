@@ -11,10 +11,9 @@ public class LanguageBuilder {
 		// TODO methods/properties for accessing inventory info from within dicts
 
 		// letters per feature
-		public Dictionary<string, HashSet<string>> consonants = new Dictionary<string, HashSet<string>>();
-		public Dictionary<string, HashSet<string>> vowels = new Dictionary<string, HashSet<string>>();
+		public Dictionary<string, HashSet<string>> lettersByFeature = new Dictionary<string, HashSet<string>>();
 
-		// feature equivalent to a letter
+		// feature set equivalent to a letter
 		public Dictionary<string, string[]> features = new Dictionary<string, string[]>();
 
 		// letter equivalent to a feature set
@@ -36,24 +35,24 @@ public class LanguageBuilder {
 			
 			// basic consonant feature keys
 			foreach (string f in this.voicing) {
-				this.consonants.Add(f, new HashSet<string>());
+				this.lettersByFeature.Add(f, new HashSet<string>());
 			}
 			foreach (string f in this.place) {
-				this.consonants.Add(f, new HashSet<string>());
+				this.lettersByFeature.Add(f, new HashSet<string>());
 			}
 			foreach (string f in this.manner) {
-				this.consonants.Add(f, new HashSet<string>());
+				this.lettersByFeature.Add(f, new HashSet<string>());
 			}
 
 			// basic vowel feature keys
 			foreach (string f in this.height) {
-				this.vowels.Add(f, new HashSet<string>());
+				this.lettersByFeature.Add(f, new HashSet<string>());
 			}
 			foreach (string f in this.backness) {
-				this.vowels.Add(f, new HashSet<string>());
+				this.lettersByFeature.Add(f, new HashSet<string>());
 			}
 			foreach (string f in this.rounding) {
-				this.vowels.Add(f, new HashSet<string>());
+				this.lettersByFeature.Add(f, new HashSet<string>());
 			}
 		}
 
@@ -110,9 +109,9 @@ public class LanguageBuilder {
 			}
 
 			// make letter accessible through each of its features
-			this.vowels[rounding].Add (letter);
-			this.vowels[height].Add (letter);
-			this.vowels[backness].Add (letter);
+			this.lettersByFeature[rounding].Add (letter);
+			this.lettersByFeature[height].Add (letter);
+			this.lettersByFeature[backness].Add (letter);
 
 			// make features available through letter
 			this.features[letter] = new string[] { rounding, height, backness };
@@ -134,9 +133,9 @@ public class LanguageBuilder {
 				return false;
 			}
 			// make letter accessible through each of its features
-			this.consonants[voicing].Add (letter);
-			this.consonants[place].Add (letter);
-			this.consonants[manner].Add (letter);
+			this.lettersByFeature[voicing].Add (letter);
+			this.lettersByFeature[place].Add (letter);
+			this.lettersByFeature[manner].Add (letter);
 
 			// make features available through letter
 			this.features[letter] = new string[] { voicing, place, manner };
@@ -386,13 +385,13 @@ public class LanguageBuilder {
 				if (letter.IndexOf(",") > -1) {
 					features = letter.Split(',');
 				// pick a consonant based on a single feature
-				} else if (this.inventory.consonants.ContainsKey(letter)) {
-					possibleLetters = this.inventory.consonants[letter];
+				} else if (this.inventory.lettersByFeature.ContainsKey(letter)) {
+					possibleLetters = this.inventory.lettersByFeature[letter];
 					string[] possibleLettersList = possibleLetters.ToArray();
 					return possibleLettersList[this.random.Next(0, possibleLetters.Count)];
 				// pick a vowel based on a single feature
-				} else if (this.inventory.vowels.ContainsKey(letter)) {
-					possibleLetters = this.inventory.vowels[letter];
+				} else if (this.inventory.lettersByFeature.ContainsKey(letter)) {
+					possibleLetters = this.inventory.lettersByFeature[letter];
 					string[] possibleLettersList = possibleLetters.ToArray ();
 					return possibleLettersList[this.random.Next(0, possibleLetters.Count)];
 				}
@@ -401,18 +400,18 @@ public class LanguageBuilder {
 					string singleFeature = f.Trim();
 					// initial feature - add all letters
 					if (possibleLetters.Count <= 0) {
-						if (this.inventory.vowels.ContainsKey(singleFeature)) {
-							possibleLetters = this.inventory.vowels[singleFeature];
-						} else if (this.inventory.consonants.ContainsKey(singleFeature)) {
-							possibleLetters = this.inventory.consonants[singleFeature];
+						if (this.inventory.lettersByFeature.ContainsKey(singleFeature)) {
+							possibleLetters = this.inventory.lettersByFeature[singleFeature];
+						} else if (this.inventory.lettersByFeature.ContainsKey(singleFeature)) {
+							possibleLetters = this.inventory.lettersByFeature[singleFeature];
 						} else{
 							return "";
 						}
 						// subsequent features - only intersecting letters
-					} else if (this.inventory.vowels.ContainsKey(singleFeature)) {
-						possibleLetters.IntersectWith(this.inventory.vowels[singleFeature]);
-					} else if (this.inventory.consonants.ContainsKey(singleFeature)) {
-						possibleLetters.IntersectWith(this.inventory.consonants[singleFeature]);
+					} else if (this.inventory.lettersByFeature.ContainsKey(singleFeature)) {
+						possibleLetters.IntersectWith(this.inventory.lettersByFeature[singleFeature]);
+					} else if (this.inventory.lettersByFeature.ContainsKey(singleFeature)) {
+						possibleLetters.IntersectWith(this.inventory.lettersByFeature[singleFeature]);
 					} else {
 						continue;
 					}
@@ -522,8 +521,8 @@ public class LanguageBuilder {
 			// TODO format rules as source, target, environment:  List<string> rule = { "voiceless plosive", "voiced plosive", "V _ V" };
 
 			// TODO rewrite as recursive solution
-			List<string> wordPiece;
-			wordPiece = this.ApplyRule (rule, wordPiece);
+			// List<string> wordPiece;
+			// wordPiece = this.ApplyRule (rule, wordPiece);
 			// 
 			// base case:
 			// 		- down to one letter OR
@@ -547,11 +546,14 @@ public class LanguageBuilder {
 			int possibleIndex = -1;
 
 			// no known feature to find - exit early
-			for (int i = 0; i < source.Length; i++) {
-				if (!this.inventory.letters.ContainsKey (source [i]) || !this.inventory.letters.ContainsKey (target [i])) {
-					return word;
-				}
-			}
+			//for (int i = 0; i < source.Length; i++) {
+			//	if (!this.inventory.letters.ContainsKey (source [i]) || !this.inventory.letters.ContainsKey (target [i])) {
+			//		return word;
+			//	}
+			//}
+
+			// detect if the rule is checking for a set of features
+			bool sourceIsFeatures = this.inventory.letters.ContainsKey (source [0]);
 
 			// detect if the rule is checking for a letter not a feature
 			bool sourceIsLetter = source.Length == 1 && this.inventory.features.ContainsKey (source[0]) ? true : false;
@@ -568,12 +570,12 @@ public class LanguageBuilder {
 
 				// store beginning index for evaluation if it matches the one or two rule features
 				// TODO this is limiting on the possible structure of a rule, but /!\ is not yet included in rule howto /!\
-				else if (this.inventory.letters [source [0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.letters [source [1]].Contains (word [possibleIndex]))) {
+				else if (sourceIsFeatures && this.inventory.letters [source [0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.letters [source [1]].Contains (word [possibleIndex]))) {
 					indicesToCheck.Add (possibleIndex);
 				}
 			}
 			// look for source feature or letter at the end of the word
-			else if (environment [-1] == "#") {
+			else if (environment [environment.Length-1] == "#") {
 
 				possibleIndex = word.Count - (environment.Length - (Array.IndexOf (environment, "_") + 1));
 
@@ -587,17 +589,19 @@ public class LanguageBuilder {
 				if (sourceIsLetter && word[possibleIndex] == source[0]) {
 					indicesToCheck.Add (possibleIndex);
 				}
-				else if (this.inventory.letters[source[0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.letters[source[1]].Contains (word[possibleIndex]))) {
+				else if (this.inventory.lettersByFeature[source[0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.lettersByFeature[source[1]].Contains (word[possibleIndex]))) {
 					indicesToCheck.Add (possibleIndex);
 				}
 			}
 			// look for source feature or letter within the word
 			else {
 				// check each word letter to see if it matches the target letter/feature
+				Debug.Log ("I'm checking for "+source[0]);
 				for (int i = 0; i < word.Count; i++) {
+					
 					if (sourceIsLetter && word [i] == source [0]) {
 						indicesToCheck.Add (i);
-					} else if (this.inventory.letters [source [0]].Contains (word [i]) && (source.Length < 2 || this.inventory.letters [source [1]].Contains (word [i]))) {
+					} else if (sourceIsFeatures && this.inventory.lettersByFeature [source [0]].Contains (word [i]) && (source.Length < 2 || this.inventory.lettersByFeature [source [1]].Contains (word [i]))) {
 						indicesToCheck.Add (i);
 					}
 				}	
@@ -609,16 +613,25 @@ public class LanguageBuilder {
 			string letterToCheck = "";
 			bool letterIsMatch = false;
 			string[] featuresToChange = new string[] {};
+			int movingIndex = 0;
 			foreach (int letterIdx in indicesToCheck) {
 				letterIsMatch = true;
 				for (int i = 0; i < environment.Length; i++) {
-					letterToCheck = word [ letterIdx + (i - Array.IndexOf (environment, "_")) ];
-					if (environment [i] == "C" && !this.inventory.consonants.Contains(letterToCheck)) {
+					movingIndex = letterIdx + (i - Array.IndexOf (environment, "_"));
+					movingIndex = movingIndex < 0 ? 0 : movingIndex;
+					movingIndex = movingIndex > word.Count-1 ? word.Count-1 : movingIndex;
+					// 0 + 0 - 2 	= 	-2
+					// 0 + 1 - 2 	= 	-1
+					// 0 + 2 - 2 	= 	0
+					// 0 + 3 - 2 	= 	1
+
+					letterToCheck = word [ movingIndex ];
+					if (environment [i] == "C" && !this.inventory.allConsonants.Contains(letterToCheck)) {
 						letterIsMatch = false;
-					} else if (environment [i] == "V" && !this.inventory.consonants.Contains(letterToCheck)) {
+					} else if (environment [i] == "V" && !this.inventory.allVowels.Contains(letterToCheck)) {
 						letterIsMatch = false;
 					} else if (this.inventory.features.ContainsKey(environment [i]) && letterToCheck != environment[i]) {
-							letterIsMatch = false;
+						letterIsMatch = false;
 					}
 				}
 				// change a perfectly rule-matched letter to target featureset
@@ -666,7 +679,7 @@ public class LanguageBuilder {
 
 	}
 
-	public static void Main (string[] args) {
+	void Start() {
 
 		// build up a very simple vowel inventory
 		// make sure features are within simple set in Inventory's place/manner/voicing
