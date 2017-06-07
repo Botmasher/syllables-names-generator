@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 public class LanguageBuilder {
 
@@ -607,63 +608,18 @@ public class LanguageBuilder {
 				}	
 			}
 
-			// rethink: build rules into built word instead of after word already built!
-
 			// go through the list of possible target matches
-			string letterToCheck = "";
-			bool letterIsMatch = false;
-			string[] featuresToChange = new string[] {};
-			int movingIndex = 0;
-			foreach (int letterIdx in indicesToCheck) {
-				letterIsMatch = true;
-				for (int i = 0; i < environment.Length; i++) {
-					movingIndex = letterIdx + (i - Array.IndexOf (environment, "_"));
-					movingIndex = movingIndex < 0 ? 0 : movingIndex;
-					movingIndex = movingIndex > word.Count-1 ? word.Count-1 : movingIndex;
-					// 0 + 0 - 2 	= 	-2
-					// 0 + 1 - 2 	= 	-1
-					// 0 + 2 - 2 	= 	0
-					// 0 + 3 - 2 	= 	1
-
-					letterToCheck = word [ movingIndex ];
-					if (environment [i] == "C" && !this.inventory.allConsonants.Contains(letterToCheck)) {
-						letterIsMatch = false;
-					} else if (environment [i] == "V" && !this.inventory.allVowels.Contains(letterToCheck)) {
-						letterIsMatch = false;
-					} else if (this.inventory.features.ContainsKey(environment [i]) && letterToCheck != environment[i]) {
-						letterIsMatch = false;
-					}
-				}
-				// change a perfectly rule-matched letter to target featureset
-				if (letterIsMatch && !sourceIsLetter) {
-					featuresToChange = this.inventory.GetFeatures (word [letterIdx]);
-					for (int f = 0; f < target.Length; f++) {
-						// replace source letter feature matrix with target changes
-						if (!featuresToChange.Contains (target [f])) {
-							featuresToChange [Array.IndexOf (featuresToChange, source [f])] = target [f];
-						}
-					}
-					word [letterIdx] = this.inventory.GetLetter (featuresToChange [0], featuresToChange [1], featuresToChange [2]);
-
-				// change a perfectly rule-matched letter to target letter
-				} else if (letterIsMatch) {
-					word [letterIdx] = target [0];
-				} else {
-					// just go on to look for the next match
-				}
+			// now that we have lettersToCheck
+			foreach (int letterIndex in indicesToCheck) {
+				Debug.Log ("Currently looking for " + string.Join(" ", environment) + " around " + word[letterIndex]);
 			}
-
-				// 		
-				// 		if first is # then search only beginning
-			 	// 		if last is # then search only end
-				// FOR all letters in the word
-				// 		IF single sound to change
-				// 			add to a list of indices of checkworthy sounds
-				// FOR index in that list
-				// 		find the one difference marked by "_" in environment (store as index for later)
-				//		check the sound's environment
-				// 		if all the stuff before it and after it match rule
-				//
+			// so try this:
+				// - fit each checked letter from word
+				// - into an environment slot
+				// - and then other letters around it into surrounding
+					// - if each of those letters has the feature of that slot
+			 	// - each environment slot should be filled
+			// this reconceptualizes environment as simple frame for checking slot matches
 			
 			Debug.Log ("Just applied rule to produce: " + string.Join("", word.ToArray()));
 
@@ -679,7 +635,7 @@ public class LanguageBuilder {
 
 	}
 
-	void Start() {
+	public static void Main (string[] args) {
 
 		// build up a very simple vowel inventory
 		// make sure features are within simple set in Inventory's place/manner/voicing
@@ -724,7 +680,7 @@ public class LanguageBuilder {
 		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
 		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
 		// a dash of lenition
-		rules.AddRule ( "voiced plosive", "voiced fricative", "V _ V" );
+		rules.AddRule ( "plosive", "fricative", "V _ V" );
 		// avoid awkward clusters
 		rules.AddRule ( "h", "", "_ C" );
 		rules.AddRule ( "r", "", "_ w" );
