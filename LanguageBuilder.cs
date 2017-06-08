@@ -510,16 +510,14 @@ public class LanguageBuilder {
 			List<string> rule,
 			List<string> word)
 		{
-
-			// no rule to apply or no word to apply it to - exit early
-			if (rule == null || rule.Count == 0 || word == null || word.Count == 0) {
+			// no word letters to build
+			if (word.Count <= 0) {
 				return word;
 			}
-			
-			// keep track of indices that need to be changed
-			List<int> indicesToCheck = new List<int>();
 
-			// TODO format rules as source, target, environment:  List<string> rule = { "voiceless plosive", "voiced plosive", "V _ V" };
+			// check the format of the rule
+			// e.g. List<string> rule = { "voiceless plosive", "voiced plosive", "V _ V" };
+			Debug.Log ("Current rule changes " + rule[0] + " to " + rule[1] + " in " + rule[2]);
 
 			// TODO rewrite as recursive solution
 			// List<string> wordPiece;
@@ -538,90 +536,7 @@ public class LanguageBuilder {
 			// 		- store letters that need to be changed according to rules
 			// 		- now the word gets put together
 			// 	make sure to account for rule application layering
-
-			// break rule into source sound, target sound and environment
-			string[] source = rule[0].Split(' ');
-			string[] target = rule[1].Split(' ');
-			string[] environment = rule[2].Split(' ');
-			// store possible indices to check while evaluating whether to add them tochecklist
-			int possibleIndex = -1;
-
-			// no known feature to find - exit early
-			//for (int i = 0; i < source.Length; i++) {
-			//	if (!this.inventory.letters.ContainsKey (source [i]) || !this.inventory.letters.ContainsKey (target [i])) {
-			//		return word;
-			//	}
-			//}
-
-			// detect if the rule is checking for a set of features
-			bool sourceIsFeatures = this.inventory.letters.ContainsKey (source [0]);
-
-			// detect if the rule is checking for a letter not a feature
-			bool sourceIsLetter = source.Length == 1 && this.inventory.features.ContainsKey (source[0]) ? true : false;
-
-			// look for source feature or letter at the start of the word
-			if (environment [0] == "#") {
-
-				possibleIndex = Array.IndexOf (environment, "_") - 1;
-
-				// store beginning index for evaluation if it matches the rule letter
-				if (sourceIsLetter && word [possibleIndex] == source [0]) {
-					indicesToCheck.Add (possibleIndex);
-				}	
-
-				// store beginning index for evaluation if it matches the one or two rule features
-				// TODO this is limiting on the possible structure of a rule, but /!\ is not yet included in rule howto /!\
-				else if (sourceIsFeatures && this.inventory.letters [source [0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.letters [source [1]].Contains (word [possibleIndex]))) {
-					indicesToCheck.Add (possibleIndex);
-				}
-			}
-			// look for source feature or letter at the end of the word
-			else if (environment [environment.Length-1] == "#") {
-
-				possibleIndex = word.Count - (environment.Length - (Array.IndexOf (environment, "_") + 1));
-
-				// a b a t a -> a b a d a
-				// environment = ["V", "_", "V", "#"]
-				// environment.Length = 4
-				// index of _ = 1
-				// word.Count = 5
-				// 5 - (4 - 1) = 2
-
-				if (sourceIsLetter && word[possibleIndex] == source[0]) {
-					indicesToCheck.Add (possibleIndex);
-				}
-				else if (this.inventory.lettersByFeature[source[0]].Contains (word [possibleIndex]) && (source.Length < 2 || this.inventory.lettersByFeature[source[1]].Contains (word[possibleIndex]))) {
-					indicesToCheck.Add (possibleIndex);
-				}
-			}
-			// look for source feature or letter within the word
-			else {
-				// check each word letter to see if it matches the target letter/feature
-				Debug.Log ("I'm checking for "+source[0]);
-				for (int i = 0; i < word.Count; i++) {
-					
-					if (sourceIsLetter && word [i] == source [0]) {
-						indicesToCheck.Add (i);
-					} else if (sourceIsFeatures && this.inventory.lettersByFeature [source [0]].Contains (word [i]) && (source.Length < 2 || this.inventory.lettersByFeature [source [1]].Contains (word [i]))) {
-						indicesToCheck.Add (i);
-					}
-				}	
-			}
-
-			// go through the list of possible target matches
-			// now that we have lettersToCheck
-			foreach (int letterIndex in indicesToCheck) {
-				Debug.Log ("Currently looking for " + string.Join(" ", environment) + " around " + word[letterIndex]);
-			}
-			// so try this:
-				// - fit each checked letter from word
-				// - into an environment slot
-				// - and then other letters around it into surrounding
-					// - if each of those letters has the feature of that slot
-			 	// - each environment slot should be filled
-			// this reconceptualizes environment as simple frame for checking slot matches
-			
-			Debug.Log ("Just applied rule to produce: " + string.Join("", word.ToArray()));
+			this.ApplyRule (rule, word);
 
 			// output updated word letters list
 			return word;
@@ -677,6 +592,8 @@ public class LanguageBuilder {
 		 *  	e.g. voiced -> voiceless will change "r" -> "" if you don't have a voiceless r
 		 */
 		// assimilate consonant clusters
+
+		// basic voicing assimilation
 		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
 		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
 		// a dash of lenition
