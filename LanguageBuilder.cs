@@ -181,6 +181,39 @@ public class LanguageBuilder {
 		public HashSet<string> GetVowels () {
 			return allVowels;
 		}
+
+		// figure out if a string contains a letter, features or a C/V/# syllable marker
+		public void Match (string matcher, string matchee, out bool isMatch, out HashSet<string> matchValues) {
+			// general consonant match
+			if (matcher == "C" && this.allConsonants.Contains (matchee)) {
+				isMatch = true;
+				matchValues = this.allConsonants;
+			}
+			// general vowel match
+			else if (matcher == "V" && this.allConsonants.Contains (matchee)) {
+				isMatch = true;
+				matchValues = this.allVowels;
+			}
+			// exact letter match
+			else if (matcher == matchee && this.features.ContainsKey(matcher)) {
+				isMatch = true;
+				matchValues = new HashSet<string>{matchee};
+			}
+			// 1+ featureset match
+			// - split out features using matcher.split(" ");
+			// - move isMatch to top to avoid repetition
+			// - subbranch to deal with 1-3 match
+			// - return/out the hashset with one or more matches (inv prop to # features)
+			else if (this.features.ContainsKey(matcher)) {
+				isMatch = true;
+				matchValues = new HashSet<string>{};
+			}
+			// no match
+			else {
+				isMatch = false;
+				matchValues = new HashSet<string>{};
+			}
+		}
 	}
 
 
@@ -289,6 +322,13 @@ public class LanguageBuilder {
 
 		// TODO take rule set and output a formatted string
 		private void FormatRules () {}
+
+		// split a rule string into source, target and environment letters/features
+		public void splitRule (List<string> r, out string[] s, out string[] t, out string[] e) {
+			s = r[0].Split(" ");
+			t = r[1].Split(" ");
+			e = r[2].Split(" ");
+		}
 	}
 
 
@@ -519,23 +559,11 @@ public class LanguageBuilder {
 			// e.g. List<string> rule = { "voiceless plosive", "voiced plosive", "V _ V" };
 			Debug.Log ("Current rule changes " + rule[0] + " to " + rule[1] + " in " + rule[2]);
 
-			// TODO rewrite as recursive solution
-			// List<string> wordPiece;
-			// wordPiece = this.ApplyRule (rule, wordPiece);
-			// 
-			// base case:
-			// 		- down to one letter OR
-			// 		- down to the smallest chunk that rule can apply to
-			// recurse stack:
-			// 	 	- break the word into every possible letter chunk
-			// 		- each chunk seeks to apply rules in order
-			// 			- look to match C or V
-			// 			- look to match letter
-			// 			- look to match feature
-			// 			- if all things match in environment, then move on to storing match
-			// 		- store letters that need to be changed according to rules
-			// 		- now the word gets put together
-			// 	make sure to account for rule application layering
+
+			// check if something is letter, feature or C / V / #
+			// put them in newWord
+
+
 			this.ApplyRule (rule, word);
 
 			// output updated word letters list
