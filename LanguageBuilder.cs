@@ -295,28 +295,25 @@ public class LanguageBuilder {
 
 	// simple sound & grammar rules to map built syllables to word structure
 	public class Rules {
-		// TODO add properties/methods for accessing this dict
-		// sound change kvs of structure 'feature, feature' -> 'feature, feature'
-		public List<List<string>> soundChanges = new List<List<string>>();
+		// sound change rules { { source, target, environment }, ... }
+		public List<List<List<string>>> soundChanges = new List<List<List<string>>>();
 
 		public Rules () {}
 
-		// split csv rule string into array of features
-		private string[] ConvertStringToArray (string csvString) {
-			string[] arr = csvString.Split(',');
-			return arr;
-		}
-
-		// split csv rule feature array into string
-		private string ConvertArrayToString (string[] arr) {
-			string csvString = String.Join(",", arr);
-			return csvString;
-		}		
+		// break rule segment into component features or letters
+		private List<string> ConvertStringToList (string s) {
+			List<string> splitString = new List<string>();
+			splitString.AddRange(s.Split(" "));
+			return splitString;
+		}	
 
 		// store "underlying" shape as key and "surface" shape as value
 		// e.g. vowel, plosive, vowel -> vowel, fricative, vowel
 		public void AddRule (string source, string target, string environment) {
-			List<string> newRule = new List<string> {source, target, environment};
+			List<string> s = this.ConvertStringToList(source);
+			List<string> t = this.ConvertStringToList(target);
+			List<string> e = this.ConvertStringToList(environment);
+			List<List<string>> newRule = new List<List<string>> {s, t, e};
 			soundChanges.Add (newRule);
 		}
 
@@ -621,18 +618,18 @@ public class LanguageBuilder {
 		 */
 		// assimilate consonant clusters
 
-		// basic voicing assimilation
-		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
-		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
-		// a dash of lenition
-		rules.AddRule ( "plosive", "fricative", "V _ V" );
-		// avoid awkward clusters
-		rules.AddRule ( "h", "", "_ C" );
-		rules.AddRule ( "r", "", "_ w" );
-		// simplify certain long vowels
-		rules.AddRule ( "a", "", "_ a" );
-		rules.AddRule ( "i", "", "_ i" );
-		rules.AddRule ( "u", "", "_ u" );
+//		// basic voicing assimilation
+//		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
+//		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
+//		// a dash of lenition
+//		rules.AddRule ( "plosive", "fricative", "V _ V" );
+//		// avoid awkward clusters
+//		rules.AddRule ( "h", "", "_ C" );
+//		rules.AddRule ( "r", "", "_ w" );
+//		// simplify certain long vowels
+//		rules.AddRule ( "a", "", "_ a" );
+//		rules.AddRule ( "i", "", "_ i" );
+//		rules.AddRule ( "u", "", "_ u" );
 
 		Affixes affixes = new Affixes();
 		// add prefixes and suffixes
