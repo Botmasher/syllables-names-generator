@@ -183,35 +183,26 @@ public class LanguageBuilder {
 		}
 
 		// figure out if a string contains a letter, features or a C/V/# syllable marker
-		public void Match (string matcher, string matchee, out bool isMatch, out HashSet<string> matchValues) {
+		public void Match (string match, string letter, out bool isMatch) {
 			// general consonant match
-			if (matcher == "C" && this.allConsonants.Contains (matchee)) {
+			if (match == "C" && this.allConsonants.Contains (letter)) {
 				isMatch = true;
-				matchValues = this.allConsonants;
 			}
 			// general vowel match
-			else if (matcher == "V" && this.allConsonants.Contains (matchee)) {
+			else if (match == "V" && this.allVowels.Contains (letter)) {
 				isMatch = true;
-				matchValues = this.allVowels;
 			}
 			// exact letter match
-			else if (matcher == matchee && this.features.ContainsKey(matcher)) {
+			else if (natch == letter && this.features.ContainsKey(match)) {
 				isMatch = true;
-				matchValues = new HashSet<string>{matchee};
 			}
-			// 1+ featureset match
-			// - split out features using matcher.split(" ");
-			// - move isMatch to top to avoid repetition
-			// - subbranch to deal with 1-3 match
-			// - return/out the hashset with one or more matches (inv prop to # features)
-			else if (this.features.ContainsKey(matcher)) {
-				isMatch = true;
-				matchValues = new HashSet<string>{};
-			}
-			// no match
+			// featureset match or no match at all
 			else {
-				isMatch = false;
-				matchValues = new HashSet<string>{};
+				string[] matchFeatures = match.Split(" ");
+				isMatch = true;
+				foreach (string f in matchFeatures) {
+					isMatch = this.features.ContainsKey(f) ? isMatch : false;
+				}
 			}
 		}
 	}
@@ -316,9 +307,6 @@ public class LanguageBuilder {
 			List<List<string>> newRule = new List<List<string>> {s, t, e};
 			soundChanges.Add (newRule);
 		}
-
-		// TODO take rule set and output a formatted string
-		private void FormatRules () {}
 
 		// split a rule string into source, target and environment letters/features
 		public void splitRule (List<string> r, out string[] s, out string[] t, out string[] e) {
@@ -532,7 +520,7 @@ public class LanguageBuilder {
 			List<string> changedWord = word;
 
 			// go through and apply every rule to the sample word
-			foreach (List<string> rule in this.rules.soundChanges) {
+			foreach (List<List<string>> rule in this.rules.soundChanges) {
 				changedWord = this.ApplyRule(rule, changedWord);
 			}
 			return changedWord;
@@ -544,7 +532,7 @@ public class LanguageBuilder {
 			// - rules that delete go from e.g. "V" -> ""
 			// - rules that change features need matching number of features e.g. "voiced,plosive" -> "voiced,fricative" NOT just "fricative" 
 		private List<string> ApplyRule (
-			List<string> rule,
+			List<List<string>> rule,
 			List<string> word)
 		{
 			// no word letters to build
@@ -552,16 +540,15 @@ public class LanguageBuilder {
 				return word;
 			}
 
-			// check the format of the rule
-			// e.g. List<string> rule = { "voiceless plosive", "voiced plosive", "V _ V" };
-			Debug.Log ("Current rule changes " + rule[0] + " to " + rule[1] + " in " + rule[2]);
+			List<string> source = rule[0];
+			List<string> target = rule[1];
+			List<string> environment = rule[2];
 
+			// rule format e.g. { {"voiceless","plosive"}, {"voiced","plosive"}, {"V", "_", "V"} }
 
-			// check if something is letter, feature or C / V / #
-			// put them in newWord
-
-
-			this.ApplyRule (rule, word);
+			// add # to beginning and end of word
+			// keep track of any potential matches as iterate through
+			List<int> indexTracker = new List<int> ();
 
 			// output updated word letters list
 			return word;
