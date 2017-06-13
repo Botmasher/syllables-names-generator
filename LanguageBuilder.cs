@@ -286,10 +286,10 @@ public class LanguageBuilder {
 		}
 
 		// split a rule string into source, target and environment letters/features
-		public void SplitRule (List<string> r, out string[] s, out string[] t, out string[] e) {
-			s = r[0].Split(" ");
-			t = r[1].Split(" ");
-			e = r[2].Split(" ");
+		public void SplitRule (List<string> r, out List<string> s, out List<string> t, out List<string> e) {
+			s = r[0].Split(" ").ToList();
+			t = r[1].Split(" ").ToList();
+			e = r[2].Split(" ").ToList();
 		}
 
 		public string DisplayRule (r) {
@@ -499,14 +499,17 @@ public class LanguageBuilder {
 		// apply every single rule in the ruleset to a built word
 		public List<string> ApplyRules (List<string> word) {
 
-			// run rules with the word's letters and features
-			List<string> changedWord = word;
+			// prepare to extract source, target and phono environment in each rule
+			List<string> source = new List<string> ();
+			List<string> target = new List<string> ();
+			List<string> environment = new List<string> ();
 
 			// go through and apply every rule to the sample word
 			foreach (List<List<string>> rule in this.rules.soundChanges) {
-				changedWord = this.ApplyRule(rule, changedWord);
+				this.rules.SplitRule(rule, source, target, environment);
+				word = this.ApplyRule(source, target, environment, word);
 			}
-			return changedWord;
+			return word;
 		}
 
 		// go through word looking for rule pattern matches
@@ -514,18 +517,12 @@ public class LanguageBuilder {
 			// - list of strings expecting "C", "V", "", letter string or csv feature string
 			// - rules that delete go from e.g. "V" -> ""
 			// - rules that change features need matching number of features e.g. "voiced,plosive" -> "voiced,fricative" NOT just "fricative" 
-		private List<string> ApplyRule (
-			List<List<string>> rule,
-			List<string> word)
+		private List<string> ApplyRule (List<string> source, List<string> target, List<string> environment, List<string> word)
 		{
 			// no word letters to build
 			if (word.Count <= 0) {
 				return word;
 			}
-
-			List<string> source = rule[0];
-			List<string> target = rule[1];
-			List<string> environment = rule[2];
 
 			// rule format e.g. { {"voiceless","plosive"}, {"voiced","plosive"}, {"V", "_", "V"} }
 
