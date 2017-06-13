@@ -225,29 +225,6 @@ public class LanguageBuilder {
 
 	}
 
-
-	// BASIC rule outcomes
-	// V,plosive,V : V,fricative,V => change medial C
-	// C,V,C,C : 
-	//
-	// EXTRA rule outcomes
-	// C,V,C : C,V => delete last C
-	// #,s,t,V : #,e,s,t,V => insert e- at beginning of word
-	// V,C1,C2,V : V,C1,V => delete second C
-	// C,V,C : C,V,V,C => lengthen vowel
-	// C,y,V,C : palatal,V,C => palatalize consonant, delete y
-	// C,V,nasal,C : C,V˜,C => delete nasal, nasalize vowel
-	//
-	// * NOTES
-	//  - C, V, #, _ reserved for syllables
-	// 	- lowercase reserved for letters
-	// 	- have to match BOTH symbols and letters
-	// 	- also have to match features
-	// 	- each word's characters broken into list, so we can check:
-	// 		- if string length > 1 and in inventory cons/vowel dicts == FEATURE
-	// 		- if string is C, V, #, _ == SYLL STRUCTURE
-	// 		- otherwise if string is lowercase, len > 0 < 4 == LETTER
-
 	// simple affixes mapping to properties supporting formats prefix- or -suffix
 	public class Affixes {
 		
@@ -309,10 +286,16 @@ public class LanguageBuilder {
 		}
 
 		// split a rule string into source, target and environment letters/features
-		public void splitRule (List<string> r, out string[] s, out string[] t, out string[] e) {
+		public void SplitRule (List<string> r, out string[] s, out string[] t, out string[] e) {
 			s = r[0].Split(" ");
 			t = r[1].Split(" ");
 			e = r[2].Split(" ");
+		}
+
+		public string DisplayRule (r) {
+			string prettyRule = "";
+			prettyRule = string.Format("source: {0}, target: {1}, environment: {2}", r[0], r[1], r[2])
+			return prettyRule;
 		}
 	}
 
