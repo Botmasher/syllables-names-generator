@@ -246,6 +246,8 @@ public class LanguageBuilder {
 		// currently handle prefixing or suffixing (only)
 		public List<string> AttachAffix (List<string> word, string property) {
 			List<string> affix = this.affixes[property];
+			// get rid of boundary "#"
+			word.RemoveAt(word.Count-1);
 			// attach as prefix
 			if (affix[affix.Count-1] == "-") {
 				affix.RemoveAt(affix.Count-1);
@@ -256,6 +258,8 @@ public class LanguageBuilder {
 				affix.RemoveAt(0);
 				word.AddRange(affix);
 			}
+			// add new ending boundary
+			word.Add("#");
 			Debug.Log ("Added affix to root: " + string.Join("", word.ToArray()));
 			return word;
 		}
@@ -457,11 +461,12 @@ public class LanguageBuilder {
 			// TODO add ability to build by features in BuildWord + BuildSyllable
 
 			// create chosen number of syllables and add to word
-			List<string> newRoot = new List<string>();
+			List<string> newRoot = new List<string>{"#"};
 			for (int i=0; i < numSyllables; i++) {
 				List<string> newSyllable = this.BuildSyllable(consonants, vowels);
 				newRoot.AddRange(newSyllable);
 			}
+			newRoot.Add("#");
 			Debug.Log ("Finished building root: " + string.Join("", newRoot.ToArray()));
 			return newRoot;
 		}
@@ -504,9 +509,24 @@ public class LanguageBuilder {
 			List<string> target = new List<string> ();
 			List<string> environment = new List<string> ();
 
+			// the indexes and the chunks that need rule changes
+			Dictionary<int, List<string>> ruledSections = new Dictionary <int, List<string>>();
+
 			// go through and apply every rule to the sample word
 			foreach (List<List<string>> rule in this.rules.soundChanges) {
+
+				ruledSections.Clear();
+
+				// fill this rule's sound and environment
 				this.rules.SplitRule(rule, source, target, environment);
+
+				// find each section where the rule applies
+
+				// apply the rule to found sections
+
+				// build the word out of changed sections
+
+				// OLD - apply the rule
 				word = this.ApplyRule(source, target, environment, word);
 			}
 			return word;
