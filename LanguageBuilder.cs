@@ -212,6 +212,7 @@ public class LanguageBuilder {
 	public class Syllable {
 		// all possible syllable structures, e.g. C,V,C or C,j,V,V or plosive,V
 		public List<List<string>> structures = new List<List<string>>();
+		public List<string> symbols = new List<string> {"V", "C", "#", "_"};
 
 		public void HowManySyllables () {}
 
@@ -532,14 +533,49 @@ public class LanguageBuilder {
 			return word;
 		}
 
+		// rule apply submethod - find letters in a word matching source sound for environment investigation
 		private List<int> FindRuleMatches (List<string> word, List<string> source) {
-			List<int> possibleMatches = new List<int>();
+
+			// store potential index matches to return
+			List<int> possibleIndexes = new List<int>();
+			
+			// iterate through word looking for a letter/feature match
 			for (int i=0; i < word.Count; i++) {
-				// if this letter matches source letter
-				// if this letter matches source feature(s)
+				
+				// word letter matches source letter
+				if (source.Count == 1 && word[i] == source) {
+					// store the possible index
+					possibleIndexes.Add (i);
+				}
+				
+				// word letter matches source feature(s)
+				else if (this.inventory.lettersByFeature.ContainsKey(source[0])) {
+					// store the possible index
+					foreach (string s in source) {
+						// if this letter does not have this feature
+						continue;
+					}
+					possibleIndexes.Add (i);
+				}
+
 				// if this letter is a general syll C/V
+				else if (source.Count == 1 && this.syllable.symbols.Contains(source[0])) {
+					if (source[0] == "V" && this.inventory.allVowels.Contains(word[i])) {
+						possibleIndexes.Add (i);
+					} else if (soure[0] == "C" && this.inventory.allConsonants.Contains(word[i])) {
+						possibleIndexes.Add (i);
+					} else {
+						continue;
+					}
+				}
+
 				// otherwise default to non-match
+				else {
+
+				}
 			}
+
+			return possibleIndexes;
 		}
 
 		// go through word looking for rule pattern matches
