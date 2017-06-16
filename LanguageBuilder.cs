@@ -532,6 +532,16 @@ public class LanguageBuilder {
 			return word;
 		}
 
+		private List<int> FindRuleMatches (List<string> word, List<string> source) {
+			List<int> possibleMatches = new List<int>();
+			for (int i=0; i < word.Count; i++) {
+				// if this letter matches source letter
+				// if this letter matches source feature(s)
+				// if this letter is a general syll C/V
+				// otherwise default to non-match
+			}
+		}
+
 		// go through word looking for rule pattern matches
 		// TODO document user guidelines for formatting a readable rule
 			// - list of strings expecting "C", "V", "", letter string or csv feature string
@@ -546,9 +556,17 @@ public class LanguageBuilder {
 
 			// rule format e.g. { {"voiceless","plosive"}, {"voiced","plosive"}, {"V", "_", "V"} }
 
-			// add # to beginning and end of word
 			// keep track of any potential matches as iterate through
 			List<int> indexTracker = new List<int> ();
+
+			// find indexes that potentially match the rule source
+			List<int> possibleIndices = this.FindRuleMatches (word, source);
+
+			if (possibleIndices.Count < 1) {
+				return word;
+			}
+
+			// find out if surrounding index environments match rule environment
 
 			// output updated word letters list
 			return word;
