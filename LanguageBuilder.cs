@@ -522,8 +522,13 @@ public class LanguageBuilder {
 				this.rules.SplitRule(rule, source, target, environment);
 
 				// find each section where the rule applies
+				List<int> possibleIndexMatches = this.FindRuleMatches(word, source);
 
 				// apply the rule to found sections
+				foreach (int possibleIndex in possibleIndexMatches) {
+					this.FindRuleEnvironments (word, environment);
+					// chunk word around index into just the environment to test?
+				}
 
 				// build the word out of changed sections
 
@@ -571,11 +576,15 @@ public class LanguageBuilder {
 
 				// otherwise default to non-match
 				else {
-
+					// non-matches add nothing
 				}
 			}
 
 			return possibleIndexes;
+		}
+
+		// Chunk word into environment segs and just check those instead?
+		private List<int> FindRuleEnvironments (List<string> word, List<string> environment) {
 		}
 
 		// go through word looking for rule pattern matches
