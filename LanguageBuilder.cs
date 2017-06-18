@@ -513,6 +513,13 @@ public class LanguageBuilder {
 			// the indexes and the chunks that need rule changes
 			Dictionary<int, List<string>> ruledSections = new Dictionary <int, List<string>>();
 
+			// storing subword and indexes to cut and test for source and environment match
+			List<string> cutWordSample = new List<string>();
+			List<int> possibleIndexMatches = new List<int>();
+			int blankIndex = -1;
+			int firstIndex = -1;
+			int lastIndex = -1;
+
 			// go through and apply every rule to the sample word
 			foreach (List<List<string>> rule in this.rules.soundChanges) {
 
@@ -522,10 +529,30 @@ public class LanguageBuilder {
 				this.rules.SplitRule(rule, source, target, environment);
 
 				// find each section where the rule applies
-				List<int> possibleIndexMatches = this.FindRuleMatches(word, source);
+				possibleIndexMatches = this.FindRuleMatches(word, source);
+
+				// location of the blank space in the environment
+				blankIndex = environment.FindIndex(x => x == "_");
 
 				// apply the rule to found sections
 				foreach (int possibleIndex in possibleIndexMatches) {
+					// split the word
+					// end: 		possibleIndex + (environment.Count-1 - blankIndex)
+					// middle: 		possibleIndex
+					// beginning: 	possibleIndex - blankIndex
+					//
+					// e.g.
+					// 	b, a, t, y, a, a, k, a, t, a
+					//  	        V, V, _, V
+					// end: 		6 + ((4-1) - 2) 	= 7 	// last to include
+					// middle 		6
+					// beginning 	6 - 2  				= 4 	// first to include
+
+					// list of indices to check should be all but the blank, which is matched src
+					firstIndex = possibleIndex - blankIndex;
+					lastIndex = possibleIndex + (environment.Count-1 - blankIndex);
+					cutWordSample = word.GetRange(firstIndex, lastIndex - firstIndex);
+
 					this.FindRuleEnvironments (word, environment);
 					// chunk word around index into just the environment to test?
 				}
@@ -586,6 +613,7 @@ public class LanguageBuilder {
 		// Chunk word into environment segs and just check those instead?
 		private List<int> FindRuleEnvironments (List<string> word, List<string> environment) {
 		}
+
 
 		// go through word looking for rule pattern matches
 		// TODO document user guidelines for formatting a readable rule
