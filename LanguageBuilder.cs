@@ -519,6 +519,10 @@ public class LanguageBuilder {
 			int blankIndex = -1;
 			int firstIndex = -1;
 			int lastIndex = -1;
+			// test if environment matches word sample
+			bool isMatch = false;
+			string newLetter = "";
+			List<string> newWord = word.GetRange (0, word.Count);
 
 			// go through and apply every rule to the sample word
 			foreach (List<List<string>> rule in this.rules.soundChanges) {
@@ -553,16 +557,18 @@ public class LanguageBuilder {
 					lastIndex = possibleIndex + (environment.Count-1 - blankIndex);
 					cutWordSample = word.GetRange(firstIndex, lastIndex - firstIndex);
 
-					this.FindRuleEnvironments (word, environment);
-					// chunk word around index into just the environment to test?
+					// test chunked word around index to see if matches the environment
+					isMatch = this.FindRuleEnvironments (cutWordSample, environment);
+
+					// build word out of changed sections
+					if (isMatch) {
+						newLetter = this.ChangeSourceToTarget(word[possibleIndex], target);
+						newWord[possibleIndex] = newLetter;
+						isMatch = false;
+					}
 				}
-
-				// build the word out of changed sections
-
-				// OLD - apply the rule
-				word = this.ApplyRule(source, target, environment, word);
 			}
-			return word;
+			return newWord;
 		}
 
 		// rule apply submethod - find letters in a word matching source sound for environment investigation
@@ -611,7 +617,10 @@ public class LanguageBuilder {
 		}
 
 		// Chunk word into environment segs and just check those instead?
-		private List<int> FindRuleEnvironments (List<string> word, List<string> environment) {
+		private bool FindRuleEnvironments (List<string> subWord, List<string> environment) {
+		}
+
+		private string ChangeSourceToTarget (string letter, string target) {
 		}
 
 
