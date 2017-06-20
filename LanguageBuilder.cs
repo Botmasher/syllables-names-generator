@@ -616,8 +616,48 @@ public class LanguageBuilder {
 			return possibleIndexes;
 		}
 
-		// Chunk word into environment segs and just check those instead?
+		// Check word chunked into environment-length seg against the rule environment
 		private bool FindRuleEnvironments (List<string> subWord, List<string> environment) {
+			// check for subword/environment parallel matchup
+			Debug.Log ("Wordcut length matches environment length: "+environment.Count == subWord.Count);
+			// splitting environment positions (esp for feature matrix; all else assumes length 1)
+			string[] e = new string[] ();
+			// test for complete match
+			wordMatches = true;
+
+			// iterate through environment looking for subword matches
+			for (int i=0; i < environment.Count; i++) {
+				e = environment[i].Split(",");
+				// environment position contains nothing
+				if (e.Length == 0) {
+					continue;
+				}
+				// environment position is a vowel
+				if (e.Length == 1 && e[0] == "V" && this.inventory.allVowels.Contains(subWord[i])) {
+					continue;
+				// environment position is a consonant
+				} else if (e.Length == 1 && e[0] == "C" && this.inventory.allConsonants.Contains(subWord[i])) {
+					continue;
+				// environment position is a letter
+				} else if (e.Length == 1 && e == subWord[i]) {
+					continue;
+				// environment position is a feature matrix
+				} else if (this.inventory.lettersByFeature.ContainsKey(e[0])) {
+					foreach (string feature in e) {
+						if (!this.inventory.features[subWord[i]].Contains(feature)) {
+							wordMatches = false;
+						}
+					}
+					continue;
+				// environment position is the blank
+				} else if (e.Length == 1 && e[0] == "_") {
+					continue;
+				// subword does not match environment at this position
+				} else {
+					wordMatches = false;
+				}
+			}
+			return wordMatches;
 		}
 
 		private string ChangeSourceToTarget (string letter, string target) {
