@@ -562,7 +562,7 @@ public class LanguageBuilder {
 
 					// build word out of changed sections
 					if (isMatch) {
-						newLetter = this.ChangeSourceToTarget(word[possibleIndex], target);
+						newLetter = this.ChangeSourceToTarget(word[possibleIndex], source, target);
 						newWord[possibleIndex] = newLetter;
 						isMatch = false;
 					}
@@ -638,7 +638,7 @@ public class LanguageBuilder {
 				// environment position is a consonant
 				} else if (e.Length == 1 && e[0] == "C" && this.inventory.allConsonants.Contains(subWord[i])) {
 					continue;
-				// environment position is a letter
+				// environment position is one letter or symbol (incl #)
 				} else if (e.Length == 1 && e == subWord[i]) {
 					continue;
 				// environment position is a feature matrix
@@ -660,7 +660,30 @@ public class LanguageBuilder {
 			return wordMatches;
 		}
 
-		private string ChangeSourceToTarget (string letter, string target) {
+		// change a rule-matching letter into the target sound
+		private string ChangeSourceToTarget (string letter, List<string> source, List<string> target) {
+			// target unidentified
+			if (target.Count == 0) {
+				return letter;
+			// target is a letter or boundary or empty/delete
+			} else if (target.Count == 1) {
+				if (this.inventory.features.ContainsKey(target[0]) || target == "#" || target == "") {
+					return target;
+				}
+				return letter;
+			}
+			// target is features
+			} else {
+				List<string> letterFeatures = this.inventory.GetFeatures(letter).ToList();
+
+				// iteration relies on parallel semantic and formal source/target structure
+				// e.g. voiced plosive -> voiced fricative BUT NOT voiced plosive -> fricative
+				for (int i=0; i < target.Count; i++) {
+					// not checking for contains because feature verified in earlier method
+					letterFeatures.IndexOf (source[i]) == target[i];
+				}
+				return this.inventory.GetLetter(letterFeatures[0], letterFeatures[1], letterFeatures[2])
+			}
 		}
 
 
