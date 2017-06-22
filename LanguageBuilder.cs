@@ -159,14 +159,19 @@ public class LanguageBuilder {
 		}
 
 		// find the letter equivalent to these features
-		public string GetLetter (string feature0, string feature1, string feature2, string nonLetter="") {
+		public string GetLetter (List<string> features, string nonLetter="") {
+
+			// check for a full feature matrix
+			if (features.Count != 3) {
+				return nonLetter;
+			}
 
 			// format features as string to match key
-			string features = string.Format("{0},{1},{2}", feature0, feature1, feature2);
+			string f = string.Format("{0},{1},{2}", features[0], features[1], features[2]);
 
-			// found a consonant that has all of these features
-			if (this.letters.ContainsKey (features)) {
-				return this.letters[features];
+			// found a letter that has all of these features
+			if (this.letters.ContainsKey (f)) {
+				return this.letters[f];
 			}
 			// no letter has all of these features
 			return nonLetter;
@@ -680,9 +685,13 @@ public class LanguageBuilder {
 				// e.g. voiced plosive -> voiced fricative BUT NOT voiced plosive -> fricative
 				for (int i=0; i < target.Count; i++) {
 					// not checking for contains because feature verified in earlier method
-					letterFeatures.IndexOf (source[i]) == target[i];
+					// if (letterFeatures.Contains(target[i])) {}
+
+					// switch out the source feature for the new feature
+					letterFeatures [ letterFeatures.IndexOf (source[i]) ] = target[i];
 				}
-				return this.inventory.GetLetter(letterFeatures[0], letterFeatures[1], letterFeatures[2])
+				// get new letter if it exists, otherwise original letter
+				return this.inventory.GetLetter(letterFeatures, letter);
 			}
 		}
 
@@ -751,9 +760,12 @@ public class LanguageBuilder {
 
 		// /!\ ONLY recall letters using correct feature order /!\
 		// This finds "b":
-		inventory.GetLetter("voiced", "bilabial", "plosive");
+		List<string> testFeaturesList = new List<string> {"voiced", "bilabial", "plosive"};
+		inventory.GetLetter(testFeaturesList);
 		// This will not find "b":
-		//inventory.GetLetter("voiced", "plosive", "bilabial"));
+		testFeaturesList [0] = "bilabial";
+		testFeaturesList [1] = "voiced";
+		inventory.GetLetter(testFeaturesList);
 
 		Syllable syllableStructure = new Syllable();
 		syllableStructure.AddStructure(new List<string> {"C","V"});
