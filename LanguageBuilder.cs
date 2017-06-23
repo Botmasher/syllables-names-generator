@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class LanguageBuilder {
+public class LanguageBuilder : MonoBehaviour {
 
 	// model sound structure
 	public class Inventory {
@@ -33,7 +33,7 @@ public class LanguageBuilder {
 		List<string> rounding = new List<string> { "rounded", "unrounded" };
 
 		public Inventory () {
-			
+
 			// basic consonant feature keys
 			foreach (string f in this.voicing) {
 				this.lettersByFeature.Add(f, new HashSet<string>());
@@ -80,7 +80,7 @@ public class LanguageBuilder {
 
 		// are these three features actually a feature matrix?
 		private bool isFeatureMatrix (string feature0, string feature1, string feature2) {
-			
+
 			// detect a consonant
 			if (this.voicing.Contains (feature0) || this.voicing.Contains(feature1) || this.voicing.Contains(feature2)) {
 				if (this.manner.Contains (feature0) || this.manner.Contains(feature1) || this.manner.Contains(feature2)) {
@@ -128,7 +128,7 @@ public class LanguageBuilder {
 
 		// store a consonant letter and its features
 		public bool AddConsonant (string letter, string voicing, string place, string manner) {
-			
+
 			// not a recognized consonant or vowel feature matrix
 			if (!this.isFeatureMatrix (voicing, place, manner)) {
 				return false;
@@ -198,12 +198,12 @@ public class LanguageBuilder {
 				isMatch = true;
 			}
 			// exact letter match
-			else if (natch == letter && this.features.ContainsKey(match)) {
+			else if (match == letter && this.features.ContainsKey(match)) {
 				isMatch = true;
 			}
 			// featureset match or no match at all
 			else {
-				string[] matchFeatures = match.Split(" ");
+				string[] matchFeatures = match.Split(' ');
 				isMatch = true;
 				foreach (string f in matchFeatures) {
 					isMatch = this.features.ContainsKey(f) ? isMatch : false;
@@ -233,7 +233,7 @@ public class LanguageBuilder {
 
 	// simple affixes mapping to properties supporting formats prefix- or -suffix
 	public class Affixes {
-		
+
 		// TODO methods/properties for accessing dict
 		// affixes added to word for properties
 		public Dictionary<string,List<string>> affixes = new Dictionary<string,List<string>>();
@@ -281,7 +281,7 @@ public class LanguageBuilder {
 		// break rule segment into component features or letters
 		private List<string> ConvertStringToList (string s) {
 			List<string> splitString = new List<string>();
-			splitString.AddRange(s.Split(" "));
+			splitString.AddRange(s.Split(' '));
 			return splitString;
 		}	
 
@@ -296,15 +296,15 @@ public class LanguageBuilder {
 		}
 
 		// split a rule string into source, target and environment letters/features
-		public void SplitRule (List<string> r, out List<string> s, out List<string> t, out List<string> e) {
-			s = r[0].Split(" ").ToList();
-			t = r[1].Split(" ").ToList();
-			e = r[2].Split(" ").ToList();
+		public void SplitRule (List<List<string>> r, out List<string> s, out List<string> t, out List<string> e) {
+			s = r[0];
+			t = r[1];
+			e = r[2];
 		}
 
-		public string DisplayRule (r) {
+		public string DisplayRule (List<string> r) {
 			string prettyRule = "";
-			prettyRule = string.Format("source: {0}, target: {1}, environment: {2}", r[0], r[1], r[2])
+			prettyRule = string.Format ("source: {0}, target: {1}, environment: {2}", r [0], r [1], r [2]);
 			return prettyRule;
 		}
 	}
@@ -403,12 +403,12 @@ public class LanguageBuilder {
 				string[] features = new string[] {};
 				if (letter.IndexOf(",") > -1) {
 					features = letter.Split(',');
-				// pick a consonant based on a single feature
+					// pick a consonant based on a single feature
 				} else if (this.inventory.lettersByFeature.ContainsKey(letter)) {
 					possibleLetters = this.inventory.lettersByFeature[letter];
 					string[] possibleLettersList = possibleLetters.ToArray();
 					return possibleLettersList[this.random.Next(0, possibleLetters.Count)];
-				// pick a vowel based on a single feature
+					// pick a vowel based on a single feature
 				} else if (this.inventory.lettersByFeature.ContainsKey(letter)) {
 					possibleLetters = this.inventory.lettersByFeature[letter];
 					string[] possibleLettersList = possibleLetters.ToArray ();
@@ -479,7 +479,7 @@ public class LanguageBuilder {
 
 		// convert word into a formatted proper name
 		private List<string> FormatName (List<string> word) {
-			
+
 			// find the first letter in the word
 			int firstNonEmptyString = -1;
 			for (int i=0; i < word.Count; i++) {
@@ -535,7 +535,7 @@ public class LanguageBuilder {
 				ruledSections.Clear();
 
 				// fill this rule's sound and environment
-				this.rules.SplitRule(rule, source, target, environment);
+				this.rules.SplitRule(rule, out source, out target, out environment);
 
 				// find each section where the rule applies
 				possibleIndexMatches = this.FindRuleMatches(word, source);
@@ -581,16 +581,16 @@ public class LanguageBuilder {
 
 			// store potential index matches to return
 			List<int> possibleIndexes = new List<int>();
-			
+
 			// iterate through word looking for a letter/feature match
 			for (int i=0; i < word.Count; i++) {
-				
+
 				// word letter matches source letter
-				if (source.Count == 1 && word[i] == source) {
+				if (source.Count == 1 && word[i] == source[0]) {
 					// store the possible index
 					possibleIndexes.Add (i);
 				}
-				
+
 				// word letter matches source feature(s)
 				else if (this.inventory.lettersByFeature.ContainsKey(source[0])) {
 					// store the possible index
@@ -605,7 +605,7 @@ public class LanguageBuilder {
 				else if (source.Count == 1 && this.syllable.symbols.Contains(source[0])) {
 					if (source[0] == "V" && this.inventory.allVowels.Contains(word[i])) {
 						possibleIndexes.Add (i);
-					} else if (soure[0] == "C" && this.inventory.allConsonants.Contains(word[i])) {
+					} else if (source[0] == "C" && this.inventory.allConsonants.Contains(word[i])) {
 						possibleIndexes.Add (i);
 					} else {
 						continue;
@@ -624,15 +624,15 @@ public class LanguageBuilder {
 		// Check word chunked into environment-length seg against the rule environment
 		private bool FindRuleEnvironments (List<string> subWord, List<string> environment) {
 			// check for subword/environment parallel matchup
-			Debug.Log ("Wordcut length matches environment length: "+environment.Count == subWord.Count);
+			Debug.Log ("Wordcut length matches environment length: "+ (environment.Count == subWord.Count).ToString() );
 			// splitting environment positions (esp for feature matrix; all else assumes length 1)
-			string[] e = new string[] ();
+			string[] e = new string[] {};
 			// test for complete match
-			wordMatches = true;
+			bool wordMatches = true;
 
 			// iterate through environment looking for subword matches
 			for (int i=0; i < environment.Count; i++) {
-				e = environment[i].Split(",");
+				e = environment[i].Split(',');
 				// environment position contains nothing
 				if (e.Length == 0) {
 					continue;
@@ -640,13 +640,13 @@ public class LanguageBuilder {
 				// environment position is a vowel
 				if (e.Length == 1 && e[0] == "V" && this.inventory.allVowels.Contains(subWord[i])) {
 					continue;
-				// environment position is a consonant
+					// environment position is a consonant
 				} else if (e.Length == 1 && e[0] == "C" && this.inventory.allConsonants.Contains(subWord[i])) {
 					continue;
-				// environment position is one letter or symbol (incl #)
-				} else if (e.Length == 1 && e == subWord[i]) {
+					// environment position is one letter or symbol (incl #)
+				} else if (e.Length == 1 && e[0] == subWord[i]) {
 					continue;
-				// environment position is a feature matrix
+					// environment position is a feature matrix
 				} else if (this.inventory.lettersByFeature.ContainsKey(e[0])) {
 					foreach (string feature in e) {
 						if (!this.inventory.features[subWord[i]].Contains(feature)) {
@@ -654,10 +654,10 @@ public class LanguageBuilder {
 						}
 					}
 					continue;
-				// environment position is the blank
+					// environment position is the blank
 				} else if (e.Length == 1 && e[0] == "_") {
 					continue;
-				// subword does not match environment at this position
+					// subword does not match environment at this position
 				} else {
 					wordMatches = false;
 				}
@@ -670,13 +670,13 @@ public class LanguageBuilder {
 			// target unidentified
 			if (target.Count == 0) {
 				return letter;
-			// target is a letter or boundary or empty/delete
+				// target is a letter or boundary or empty/delete
 			} else if (target.Count == 1) {
-				if (this.inventory.features.ContainsKey(target[0]) || target == "#" || target == "") {
-					return target;
+				if (this.inventory.features.ContainsKey(target[0]) || target[0] == "#" || target[0] == "") {
+					return target[0];
 				}
 				return letter;
-			}
+
 			// target is features
 			} else {
 				List<string> letterFeatures = this.inventory.GetFeatures(letter).ToList();
@@ -694,13 +694,12 @@ public class LanguageBuilder {
 				return this.inventory.GetLetter(letterFeatures, letter);
 			}
 		}
-
-
+		
 		// go through word looking for rule pattern matches
 		// TODO document user guidelines for formatting a readable rule
-			// - list of strings expecting "C", "V", "", letter string or csv feature string
-			// - rules that delete go from e.g. "V" -> ""
-			// - rules that change features need matching number of features e.g. "voiced,plosive" -> "voiced,fricative" NOT just "fricative" 
+		// - list of strings expecting "C", "V", "", letter string or csv feature string
+		// - rules that delete go from e.g. "V" -> ""
+		// - rules that change features need matching number of features e.g. "voiced,plosive" -> "voiced,fricative" NOT just "fricative" 
 		private List<string> ApplyRule (List<string> source, List<string> target, List<string> environment, List<string> word)
 		{
 			// no word letters to build
@@ -709,9 +708,6 @@ public class LanguageBuilder {
 			}
 
 			// rule format e.g. { {"voiceless","plosive"}, {"voiced","plosive"}, {"V", "_", "V"} }
-
-			// keep track of any potential matches as iterate through
-			List<int> indexTracker = new List<int> ();
 
 			// find indexes that potentially match the rule source
 			List<int> possibleIndices = this.FindRuleMatches (word, source);
@@ -780,18 +776,18 @@ public class LanguageBuilder {
 		 */
 		// assimilate consonant clusters
 
-//		// basic voicing assimilation
-//		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
-//		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
-//		// a dash of lenition
-//		rules.AddRule ( "plosive", "fricative", "V _ V" );
-//		// avoid awkward clusters
-//		rules.AddRule ( "h", "", "_ C" );
-//		rules.AddRule ( "r", "", "_ w" );
-//		// simplify certain long vowels
-//		rules.AddRule ( "a", "", "_ a" );
-//		rules.AddRule ( "i", "", "_ i" );
-//		rules.AddRule ( "u", "", "_ u" );
+		//		// basic voicing assimilation
+		//		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
+		//		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
+		//		// a dash of lenition
+		//		rules.AddRule ( "plosive", "fricative", "V _ V" );
+		//		// avoid awkward clusters
+		//		rules.AddRule ( "h", "", "_ C" );
+		//		rules.AddRule ( "r", "", "_ w" );
+		//		// simplify certain long vowels
+		//		rules.AddRule ( "a", "", "_ a" );
+		//		rules.AddRule ( "i", "", "_ i" );
+		//		rules.AddRule ( "u", "", "_ u" );
 
 		Affixes affixes = new Affixes();
 		// add prefixes and suffixes
