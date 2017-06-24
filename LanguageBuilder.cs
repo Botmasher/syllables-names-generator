@@ -219,22 +219,14 @@ public class LanguageBuilder : MonoBehaviour {
 		public List<List<string>> structures = new List<List<string>>();
 		public List<string> symbols = new List<string> {"V", "C", "#", "_"};
 
-		public void HowManySyllables () {}
-
 		public void AddStructure (List<string> syllableStructure) {
 			this.structures.Add (syllableStructure);
 		}
-
-		// TODO add syll weights (like you have a n% chance of picking this)
-		// TODO add syll internal rules (like if you pick this, pick that next)
-		// 		OR do similar with a blacklist (e.g. zv, aa, ii, uu, Vh) 
-
 	}
 
 	// simple affixes mapping to properties supporting formats prefix- or -suffix
 	public class Affixes {
-
-		// TODO methods/properties for accessing dict
+		
 		// affixes added to word for properties
 		public Dictionary<string,List<string>> affixes = new Dictionary<string,List<string>>();
 
@@ -545,17 +537,6 @@ public class LanguageBuilder : MonoBehaviour {
 
 				// apply the rule to found sections
 				foreach (int possibleIndex in possibleIndexMatches) {
-					// split the word
-					// end: 		possibleIndex + (environment.Count-1 - blankIndex)
-					// middle: 		possibleIndex
-					// beginning: 	possibleIndex - blankIndex
-					//
-					// e.g.
-					// 	b, a, t, y, a, a, k, a, t, a
-					//  	        V, V, _, V
-					// end: 		6 + ((4-1) - 2) 	= 7 	// last to include
-					// middle 		6
-					// beginning 	6 - 2  				= 4 	// first to include
 
 					// list of indices to check should be all but the blank, which is matched src
 					firstIndex = possibleIndex - blankIndex;
@@ -573,6 +554,7 @@ public class LanguageBuilder : MonoBehaviour {
 					}
 				}
 			}
+			Debug.Log ("Just applied rule and built: "+string.Join("", newWord.ToArray()));
 			return newWord;
 		}
 
@@ -696,10 +678,6 @@ public class LanguageBuilder : MonoBehaviour {
 		}
 		
 		// go through word looking for rule pattern matches
-		// TODO document user guidelines for formatting a readable rule
-		// - list of strings expecting "C", "V", "", letter string or csv feature string
-		// - rules that delete go from e.g. "V" -> ""
-		// - rules that change features need matching number of features e.g. "voiced,plosive" -> "voiced,fricative" NOT just "fricative" 
 		private List<string> ApplyRule (List<string> source, List<string> target, List<string> environment, List<string> word)
 		{
 			// no word letters to build
@@ -716,18 +694,9 @@ public class LanguageBuilder : MonoBehaviour {
 				return word;
 			}
 
-			// find out if surrounding index environments match rule environment
-
 			// output updated word letters list
 			return word;
 		}
-
-		//  TODO add support for ranking/ordering rules
-		// 		e.g. apply intervocalic voicing before fricativization
-
-		// 	TODO support rules with # to detect word beginning/ending
-		// 		e.g. allow "attadda" but not "ttadd"
-
 	}
 
 	public static void Main (string[] args) {
@@ -754,7 +723,6 @@ public class LanguageBuilder : MonoBehaviour {
 		// recall features using any letter
 		Debug.Log (inventory.GetFeatures("b"));
 
-		// /!\ ONLY recall letters using correct feature order /!\
 		// This finds "b":
 		List<string> testFeaturesList = new List<string> {"voiced", "bilabial", "plosive"};
 		inventory.GetLetter(testFeaturesList);
@@ -770,24 +738,7 @@ public class LanguageBuilder : MonoBehaviour {
 		syllableStructure.AddStructure(new List<string> {"C","V","V","C"});
 
 		Rules rules = new Rules();
-		/*
-		 * 	Make sure you have inventory letters for every feature change otherwise you'll replace with empty
-		 *  	e.g. voiced -> voiceless will change "r" -> "" if you don't have a voiceless r
-		 */
-		// assimilate consonant clusters
-
-		//		// basic voicing assimilation
-		//		rules.AddRule ( "voiced", "voiceless", "_ voiceless" );
-		//		rules.AddRule ( "voiced", "voiceless", "voiceless _" );
-		//		// a dash of lenition
-		//		rules.AddRule ( "plosive", "fricative", "V _ V" );
-		//		// avoid awkward clusters
-		//		rules.AddRule ( "h", "", "_ C" );
-		//		rules.AddRule ( "r", "", "_ w" );
-		//		// simplify certain long vowels
-		//		rules.AddRule ( "a", "", "_ a" );
-		//		rules.AddRule ( "i", "", "_ i" );
-		//		rules.AddRule ( "u", "", "_ u" );
+		rules.AddRule ("voiced", "voiceless", "_ voiceless");
 
 		Affixes affixes = new Affixes();
 		// add prefixes and suffixes
@@ -804,10 +755,9 @@ public class LanguageBuilder : MonoBehaviour {
 		// build a long proper noun
 		List<string> properNoun = language.BuildWord(3, true, "strong", "nonhuman");
 		Debug.Log(string.Join("", properNoun.ToArray()));
-		//properNoun = language.ApplyRules(properNoun);
+
 		// build a short regular noun
 		List<string> justSomeNoun = language.BuildWord(2);
-		//justSomeNoun = language.ApplyRules(justSomeNoun);
 
 		// add both to the dictionary
 		language.AddEntry(properNoun, "Wolf");
