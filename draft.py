@@ -10,9 +10,11 @@ class Features:
         self.rounding = []
 
     def add_feature(self, feature_type, feature_name):
-        if not get_attr(self, feature_type):
+        if not getattr(self, feature_type):
             return
-        setattr(self, feature_type, [*getattr(self, feature_type), feature_name])
+        features_list = getattr(self, feature_type)
+        features_list.append(feature_name)
+        return features_list
 
 class Inventory:
     def __init__(self):
@@ -23,7 +25,7 @@ class Inventory:
         self.features_by_letter = {}    # each letter allows variants in feat subarrays
         self.feature_namer = self.initialize_features()
 
-    def initialize_features():
+    def initialize_features(self):
         feature_namer = Features()
         # TODO test if adding works and add standard features
         feature_types = {
@@ -37,9 +39,9 @@ class Inventory:
         for feature_type in feature_types:
             for feature in feature_types[feature_type]:
                 feature_namer.add_feature(feature_type, feature)
-        return
+        return feature_namer
 
-    def has_consonant_features(self, voicing, place, manner):
+    def is_consonant_features(self, voicing, place, manner):
         if place not in self.feature_namer.place:
             return False
         elif voicing not in self.feature_namer.voicing:
@@ -49,7 +51,7 @@ class Inventory:
         else:
             return True
 
-    def has_vowel_features(self, height, backness, rounding):
+    def is_vowel_features(self, height, backness, rounding):
         if height not in self.feature_namer.height:
             return False
         elif backness not in self.feature_namer.backness:
@@ -61,7 +63,7 @@ class Inventory:
 
     # TODO check for valid letter and feature
     def add_consonant(self, letter, voicing, place, manner):
-        if not self.is_consonant_(voicing, place, manner):
+        if not self.is_consonant_features(voicing, place, manner):
             return
 
         self.letters['consonants'].append(letter)
@@ -79,7 +81,7 @@ class Inventory:
         return {letter: self.features_by_letter[letter]}
 
     def add_vowel(self, letter, height, backness, rounding):
-        if not self.is_vowel(height, backness, rounding):
+        if not self.is_vowel_features(height, backness, rounding):
             return
 
         self.letters['vowels'].append(letter)
@@ -103,8 +105,20 @@ class Inventory:
 
     # TODO remove or update letter
 
-    def build_word(self, length):
+    def build_word(self, length=1):
+        """Form a word following the defined inventory and syllable structure"""
         word = ""
+        for i in range(length):
+            syllable_structure = random.choice(self.syllables)
+            for syllable_letter in syllable_structure:
+                if syllable_letter == 'C':
+                    new_letter = random.choice(self.letters['consonants'])
+                elif syllable_letter == 'V':
+                    new_letter = random.choice(self.letters['vowels'])
+                else:
+                    new_letter = ''
+                word.join(new_letter)
+        print(word)
         return word
 
 # test
@@ -119,3 +133,8 @@ inventory.add_vowel("u", "high", "back", "rounded")
 inventory.add_syllable(["C", "V"])
 inventory.add_syllable(["V"])
 inventory.add_syllable(["C", "V", "C"])
+inventory.build_word(length=1)
+inventory.build_word(length=5)
+inventory.build_word(length=3)
+inventory.build_word(length=1)
+inventory.build_word(length=3)
