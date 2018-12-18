@@ -1,5 +1,10 @@
 import random
 
+# TODO stretch to flexible categorization
+#   - allow storing retracted or ATR or any other dimension
+#   - associate letters with feature name
+#   - overlapping or scalar membership
+
 class Features:
     def __init__(self):
         self.voicing = []
@@ -10,56 +15,84 @@ class Features:
         self.rounding = []
 
     def add_feature(self, feature_type, feature_name):
-        if not getattr(self, feature_type):
+        if not hasattr(self, str(feature_type)):
             return
         features_list = getattr(self, feature_type)
         features_list.append(feature_name)
         return features_list
 
+    def get(self):
+        return {
+            'consonants': {
+                'voicing': self.voicing,
+                'manner': self.manner,
+                'place': self.place,
+            },
+            'vowels': {
+                'height': self.height,
+                'backness': self.backness,
+                'rounding': self.rounding
+            }
+        }
+
+    def add_features(self, features_dict={}):
+        if not features_dict:
+            return
+        for feature_type in features_dict:
+            if not hasattr(self, feature_type):
+                continue
+            for feature in features_dict[feature_type]:
+                self.add_feature(feature_type, feature)
+        return self.get()
+
+    def is_consonant(self, voicing, place, manner):
+        if place not in self.features.place:
+            return False
+        elif voicing not in self.features.voicing:
+            return False
+        elif manner not in self.features.manner:
+            return False
+        else:
+            return True
+
+    def is_vowel(self, height, backness, rounding):
+        if height not in self.features.height:
+            return False
+        elif backness not in self.features.backness:
+            return False
+        elif rounding not in self.features.rounding:
+            return False
+        else:
+            return True
+
+# TODO build phones and sylls
+class Phoneme:
+    def __init__(self, symbol):
+        self.letters = []
+        self.symbol = symbol
+    def add_letter():
+        return
+    def remove_letter():
+        return
+    def add_feature():
+        return
+    def remove_feature():
+        return
+
+class Syllable:
+    def __init__(self, structure=[]):
+        self.structure = structure
+        self.letters = ['C', 'V']
+    def update_syllable():
+        return
+
 class Inventory:
-    def __init__(self):
-        self.features = []
+    def __init__(self, features):
+        self.features = features
         self.letters = {'consonants': [], 'vowels': []}
         self.syllables = []
         self.letters_by_feature = {}
         self.features_by_letter = {}    # each letter allows variants in feat subarrays
-        self.feature_namer = self.initialize_features()
-
-    def initialize_features(self):
-        feature_namer = Features()
-        # TODO test if adding works and add standard features
-        feature_types = {
-            'voicing': ["voiced", "voiceless"],
-            'manner': ["stop", "fricative", "affricate", "approximant", "liquid", "nasal"],
-            'place': ["dental", "alveolar", "palatal", "velar", "uvular", "pharyngeal"],
-            'height': ["high", "mid", "low"],
-            'backness': ["front", "central", "back"],
-            'rounding': ["rounded", "unrounded"]
-        }
-        for feature_type in feature_types:
-            for feature in feature_types[feature_type]:
-                feature_namer.add_feature(feature_type, feature)
-        return feature_namer
-
-    def is_consonant_features(self, voicing, place, manner):
-        if place not in self.feature_namer.place:
-            return False
-        elif voicing not in self.feature_namer.voicing:
-            return False
-        elif manner not in self.feature_namer.manner:
-            return False
-        else:
-            return True
-
-    def is_vowel_features(self, height, backness, rounding):
-        if height not in self.feature_namer.height:
-            return False
-        elif backness not in self.feature_namer.backness:
-            return False
-        elif rounding not in self.feature_namer.rounding:
-            return False
-        else:
-            return True
 
     # TODO check for valid letter and feature
     def add_consonant(self, letter, voicing, place, manner):
@@ -85,6 +118,7 @@ class Inventory:
             return
 
         self.letters['vowels'].append(letter)
+        print(self.letters)
         if height not in self.letters_by_feature:
             self.letters_by_feature[height] = []
         if backness not in self.letters_by_feature:
@@ -105,23 +139,41 @@ class Inventory:
 
     # TODO remove or update letter
 
+# TODO handle feature checks in language instead of shared Features dependency
+#   - check before passing non C xor V to syll
+#   - check before adding consonant or vowel to inventory
+#   - check before adding features to phone
+
+class Language:
+    def __init__(self, name):
+        self.name = name
+
+    def set_inventory(self, inventory):
+        self.inventory = inventory
+
+    def set_syllables(self, syllables):
+        self.syllables = syllables
+
     def build_word(self, length=1):
         """Form a word following the defined inventory and syllable structure"""
+        if not self.syllables:
+            return
         word = ""
         for i in range(length):
             syllable_structure = random.choice(self.syllables)
+            print(syllable_structure)
             for syllable_letter in syllable_structure:
-                if syllable_letter == 'C':
+                if syllable_letter == 'C' and self.letters['consonants']:
                     new_letter = random.choice(self.letters['consonants'])
-                elif syllable_letter == 'V':
+                elif syllable_letter == 'V' and self.letters['vowels']:
                     new_letter = random.choice(self.letters['vowels'])
                 else:
                     new_letter = ''
-                word.join(new_letter)
+                word += new_letter
         print(word)
         return word
 
-# test
+# TODO update demo
 inventory = Inventory()
 inventory.add_consonant("t", "voiceless", "alveolar", "stop")
 inventory.add_consonant("dz", "voiced", "dental", "affricate")
