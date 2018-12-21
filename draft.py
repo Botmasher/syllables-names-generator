@@ -7,39 +7,33 @@ import random
 
 class Features:
     def __init__(self):
-        self.features = []
+        self.features = set()
 
     def get(self):
         """Read the features collection"""
-        return self.features
+        return list(self.features)
 
     def add(self, feature):
         """Add one feature to the features collection"""
-        if feature not in self.features:
-            return
-        self.features.append(feature_name)
+        self.features.add(feature)
         return self.get()
 
     def add_many(self, features=[]):
         """Add multiple features to the collection"""
-        if not features:
+        if not features or type(features) is not list:
             return
         for feature in features:
-            if feature in self.features:
-                continue
             self.add(feature)
         return self.get()
 
     def has(self, feature):
         """Check if the feature exists in the features collection"""
-        if feature in self.features:
-            return True
-        return False
+        return feature in self.features
 
 class Phoneme:
-    def __init__(self, symbol):
-        self.letters = set()
-        self.features = set()
+    def __init__(self, symbol, features=[], letters=[]):
+        self.letters = set(letters)
+        self.features = set(features)
         self.symbol = symbol
 
     def get(self):
@@ -80,6 +74,18 @@ class Phoneme:
         letter in self.letters and self.letters.remove(letter)
         return self.get_letters()
 
+    def replace_letter(self, letter, new_letter):
+        """Replace one letter in the letters representing this phoneme"""
+        self.remove_letter(letter)
+        self.add_letter(new_letter)
+        return self.get_letters()
+
+    def replace_letters(self, letters=[]):
+        """Replace the entire set of letters representing this phoneme"""
+        if type(letters) is list:
+            self.letters = set(letters)
+        return self.get_letters()
+
     def add_feature(self, feature):
         """Add a feature to the collection of features for this phoneme"""
         self.features.add(feature)
@@ -114,10 +120,12 @@ class Inventory:
     def get_letter(self, features=[]):
         """Find every letter that has the given features"""
         if type(features) is str:
+            feature = features
             if feature in self.letters_by_feature:
-                return self.letters_by_feature[feature]
+                return list(self.letters_by_feature[feature])
             else:
-                return None
+                print("Inventory get_letter failed - unknown feature {0}".format(feature))
+                return []
 
         # reduce to set of found letters
         matching_letters = set()
@@ -129,7 +137,7 @@ class Inventory:
             if i == 0:
                 matching_letters = self.letters_by_feature[feature]
                 continue
-            matching letters &= self.letters_by_feature[feature]
+            matching_letters &= self.letters_by_feature[feature]
 
         return list(matching_letters)
 
@@ -143,7 +151,7 @@ class Inventory:
 
     def get_syllables(self):
         """Read all syllables listed in the inventory"""
-        return self.syllables
+        return list(self.syllables)
 
     def _add_unique(self, letter, feature):
         """Private add unique letter to map of letters by features"""
@@ -155,7 +163,7 @@ class Inventory:
             self.letters_by_feature[feature].add(letter)
         return self.letters_by_feature[feature]
 
-    def add_letter(self, letter="", *features):
+    def add_letter(self, letter="", features=[]):
         """Store a new letter with features"""
         if not letter or type(letter) is not str or len(letter) > self.letter_length_limit:
             print("Inventory add_letter failed - invalid letter {0}".format(letter))
@@ -192,7 +200,7 @@ class Inventory:
     def add_syllable(self, syllable):
         """Add a syllable structure to the inventory syllables collection"""
         if type(syllable).__name__ == 'Syllable' and syllable not in self.syllables:
-            self.syllables.append(syllable)
+            self.syllables.add(syllable)
         return self.syllables
 
     def remove_syllable(self, syllable):
@@ -212,7 +220,7 @@ class Language:
     def __init__(self, name="", name_en="", features=None, inventory=None):
         self.name = name
         self.name_en = name_en
-        self.features = feeatures
+        self.features = features
         self.inventory = inventory
 
     def set_inventory(self, inventory):
@@ -232,7 +240,8 @@ class Language:
             return
         word = ""
         for i in range(length):
-            syllable_structure = random.choice(self.inventory.get_syllables())
+            syllable = random.choice(self.inventory.get_syllables())
+            syllable_structure = syllable.get()
             print(syllable_structure)
             for syllable_letter_feature in syllable_structure:
                 letters = self.inventory.get_letter(syllable_letter_feature)
@@ -244,16 +253,114 @@ class Language:
 
 # demo
 inventory = Inventory()
+feature_checker = Features()
+
+# TODO decide if need negative features like "unrounded"
+#   pro: makes matching to sound changes "rounded" to "unrounded"
+#   con: easily found by filtering for sounds that do not have this feature
+feature_checker.add_many(features=[
+    "consonant",
+    "voiceless",
+    "voiced",
+    "stop",
+    "nasal",
+    "fricative",
+    "affricate",
+    "tap",
+    "trill",
+    "approximant",
+    "liquid",
+    "labial",
+    "dental",
+    "alveolar",
+    "postalveolar",
+    "palatal",
+    "velar",
+    "uvular",
+    "pharyngeal",
+    "glottal",
+    "vowel",
+    "front",
+    "close",
+    "mid",
+    "open",
+    "central",
+    "raised",
+    "retracted",
+    "unrounded",
+    "rounded",
+    "short",
+    "long"
+])
+
 # TODO juggle adding unique symbols through Features + Inventory
-#       - ? do this inside Language
-#       - instead of listing every single feature with each inventory add
-inventory.add_letter(letter="t", "consonant", "voiceless", "alveolar", "stop")
-inventory.add_letter(letter="dz", "consonant", "voiced", "dental", "affricate")
-inventory.add_letter(letter="dh", "consonant", "voiced", "dental", "fricative")
-inventory.add_letter(letter="a", "vowel", "low", "back", "unrounded")
-inventory.add_letter(letter="i", "vowel", "high", "front", "unrounded")
-inventory.add_letter(letter="y", "vowel", "high", "front", "rounded")
-inventory.add_letter(letter="u", "vowel", "high", "back", "rounded")
+#   - ? already have default IPA associations availabe in fetures
+#   - ? do this inside Language
+#   - instead of listing every single feature with each inventory add
+
+# TODO disallowed sequences in syllables
+# TODO sound laws in environments
+
+sounds = {
+    'a': {
+        'letters': ["a", "â"],
+        'features': ["vowel", "front", "open", "unrounded", "short"]
+    },
+    'i': {
+        'letters': ["i"],
+        'features': ["vowel", "front", "close", "unrounded", "short"]
+    },
+    'u': {
+        'letters': ["u"],
+        'features': ["vowel", "raised", "rounded", "short"]
+    },
+    'p': {
+        'letters': ["p", "b"],
+        'features': ["consonant", "voiceless", "labial", "stop"]
+    },
+    't': {
+        'letters': ["t", "d"],
+        'features': ["consonant", "voiceless", "dental", "stop"]
+    },
+    'k': {
+        'letters': ["k", "g"],
+        'features': ["consonant", "voiceless", "velar", "stop"]
+    },
+    'tʃ': {
+        'letters': ["tch", "tj"],
+        'features': ["consonant", "voiceless", "postalveolar", "affricate"]
+    },
+    'f': {
+        'letters': ["f", "ph"],
+        'features': ["consonant", "voiceless", "labial", "fricative"]
+    },
+    "θ": {
+        'letters': ["th"],
+        'features': ["consonant", "voiceless", "dental", "fricative"]
+    },
+    "x": {
+        'letters': ["h"],
+        'features': ["consonant", "voiceless", "velar", "fricative"]
+    }
+}
+
+phonemes = [
+    Phoneme(
+        ipa,
+        letters=v['letters'],
+        features=[f for f in v['features'] if feature_checker.has(f)]
+    ) for ipa, v in sounds.items()
+]
+
+for phoneme in phonemes:
+    phoneme_features = phoneme.get_features()
+    for phoneme_letter in phoneme.get_letters():
+        inventory.add_letter(letter=phoneme_letter, features=phoneme_features)
+
 syllables = (Syllable(["consonant", "vowel"]), Syllable(["vowel"]), Syllable(["consonant", "vowel", "consonant"]))
 [inventory.add_syllable(syllable) for syllable in syllables]
-language = Language(name="Dgemoxahlaqr", name_en="Demoish", inventory=inventory, features=features)
+language = Language(name="Dgemoxahlaqr", name_en="Demoish", inventory=inventory, features=feature_checker)
+language.build_word()
+language.build_word(length=3)
+language.build_word(length=5)
+language.build_word(length=2)
