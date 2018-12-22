@@ -5,9 +5,27 @@ import random
 #   - associate letters with feature name
 #   - overlapping or scalar membership
 
+# (Features : features <> (ipa) <> letter : Phoneme)
+#   - "feature" is broad, including "consonant" or really any consistent string
+#   - "ipa" is any phonetic symbol associated with features
+#   - "letter" is generally a looser graphic representation in writing
+# features <> syllables
+#   - "syllable" is a sequence of feature collections when generating a syllable
+#   - a list of features is used to pick each letter in a syllable
+# features, letters, syllables < inventory
+#   - each letter can be added as multiple phonemes ("th" may be two letters)
+#   - OR just have inventory store map of {letter:[phonemes]}
+#   - may need to generate not just words but underlying sounds, then letters
+# inventory, rules < language
+#   - rules contain sequences of lists like syllables
+#   - rules couple two sequences, input and operation, for how sounds should change
+#   - search for input matches then change specific features
+#       - this means storing strings of features for each word, or phon symbs
+
+# features to and from phonetic symbols
 class Features:
     def __init__(self):
-        self.features = {}  # map where kv pairs are (feature, ipa symbols set)
+        self.features = {}
 
     def get(self):
         """Read the features collection"""
@@ -78,6 +96,7 @@ class Features:
         """Check if the feature exists in the features map"""
         return feature in self.features
 
+# letters to and from phonetic symbols
 class Phoneme:
     def __init__(self, symbol, letters=[]):
         self.letters = set(letters)
