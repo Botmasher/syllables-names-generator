@@ -7,50 +7,92 @@ import random
 
 class Features:
     def __init__(self):
-        self.features = set()
+        self.features = {}  # map where kv pairs are (feature, ipa symbols set)
 
     def get(self):
         """Read the features collection"""
-        return list(self.features)
+        return self.features
 
-    def add(self, feature):
-        """Add one feature to the features collection"""
-        self.features.add(feature)
-        return self.get()
+    def get_features(self, ipa):
+        """Find all features associated with a phonetic symbol"""
+        if type(ipa) is not str:
+            return []
+        found_features = set()
+        for feature in self.features:
+            ipa in self.features[feature] and found_features.add(feature)
+        return list(found_features)
 
-    def add_many(self, features=[]):
-        """Add multiple features to the collection"""
-        if not features or type(features) is not list:
+    def get_ipa(self, features):
+        """Find phonetic symbols matching all given features"""
+        if type(features) is not list or features[0] not in self.features:
+            return []
+        # intersect symbols for listed features
+        found_ipa = self.features[features[0]]
+        for feature in features[1:]:
+            if feature in self.features:
+                found_ipa &= self.features[features]
+            else:
+                return []
+        return list(found_ipa)
+
+    def add_ipa(self, ipa, features=[]):
+        """Add phonetic symbols to feature symbol sets"""
+        if type(ipa) is not str or type(features) is not list:
+            print("Features add_ipa failed - unknown symbol or features list")
             return
         for feature in features:
-            self.add(feature)
-        return self.get()
+            if feature not in self.features:
+                print("Features add_ipa failed - unkown feature {0}".format(feature))
+                return
+        for feature in features:
+            self.features[feature].add(ipa)
+        return self.get_ipa(features)
 
-    def has(self, feature):
-        """Check if the feature exists in the features collection"""
+    def add_feature(self, feature):
+        """Add one feature to the features map"""
+        if type(feature) is not str:
+            print("Features add_feature failed - invalid feature {0}".format(feature))
+            return
+        self.features[feature] = set()
+        return {feature: self.features[feature]}
+
+    def add_features(self, features=[]):
+        """Add multiple features to the map"""
+        if not features or type(features) is not list:
+            return
+        added_features = {}
+        for feature in features:
+            added_feature = self.add_feature(feature)
+            if added_feature:
+                added_features[feature] = added_feature.values()[0]
+        return added_features
+
+    def has_ipa(self, ipa):
+        """Check if the phonetic symbol exists in the features map"""
+        for feature in self.features:
+            if ipa in self.features[feature]:
+                return True
+        return False
+
+    def has_feature(self, feature):
+        """Check if the feature exists in the features map"""
         return feature in self.features
 
 class Phoneme:
-    def __init__(self, symbol, features=[], letters=[]):
+    def __init__(self, symbol, letters=[]):
         self.letters = set(letters)
-        self.features = set(features)
         self.symbol = symbol
 
     def get(self):
         """Read the letters, features and unique symbol for this phoneme"""
         return {
             'letters': list(self.letters),
-            'features': list(self.features),
             'symbol': self.symbol
         }
 
     def get_letters(self):
         """Read all letters associated with this phoneme"""
         return list(self.letters)
-
-    def get_features(self):
-        """Read all features associated with this phoneme"""
-        return list(self.features)
 
     def get_symbol(self):
         """Read the unique symbol representing this phoneme"""
@@ -85,16 +127,6 @@ class Phoneme:
         if type(letters) is list:
             self.letters = set(letters)
         return self.get_letters()
-
-    def add_feature(self, feature):
-        """Add a feature to the collection of features for this phoneme"""
-        self.features.add(feature)
-        return self.get_features()
-
-    def remove_feature(self, feature):
-        """Remove a feature to the collection of features for this phoneme"""
-        feature in self.features and self.features.remove(feature)
-        return self.get_features()
 
 class Syllable:
     def __init__(self, structure):
