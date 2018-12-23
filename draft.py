@@ -85,6 +85,27 @@ class Features:
                 added_features[feature] = added_feature.values()[0]
         return added_features
 
+    def distribute_sounds(self, ipa):
+        """Populate selectable symbols following a Zipf distribution"""
+        # construct a mock population that behaves Zipfianly
+        # TODO unrandomize - allow for weighted rank input
+        consonants = []
+        vowels = []
+        consonants_input = list(self.features['consonants'])[:]
+        vowels_input = list(self.features['vowels'])[:]
+        random.shuffle(consonants_input)
+        random.shuffle(vowels_input)
+        high_frequency = 1000
+        for i in range(len(vowels_input)):
+            vowel = vowels_input[i]
+            symbol_count = (1 / i) * (most_common_frequency)
+            vowels += [vowel] * symbol_count
+        for i in range(len(consonants_input)):
+            consonant = consonants_input[i]
+            symbol_count = (1 / i) * (most_common_frequency)
+            consonants += [consonant] * symbol_count
+        return {'consonants': consonants, 'vowels': vowels}
+
     def has_ipa(self, ipa):
         """Check if the phonetic symbol exists in the features map"""
         for feature in self.features:
@@ -97,16 +118,19 @@ class Features:
         return feature in self.features
 
 # letters to and from phonetic symbols
+# TODO environments for symbol (? or save for rule)
 class Phoneme:
-    def __init__(self, symbol, letters=[]):
+    def __init__(self, symbol, letters=[], weight=0):
         self.letters = set(letters)
         self.symbol = symbol
+        self.weight = weight
 
     def get(self):
         """Read the letters, features and unique symbol for this phoneme"""
         return {
             'letters': list(self.letters),
-            'symbol': self.symbol
+            'symbol': self.symbol,
+            'weight': self.weight
         }
 
     def get_letters(self):
@@ -116,6 +140,10 @@ class Phoneme:
     def get_symbol(self):
         """Read the unique symbol representing this phoneme"""
         return self.symbol
+
+    def get_weight(self):
+        """Read the weight associated with this phoneme"""
+        return self.weight
 
     def add_letter(self, letter):
         """Add a letter to the collection of graphemes for this phoneme"""
@@ -129,6 +157,12 @@ class Phoneme:
         for letter in letters:
             self.add_letter(letter)
         return self.get_letters()
+
+    def set_weight(self, weight):
+        """Adjust the weight associated with this phoneme"""
+        if type(weight) is int:
+            self.weight = weight
+        return self.weight
 
     def remove_letter(self, letter):
         """Remove a letter from the graphemes representing this phoneme"""
@@ -146,6 +180,31 @@ class Phoneme:
         if type(letters) is list:
             self.letters = set(letters)
         return self.get_letters()
+
+# TODO store environments in rules
+class Environment:
+    def __init__(self):
+        return
+
+    def update(self):
+        return
+
+class Rules:
+    def __init__(self):
+        return
+
+    def add(self, source, target):
+        return
+
+    def remove(self, rule_id):
+        return
+
+# TODO manage suffixes and prefixes by grammatical feature
+class Affixes:
+    def __init__(self):
+        self.prefixes = {}
+        self.suffixes = {}
+        return
 
 class Syllable:
     def __init__(self, structure):
