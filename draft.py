@@ -183,21 +183,81 @@ class Phoneme:
 
 # TODO store environments in rules
 class Environment:
-    def __init__(self):
+    def __init__(self, structure=[]):
+        self.set(structure)
         return
 
-    def update(self):
-        return
+    def is_structure(self, structure):
+        if type(structure) is list and structure.count('_') == 1:
+            return True
+        return False
+
+    def get(self):
+        return self.structure
+
+    def get_pretty(self):
+        formatted_text = ""
+        intro_text = "when the sound is "
+        for i in range(len(self.structure)):
+            slot = self.structure[i]
+            line = ""
+            if type(slot) is list:
+                line += "an " if slot[0][0].lower() in ['a', 'e', 'i', 'o', 'u'] else "a "
+                for feature in slot:
+                    line += ("{0}, ".format(feature))
+            elif type(slot) is str:
+                if slot == "_":
+                    if i == 0:
+                        intro_text += "before "
+                    elif i == len(self.structure) - 1:
+                        intro_text += "after "
+                    else:
+                        intro_text += "between "
+                        line += " and "
+                else:
+                    line += "a {0}".format(slot)
+            else:
+                pass
+            formatted_text += line
+        if formatted_text[(len(formatted_text)-2):] == ", ":
+            formatted_text = formatted_text[:-2]
+        return "{0}{1}".format(intro_text, formatted_text)
+
+    def set(self, structure):
+        if self.is_structure(structure):
+            self.structure = structure
+        return self.structure
+
+# TODO language handles checking inventory before feeding to environment
+#   - e.g. avoid ['smiles', '_', 'sauce'] allow ['vowel', '_', 'vowel']
 
 class Rules:
     def __init__(self):
+        self.rules = []
         return
 
-    def add(self, source, target):
-        return
+    def get(self):
+        return self.rules
+
+    def get_pretty(self):
+        text = "Change "
+        for rule_id in rules:
+            rule = rules[rule_id]
+            text += ("{0} to {1} {2}".format(rule[0], rule[1], rule[2].get_pretty()))
+        return "{0}.\n".format(text)
+
+    def add(self, source, target, environment):
+        if (type(source.__name__) == 'Phoneme' + type(target.__name__) == 'Phoneme' + (type(environment.__name__) == 'Environment') != 3:
+            print("Rules add failed - invalid source, target or environment")
+            return
+        rule = [source, target, environment]
+        rule_id =
+        self.rules[rule_id] = rule
+        return rule_id
 
     def remove(self, rule_id):
-        return
+        rule = self.rules.pop(rule_id, None)
+        return rule
 
 # TODO manage suffixes and prefixes by grammatical feature
 class Affixes:
