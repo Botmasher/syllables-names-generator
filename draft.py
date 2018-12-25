@@ -226,10 +226,9 @@ class Environment:
     def set(self, structure):
         if self.is_structure(structure):
             self.structure = structure
+        else:
+            self.structure = None
         return self.structure
-
-# TODO language handles checking inventory before feeding to environment
-#   - e.g. avoid ['smiles', '_', 'sauce'] allow ['vowel', '_', 'vowel']
 
 class Rules:
     def __init__(self):
@@ -260,11 +259,40 @@ class Rules:
         return rule
 
 # TODO manage suffixes and prefixes by grammatical feature
+#   - morpheme rules like (root)-noun-animate or class-noun
 class Affixes:
     def __init__(self):
-        self.prefixes = {}
-        self.suffixes = {}
+        self.affixes = {}
         return
+
+    def is_affix(self, affix):
+        return type(affix) is str and ('-' in affix[0] or '-' in affix[len(affix)-1])
+
+    def get(self, category, gramm):
+        try:
+            return self.affixes[category][gramm]
+        except:
+            print("Affixes get failed - unrecognized grammatical feature {0}:{1}".format(category, gramm))
+            return
+
+    def add(self, category, gramm, affix):
+        if not self.is_affix(affix):
+            print("Affixes add failed - invalid affix {0}".format(affix))
+            return
+        self.add_category_gramm(category, gramm)
+        if gramm not in self.affixes[category]:
+            self.affixes[category][gramm] = {}
+        self.affixes[category][gramm].add(affix)
+        return self.affixes
+
+    def add_category_gramm(self, category, gramm):
+        if type(category) is not str or type(gramm) is not str:
+            return
+        if category not in self.affixes:
+            self.affixes[category] = {}
+        if gramm not in self.affixes[category]:
+            self.affixes[category][gramm] = set()
+        return self.affixes[category]
 
 class Syllable:
     def __init__(self, structure):
@@ -386,12 +414,20 @@ class Inventory:
 
 # TODO set up default letters and symbols
 
+# TODO language handles checking inventory, environment, rules
+#   - e.g. avoid ['smiles', '_', 'sauce'] allow ['vowel', '_', 'vowel']
+#   - '0', '#' when applying rules
+
 class Language:
-    def __init__(self, name="", name_en="", features=None, inventory=None):
+    def __init__(self, name="", name_en="", features=None, inventory=None, environment=None, syllable=None, phoneme=None):
         self.name = name
         self.name_en = name_en
         self.features = features
         self.inventory = inventory
+        self.rules = rules
+        #self.environment = environment     # instantiate from Environment
+        self.syllable = syllable
+        self.phoneme = phoneme
 
     def set_inventory(self, inventory):
         """Set the inventory object for this language"""
@@ -401,8 +437,15 @@ class Language:
         """Set the features object for this language"""
         self.features = features
 
-    # TODO add phonemes (incl letters, symbols, features) through here
-    # TODO check features here
+    def add_rule(self, source, target, environment):
+        if not (self.features.has_ipa(source) and self.features.has_ipa(target)):
+            print("Language add_rule failed - invalid source or target symbols")
+            return
+        e = Environment(structure=environment)
+        if not e.get():
+            print("Language add_rule failed - invalid environment given")
+            return
+        self.rules.add(source, target, e)
 
     def build_word(self, length=1):
         """Form a word following the defined inventory and syllable structure"""
