@@ -268,6 +268,12 @@ class Affixes:
     def is_affix(self, affix):
         return type(affix) is str and ('-' in affix[0] or '-' in affix[len(affix)-1])
 
+    def is_prefix(self, affix):
+        return affix[0] == '-'
+
+    def is_suffix(self, affix):
+        return affix(len(affix[-1])) == '-'
+
     def get(self, category, gramm):
         try:
             return self.affixes[category][gramm]
@@ -280,9 +286,10 @@ class Affixes:
             print("Affixes add failed - invalid affix {0}".format(affix))
             return
         self.add_category_gramm(category, gramm)
-        if gramm not in self.affixes[category]:
-            self.affixes[category][gramm] = {}
-        self.affixes[category][gramm].add(affix)
+        if self.is_prefix(affix):
+            self.affixes[category][gramm]['prefix'].add(affix)
+        else:
+            self.affixes[category][gramm]['suffix'].add(affix)
         return self.affixes
 
     def add_category_gramm(self, category, gramm):
@@ -291,7 +298,10 @@ class Affixes:
         if category not in self.affixes:
             self.affixes[category] = {}
         if gramm not in self.affixes[category]:
-            self.affixes[category][gramm] = set()
+            self.affixes[category][gramm] = {
+                'suffix': set(),
+                'prefix': set()
+            }
         return self.affixes[category]
 
 class Syllable:
@@ -419,15 +429,16 @@ class Inventory:
 #   - '0', '#' when applying rules
 
 class Language:
-    def __init__(self, name="", name_en="", features=None, inventory=None, environment=None, syllable=None, phoneme=None):
+    def __init__(self, name="", name_en="", features=None, inventory=None):
         self.name = name
         self.name_en = name_en
         self.features = features
         self.inventory = inventory
         self.rules = rules
-        #self.environment = environment     # instantiate from Environment
-        self.syllable = syllable
-        self.phoneme = phoneme
+        self.affixes = Affixes()
+        self.environments = {}  # instantiated environments
+        self.syllables = {}     # set of syllables - inventory?
+        self.phonemes = {}      # dict of created phonemes - inventory?
 
     def set_inventory(self, inventory):
         """Set the inventory object for this language"""
@@ -437,6 +448,7 @@ class Language:
         """Set the features object for this language"""
         self.features = features
 
+    # TODO compare with Rules.add checks already in place
     def add_rule(self, source, target, environment):
         if not (self.features.has_ipa(source) and self.features.has_ipa(target)):
             print("Language add_rule failed - invalid source or target symbols")
@@ -446,6 +458,50 @@ class Language:
             print("Language add_rule failed - invalid environment given")
             return
         self.rules.add(source, target, e)
+
+    def add_syllable(self, syllable_structure):
+        # build valid symbol or features list
+        syllable_characters = ['_', '#', ' ', 'C', 'V']
+        new_syllable = []
+        for syllable_item in syllable_structure:
+            if type(syllable_item) is str:
+                if syllable_item not in syllable_characters or not self.features.has_feature(syllable_item):
+                    print("Language add_syllable failed - invalid syllable item {0}".format(syllable_item))
+                    return
+                elif syllable_item == 'C':
+                    new_syllable_structure.append(["consonant"])
+                elif syllable_item == 'V':
+                    new_syllable_structure.append(["vowel"])
+                else:
+                    new_syllable_structure.append([syllable_item])
+            elif type(syllable_item) is list:
+                for feature in syllable_item:
+                    if not self.features.has_feature(syllable_item):
+                        print("Language add_syllable failed - invalid syllable feature {0}".format(feature))
+                        return
+                new_syllable_structure.append(syllable_item)
+        syllable = Syllable(new_syllable_structure)
+        self.inventory.add_syllable(syllable)
+        return
+
+    def add_affix(self, category, grammar, affix):
+        """Add a grammatical category and value affix in phonetic transcription"""
+        for symbol in affix:
+            if symbol != '-' or not self.inventory.has_ipa(symbol):
+                print("Language add_affix failed - invalid affix {0}".format(affix))
+                return
+        self.affixes.add(category, grammar, affix)
+        return self.affixes.get(affix)
+
+    def add_sound(self, ipa, letters=[], weight=weight):
+        if not self.features.has_ipa(ipa) or len([l for l in letters if type(l) is str]) != len(letters):
+            return
+        sound = Phoneme(ipa, letters=[letter], weight=weight)
+        if ipa not in self.phonemes:
+            self.phonemes{ipa: {sound}}
+        else:
+            self.phonemes[ipa].add(sound)
+        return {ipa: self.phonemes[ipa]}
 
     def build_word(self, length=1):
         """Form a word following the defined inventory and syllable structure"""
