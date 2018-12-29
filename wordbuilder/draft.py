@@ -429,7 +429,7 @@ class Inventory:
 #   - '0', '#' when applying rules
 
 class Language:
-    def __init__(self, name="", name_en="", features=None, inventory=None):
+    def __init__(self, name="", name_en="", features=None, inventory=None, rules=None):
         self.name = name
         self.name_en = name_en
         self.features = features
