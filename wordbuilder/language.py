@@ -1,3 +1,6 @@
+from syllable import Syllable
+from phoneme import Phoneme
+
 # TODO handle feature checks in language instead of shared Features dependency
 #   - check before passing non C xor V to syll
 #   - check before adding consonant or vowel to inventory
@@ -74,8 +77,12 @@ class Language:
         self.affixes.add(category, grammar, affix)
         return self.affixes.get(affix)
 
-    def add_sound(self, ipa, letters=[], weight=weight):
+    # TODO add weights for letter choice? for rules?
+    #   - current weight intended for distributing phon commonness/freq of occ
+    def add_sound(self, ipa, letters=[], weight=0):
+        """Add one phonetic symbol, associated letters and optional weight to the language's inventory"""
         if not self.features.has_ipa(ipa) or len([l for l in letters if type(l) is str]) != len(letters):
+            print("Language add_sound failed - invalid phonetic symbol or letters")
             return
         sound = Phoneme(ipa, letters=[letter], weight=weight)
         if ipa not in self.phonemes:
@@ -83,6 +90,17 @@ class Language:
         else:
             self.phonemes[ipa].add(sound)
         return {ipa: self.phonemes[ipa]}
+
+    def add_sounds(self, ipa_letters_map):
+        """Add multiple sounds to the language's inventory"""
+        if type(ipa_letters_map is not dict):
+            print("Language add_sounds failed - expected dict not {0}".format(type(ipa_letters_map)))
+            return
+        sounds = {}
+        for ipa, letters in ipa_letters_map.items():
+            added_sound = self.add_sound(ipa, letters=letters)
+            sounds.update(added_sound)
+        return sounds
 
     def build_word(self, length=1):
         """Form a word following the defined inventory and syllable structure"""
