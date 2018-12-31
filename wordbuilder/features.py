@@ -41,7 +41,7 @@ class Features:
         found_ipa = self.features[features[0]]
         for feature in features[1:]:
             if feature in self.features:
-                found_ipa &= self.features[features]
+                found_ipa &= self.features[feature]
             else:
                 return []
         return list(found_ipa)
@@ -49,12 +49,12 @@ class Features:
     def add_map(self, ipa_features_map):
         """Add phonetic symbols mapped to their associated features"""
         if type(ipa_features_map) is not dict:
-            print("Features add failed - expected dict not {0}".format(type(ipa_features_map)))
+            print("Features add_map failed - expected dict not {0}".format(type(ipa_features_map)))
             return
         # new symbols and new features - other methods do one or the other
         for symbol, features in ipa_features_map.items():
             added_features_map = self.add_features(features)
-            self.add_ipa(symbol, added_features_map.keys())
+            self.add_ipa(symbol, features=list(added_features_map.keys()))
         return self.get()
 
     # TODO remove or update symbol
@@ -62,8 +62,8 @@ class Features:
 
     def add_ipa(self, ipa, features=[]):
         """Add a phonetic symbol to existing feature symbol sets"""
-        if type(ipa) is not str or type(features) is not list:
-            print("Features add_ipa failed - unknown symbol or features list")
+        if type(ipa) != str or type(features) != list:
+            print("Features add_ipa failed - invalid symbol or features list")
             return
         for feature in features:
             if feature not in self.features:
@@ -78,7 +78,8 @@ class Features:
         if type(feature) is not str:
             print("Features add_feature failed - invalid feature {0}".format(feature))
             return
-        self.features[feature] = set()
+        if feature not in self.features:
+            self.features[feature] = set()
         return {feature: self.features[feature]}
 
     def add_features(self, features):
@@ -89,8 +90,7 @@ class Features:
         added_features = {}
         for feature in features:
             added_feature = self.add_feature(feature)
-            if added_feature:
-                added_features[feature] = added_feature.values()[0]
+            added_feature and added_features.update(added_feature)
         return added_features
 
     def distribute_sounds(self, ipa):

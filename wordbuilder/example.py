@@ -1,6 +1,6 @@
 # built and fed to language
 from inventory import Inventory
-from features import features
+from features import Features
 from rules import Rules
 from language import Language
 # instantiated inside language
@@ -11,7 +11,7 @@ from environment import Environment
 
 # TODO manage syll, phon, env in L as already c Affixes
 features = Features()
-features.add({
+print(features.add_map({
     'a': ['vowel', 'front', 'open', 'unrounded'],
     'i': ['vowel', 'front', 'close', 'unrounded'],
     'y': ['vowel', 'front', 'close', 'rounded'],
@@ -57,10 +57,20 @@ features.add({
     'ɮ': ['consonant', 'voiced', 'alveolar', 'lateral', 'fricative'],
     'j': ['consonant', 'voiced', 'palatal', 'approximant'],
     'w': ['consonant', 'voiced', 'velar', 'approximant']
-})
+}))
+features.get()
 
 inventory = Inventory()
-inventory.add_sounds({
+
+my_language = Language(
+    name='Testerlangubekke',
+    display_name='Testaroundish',
+    features=features,
+    inventory=inventory,
+    rules=None
+)
+
+my_language.add_sounds({
     'a': ['a', 'ah'],
     'i': ['i', 'ie'],
     'u': ['u'],
@@ -74,10 +84,4 @@ inventory.add_sounds({
     'ts': ['ds']
 })
 
-my_language = Language(
-    name='Testerlangubekke',
-    display_name='Testaroundish',
-    features=features,
-    inventory=inventory,
-    rules=None
-)
+print(my_language.inventory.get_features('th'))

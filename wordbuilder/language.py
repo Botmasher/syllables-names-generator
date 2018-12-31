@@ -1,5 +1,6 @@
 from syllable import Syllable
 from phoneme import Phoneme
+from affixes import Affixes
 
 # TODO handle feature checks in language instead of shared Features dependency
 #   - check before passing non C xor V to syll
@@ -81,23 +82,28 @@ class Language:
     #   - current weight intended for distributing phon commonness/freq of occ
     def add_sound(self, ipa, letters=[], weight=0):
         """Add one phonetic symbol, associated letters and optional weight to the language's inventory"""
-        if not self.features.has_ipa(ipa) or len([l for l in letters if type(l) is str]) != len(letters):
+        if not self.features.has_ipa(ipa) or not all(isinstance(l, str) for l in letters):
             print("Language add_sound failed - invalid phonetic symbol or letters")
-            return
-        sound = Phoneme(ipa, letters=[letter], weight=weight)
+            return {}
+        sound = Phoneme(ipa, letters=letters, weight=weight)
         if ipa not in self.phonemes:
-            self.phonemes{ipa: {sound}}
+            self.phonemes[ipa] = {sound}
         else:
             self.phonemes[ipa].add(sound)
+        # TODO decide if adding sounds to language (above) or managing through inventory (below)
+        features = self.features.get_features(ipa)
+        for letter in letters:
+            self.inventory.add_letter(letter=letter, features=features)
         return {ipa: self.phonemes[ipa]}
 
     def add_sounds(self, ipa_letters_map):
         """Add multiple sounds to the language's inventory"""
-        if type(ipa_letters_map is not dict):
+        if type(ipa_letters_map) is not dict:
             print("Language add_sounds failed - expected dict not {0}".format(type(ipa_letters_map)))
             return
         sounds = {}
         for ipa, letters in ipa_letters_map.items():
+            print(ipa)
             added_sound = self.add_sound(ipa, letters=letters)
             sounds.update(added_sound)
         return sounds
@@ -105,6 +111,7 @@ class Language:
     def build_word(self, length=1):
         """Form a word following the defined inventory and syllable structure"""
         if not self.inventory and self.inventory.get_syllables():
+            print("Language build_word failed - unrecognized inventory or inventory  syllables")
             return
         word = ""
         for i in range(length):
