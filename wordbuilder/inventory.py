@@ -34,7 +34,7 @@ class Inventory:
         matching_features = []
         for feature in self.letters_by_feature:
             if letter in self.letters_by_feature[feature]:
-                matching_features.append(letter)
+                matching_features.append(feature)
         return matching_features
 
     def get_syllables(self):

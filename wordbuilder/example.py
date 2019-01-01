@@ -11,7 +11,7 @@ from environment import Environment
 
 # TODO manage syll, phon, env in L as already c Affixes
 features = Features()
-print(features.add_map({
+features.add_map({
     'a': ['vowel', 'front', 'open', 'unrounded'],
     'i': ['vowel', 'front', 'close', 'unrounded'],
     'y': ['vowel', 'front', 'close', 'rounded'],
@@ -57,8 +57,8 @@ print(features.add_map({
     'ɮ': ['consonant', 'voiced', 'alveolar', 'lateral', 'fricative'],
     'j': ['consonant', 'voiced', 'palatal', 'approximant'],
     'w': ['consonant', 'voiced', 'velar', 'approximant']
-}))
-features.get()
+})
+# TODO solve feature 'consonant'/'vowel' not getting into features inventory
 
 inventory = Inventory()
 
@@ -84,4 +84,14 @@ my_language.add_sounds({
     'ts': ['ds']
 })
 
-print(my_language.inventory.get_features('th'))
+print(my_language.inventory.get_features('i'))
+print(my_language.inventory.get_features('β'))
+# TODO special symbols like β and two-char ones like ts not getting features
+
+# TODO weight syllables so CV > just V
+my_language.add_syllable('CVC')
+my_language.add_syllable('VC')
+my_language.add_syllable('CV')
+my_language.print_syllables()
+
+# TODO add word shapes (root, affixes, compounds, or initial VCV but not mid CVVCV)

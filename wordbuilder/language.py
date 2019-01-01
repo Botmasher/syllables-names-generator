@@ -44,13 +44,36 @@ class Language:
             return
         self.rules.add(source, target, e)
 
-    def add_syllable(self, syllable_structure):
+    def print_syllables(self):
+        syllable_text = ""
+        count = 0
+        for syllable in self.inventory.get_syllables():
+            count += 1
+            syllable_text += "Syllable {0}: ".format(count)
+            for syllable_item in syllable.get():
+                for feature in syllable_item:
+                    syllable_text += "{0}, ".format(feature)
+            syllable_text = syllable_text[:-2]
+            syllable_text += "\n"
+        print(syllable_text)
+        return syllable_text
+
+    def add_syllable(self, syllable_structure, parse_cv=True):
         # build valid symbol or features list
         syllable_characters = ['_', '#', ' ', 'C', 'V']
-        new_syllable = []
+        if parse_cv and type(syllable_structure) is str:
+            cv_structure = []
+            for cv_char in syllable_structure:
+                if cv_char in syllable_characters:
+                    cv_structure.append(cv_char)
+                else:
+                    print("Language add_syllable failed - invalid character {0} found when parsing syllable string".format(cv_char))
+                    return
+            syllable_structure = cv_structure
+        new_syllable_structure = []
         for syllable_item in syllable_structure:
             if type(syllable_item) is str:
-                if syllable_item not in syllable_characters or not self.features.has_feature(syllable_item):
+                if not (syllable_item in syllable_characters or self.features.has_feature(syllable_item)):
                     print("Language add_syllable failed - invalid syllable item {0}".format(syllable_item))
                     return
                 elif syllable_item == 'C':
@@ -66,6 +89,7 @@ class Language:
                         return
                 new_syllable_structure.append(syllable_item)
         syllable = Syllable(new_syllable_structure)
+        print(new_syllable_structure)
         self.inventory.add_syllable(syllable)
         return
 
@@ -103,7 +127,6 @@ class Language:
             return
         sounds = {}
         for ipa, letters in ipa_letters_map.items():
-            print(ipa)
             added_sound = self.add_sound(ipa, letters=letters)
             sounds.update(added_sound)
         return sounds
@@ -117,11 +140,9 @@ class Language:
         for i in range(length):
             syllable = random.choice(self.inventory.get_syllables())
             syllable_structure = syllable.get()
-            print(syllable_structure)
             for syllable_letter_feature in syllable_structure:
                 letters = self.inventory.get_letter(syllable_letter_feature)
                 # TODO choose letters by weighted freq/uncommonness
                 if letters:
                     word += random.choice(letters)
-        print(word)
         return word
