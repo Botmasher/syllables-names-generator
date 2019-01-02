@@ -2,16 +2,17 @@ from syllable import Syllable
 from phoneme import Phoneme
 from affixes import Affixes
 
-# TODO handle feature checks in language instead of shared Features dependency
+# TODO
+# - handle feature checks in language instead of shared Features dependency
 #   - check before passing non C xor V to syll
 #   - check before adding consonant or vowel to inventory
 #   - check before adding features to phone
-
-# TODO set up default letters and symbols
-
-# TODO language handles checking inventory, environment, rules
+# - language dictionary storing created words and definitions
+# - set up default letters and symbols
+# - have language check inventory, environment, rules
 #   - e.g. avoid ['smiles', '_', 'sauce'] allow ['vowel', '_', 'vowel']
 #   - '0', '#' when applying rules
+# - see tasks within other class files
 
 class Language:
     def __init__(self, name="", display_name="", features=None, inventory=None, rules=None):
