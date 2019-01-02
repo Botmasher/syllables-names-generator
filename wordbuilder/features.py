@@ -27,23 +27,25 @@ class Features:
     def get_features(self, ipa):
         """Find all features associated with a phonetic symbol"""
         if type(ipa) is not str:
+            print("Features get_features failed - invalid phonetic symbol {0}".format(ipa))
             return []
         found_features = set()
-        for feature in self.features:
-            ipa in self.features[feature] and found_features.add(feature)
+        for feature, symbols in self.features.items():
+            ipa in symbols and found_features.add(feature)
         return list(found_features)
 
     def get_ipa(self, features):
         """Find phonetic symbols matching all given features"""
-        if type(features) is not list or features[0] not in self.features:
+        if len(features) <= 0 or features[0] not in self.features:
             return []
         # intersect symbols for listed features
-        found_ipa = self.features[features[0]]
+        found_ipa = set(self.features[features[0]])
         for feature in features[1:]:
             if feature in self.features:
                 found_ipa &= self.features[feature]
             else:
                 return []
+        print(found_ipa)
         return list(found_ipa)
 
     def add_map(self, ipa_features_map):
@@ -53,45 +55,36 @@ class Features:
             return
         # new symbols and new features - other methods do one or the other
         for symbol, features in ipa_features_map.items():
-            added_features_map = self.add_features(features)
-            self.add_ipa(symbol, features=list(added_features_map.keys()))
+            self.add_ipa(symbol, features)
         return self.get()
 
     # TODO remove or update symbol
     # TODO update feature name (incl avoid conflicts)
 
-    def add_ipa(self, ipa, features=[]):
+    def add_ipa(self, symbol, features):
         """Add a phonetic symbol to existing feature symbol sets"""
-        if type(ipa) != str or type(features) != list:
-            print("Features add_ipa failed - invalid symbol or features list")
+        if type(symbol) != str or type(features) != list:
+            print("Features add_ipa failed - invalid symbol or features")
             return
         for feature in features:
-            if feature not in self.features:
-                print("Features add_ipa failed - unkown feature {0}".format(feature))
-                return
-        for feature in features:
-            self.features[feature].add(ipa)
-        return self.get_ipa(features)
+            if feature in self.features:
+                self.features[feature].add(symbol)
+            else:
+                self.features[feature] = {symbol}
+                #self.add_feature(feature, default_value=symbol)
+                print("Features add_ipa added unkown feature {0}".format(feature))
+        return self.get_ipa(symbol)
 
-    def add_feature(self, feature):
+    def add_feature(self, feature, default_value=None):
         """Add one new feature to the features map"""
         if type(feature) is not str:
             print("Features add_feature failed - invalid feature {0}".format(feature))
             return
         if feature not in self.features:
-            self.features[feature] = set()
-        return {feature: self.features[feature]}
-
-    def add_features(self, features):
-        """Add multiple new features to the map"""
-        if not features or type(features) is not list:
-            print("Features add_features failed - invalid features list {0}".format(features))
-            return
-        added_features = {}
-        for feature in features:
-            added_feature = self.add_feature(feature)
-            added_feature and added_features.update(added_feature)
-        return added_features
+            self.features[feature] = {default_value} if default_value else {}
+            return feature
+        print("Features add_feature ignored {0} - key already exists".format(feature))
+        return
 
     def distribute_sounds(self, ipa):
         """Populate selectable symbols following a Zipf distribution"""

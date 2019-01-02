@@ -59,6 +59,7 @@ features.add_map({
     'w': ['consonant', 'voiced', 'velar', 'approximant']
 })
 # TODO solve feature 'consonant'/'vowel' not getting into features inventory
+print(features.get())
 
 inventory = Inventory()
 
@@ -84,9 +85,20 @@ my_language.add_sounds({
     'ts': ['ds']
 })
 
-print(my_language.inventory.get_features('i'))
-print(my_language.inventory.get_features('β'))
+# NOTE three methods for getting features for an IPA char
+#   - Inventory.get_features reads local inventory dict listing letters by feature
+#   - Features.get_features retrieves list of feature keys where sound exists in set
+#   - Language.get_sound_features wraps the features (NOT inventory) method
+#       - but only for phonemes in the language
+
 # TODO special symbols like β and two-char ones like ts not getting features
+print(my_language.features.get_features('i'))
+print(my_language.features.get_features('β'))
+#print(my_language.features.features)
+
+# TODO have inventory tie features to chars, and do the add sounds instead of language
+#print(my_language.phonemes)     # recall this is a dict of ipa:phoneme pairs
+print(my_language.get_sound_features('i'))
 
 # TODO weight syllables so CV > just V
 my_language.add_syllable('CVC')

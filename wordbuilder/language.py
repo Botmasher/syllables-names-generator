@@ -89,7 +89,6 @@ class Language:
                         return
                 new_syllable_structure.append(syllable_item)
         syllable = Syllable(new_syllable_structure)
-        print(new_syllable_structure)
         self.inventory.add_syllable(syllable)
         return
 
@@ -102,6 +101,31 @@ class Language:
         self.affixes.add(category, grammar, affix)
         return self.affixes.get(affix)
 
+
+    # TODO decide to handle sound lookups and feature associations here vs inventory
+    #   - currently relying on this class symbol:phoneme mapping but building sylls c chars from inv
+    #   - features knows all possibilities but inventory builds out current set
+    def is_ipa(self, symbol):
+        if not self.features.has_ipa(symbol):
+            print("invalid phonetic symbol {0}".format(symbol))
+            return False
+        return True
+    #
+    def get_sound_features(self, ipa):
+        if not self.is_ipa(ipa) or ipa not in self.phonemes:
+            print("Language phonetic symbol not found: {0}".format(ipa))
+            return
+        phoneme = self.phonemes[ipa].get()
+        return self.features.get_features(phoneme['symbol'])
+    #
+    def get_sound_letters(self, ipa):
+        if not self.is_ipa(ipa) or ipa not in self.phonemes:
+            print("Language phonetic symbol not found: {0}".format(ipa))
+            return
+        phoneme = self.phonemes[ipa].get()
+        return phoneme['letters']
+
+
     # TODO add weights for letter choice? for rules?
     #   - current weight intended for distributing phon commonness/freq of occ
     def add_sound(self, ipa, letters=[], weight=0):
@@ -110,10 +134,7 @@ class Language:
             print("Language add_sound failed - invalid phonetic symbol or letters")
             return {}
         sound = Phoneme(ipa, letters=letters, weight=weight)
-        if ipa not in self.phonemes:
-            self.phonemes[ipa] = {sound}
-        else:
-            self.phonemes[ipa].add(sound)
+        self.phonemes[ipa] = sound
         # TODO decide if adding sounds to language (above) or managing through inventory (below)
         features = self.features.get_features(ipa)
         for letter in letters:
