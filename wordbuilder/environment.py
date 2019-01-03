@@ -12,11 +12,27 @@ class Environment:
     def get(self):
         return self.structure
 
-    def get_pretty(self):
+    def get_pretty(self, use_notation=False):
         body_text = ""
         intro_text = ""
         for i in range(len(self.structure)):
             slot = self.structure[i]
+            # notation
+            if use_notation:
+                slot_txt = ""
+                if 'consonant' in slot:
+                    slot_txt += "C"
+                elif 'vowel' in slot:
+                    slot_txt += "V"
+                elif slot == '_':
+                    slot_txt += "_"
+                features = ["+{0}".format(feature) for feature in slot if feature not in ('consonant', 'vowel')]
+                if features:
+                    body += "{0}({1})".format(slot_txt, ",".join(features))
+                else:
+                    body += "{0}".format(slot_txt)
+                continue
+            # verbose
             line = ""
             if type(slot) is list:
                 line += "an " if slot[0][0].lower() in ['a', 'e', 'i', 'o', 'u'] else "a "

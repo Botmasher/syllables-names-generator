@@ -11,15 +11,19 @@ class Rule:
             'environment': self.environment
         }
 
-    def get_pretty(self):
+    def get_pretty(self, use_notation=False):
         """Format rule into a human readable statement."""
-        text = "Change "
-        text += ("{0} to {1} when the sound is {2}".format(
+        text = ""
+        if use_notation:
+            text += "{0} -> {1} / {2}"
+        else:
+            text += "Change {0} to {1} when it's {2}."
+        text.format(
             self.source,
             self.target,
-            self.environment.get_pretty()
-        ))
-        return "{0}.".format(text)
+            self.environment.get_pretty(use_notation=use_notation)
+        )
+        return text
 
     def check(self):
         """Internal method for checking the validity of rule attributes"""

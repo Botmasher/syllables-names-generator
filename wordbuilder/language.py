@@ -121,10 +121,12 @@ class Language:
         self.rules[rule_id] = rule
         return rule_id
 
-    def get_rule(self, rule_id):
+    def get_rule(self, rule_id, pretty_print=False):
         """Look up one rule in the language's rules dictionary"""
         if rule_id in self.rules:
-            return self.rules[rule_id]
+            rule = self.rules[rule_id]
+            pretty_print and rule.get_pretty()
+            return rule
         print("Language get_rule failed - unknown rule {0}".format(rule_id))
         return
 

@@ -24,6 +24,7 @@ Once you verify it runs, you're probably eager to begin customizing your languag
 Identified tasks for maintenance and improvement:
 - [ ] peel this list pff and format it as its own doc
 - [ ] go through tasks in py files and organize them in the doc
+- [ ] weighting and ordering of phonemes, syllables, rules for choosing and applying
 
 ## Contributing
 
