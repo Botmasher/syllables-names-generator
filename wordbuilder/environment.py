@@ -13,8 +13,8 @@ class Environment:
         return self.structure
 
     def get_pretty(self):
-        formatted_text = ""
-        intro_text = "when the sound is "
+        body_text = ""
+        intro_text = ""
         for i in range(len(self.structure)):
             slot = self.structure[i]
             line = ""
@@ -35,10 +35,10 @@ class Environment:
                     line += "a {0}".format(slot)
             else:
                 pass
-            formatted_text += line
-        if formatted_text[(len(formatted_text)-2):] == ", ":
-            formatted_text = formatted_text[:-2]
-        return "{0}{1}".format(intro_text, formatted_text)
+            body_text += line
+        if body_text[(len(body_text)-2):] == ", ":
+            body_text = body_text[:-2]
+        return "{0}{1}".format(intro_text, body_text)
 
     def set(self, structure):
         if self.is_structure(structure):

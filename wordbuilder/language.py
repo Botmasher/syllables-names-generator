@@ -1,6 +1,9 @@
 from syllable import Syllable
+from rule import Rule
+from environment import Environment
 from phoneme import Phoneme
 from affixes import Affixes
+import uuid
 
 # TODO
 # - handle feature checks in language instead of shared Features dependency
@@ -102,6 +105,28 @@ class Language:
         self.affixes.add(category, grammar, affix)
         return self.affixes.get(affix)
 
+    # Rules
+    # TODO update, remove
+    def add_rule(self, source, target, environment_structure):
+        """Add one rule to the language's rules dictionary"""
+        environment = Environment(structure=environment_structure)
+        if not environment.get():
+            print("Language add_rule failed - invalid or empty environment {0}".format(environment))
+            return
+        rule = Rule(source=source, target=target, environment=environment)
+        if not rule.get():
+            print("Language add_rule failed - invalid rule {0}".format(rule))
+            return
+        rule_id = uuid.uuid4()
+        self.rules[rule_id] = rule
+        return rule_id
+
+    def get_rule(self, rule_id):
+        """Look up one rule in the language's rules dictionary"""
+        if rule_id in self.rules:
+            return self.rules[rule_id]
+        print("Language get_rule failed - unknown rule {0}".format(rule_id))
+        return
 
     # TODO decide to handle sound lookups and feature associations here vs inventory
     #   - currently relying on this class symbol:phoneme mapping but building sylls c chars from inv
