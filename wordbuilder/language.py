@@ -28,6 +28,7 @@ class Language:
         self.environments = {}  # instantiated environments
         self.syllables = {}     # set of syllables - inventory?
         self.phonemes = {}      # dict of created phonemes - inventory?
+        self.dictionary = {}    # words with ipa, morphology, definition
 
     def set_inventory(self, inventory):
         """Set the inventory object for this language"""
@@ -180,6 +181,69 @@ class Language:
             sounds.update(added_sound)
         return sounds
 
+    # build a full word c affixes
+    # NOTE: do entirely in phon and make sure Affix(es) class coheres
+    #   - consider lang creator might use "-" as symbol
+    # TODO: think again about affixation
+    #   - include word class for categorizing like ['noun']['class']['animate']?
+    #   - what about compounding?
+    #   - what about analytic syntax like say "dnen bmahuwa" for cat-ANIM?
+    def apply_affixes(self, root_ipa, grammatical_features={}, boundaries=True):
+        morphology = root_ipa
+        affixes = self.affixes.get()
+        for grammatical_category in grammatical_features:
+            grammar = grammatical_features[grammatical_category]
+            try:
+                affix = affixes[grammatical_category][grammar]
+                if 'suffix' in affix:
+                    suffix = random.sample(affix['suffix'])
+                    morphology.append(suffix)
+                elif 'prefix' in affix:
+                    prefix = random.sample(affix['prefix'])
+                    morphology.insert(prefix)
+            except:
+                continue
+        built_word = ""
+        if not boundaries:
+            # for feeding to sound change rules
+            built_word = "".join(morphology)
+        else:
+            # for displaying hyphenated morphology
+            built_word = "-".join(morphology)
+        return {
+            'ipa': built_word,
+            'shape': morphology
+        }
+
+    def store_word(self, spelling, phonology, morphology, definition=""):
+        entry = {
+            'spelling': spelling,
+            'ipa': phonology,
+            'morphology': morphology,
+            'definition': definition
+        }
+        # array for homonyms
+        if spelling in self.dictionary:
+            self.dictionary[spelling].append(entry)
+        else:
+            self.dictionary[spelling] = [entry]
+        return self.dictionary[spelling]
+
+    def lookup(self, spelling):
+        if spelling in self.dictionary:
+            return self.dictionary[spelling]
+        print("Language word lookup faield - unknown spelling {0}".format(spelling))
+        return
+
+    def define(self, spelling):
+        words = self.lookup(spelling)
+        if not words:
+            return
+        # iterate over homonyms
+        definitions = [word['definition'] for word in words]
+        return definitions
+
+    # TODO add affixes, apply rules and store word letters and symbols
     def build_word(self, length=1):
         """Form a word following the defined inventory and syllable structure"""
         if not self.inventory and self.inventory.get_syllables():
