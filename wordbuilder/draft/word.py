@@ -3,6 +3,7 @@
 # TODO separating analytic pieces
 #   - store as separate words or piece of this word?
 #   - treat spaces as part of morphology?
+#   - OR just solve for building out a bit of syntax (then can store affixes, particles separately as well)
 
 class Word:
     def __init__(self, spelling="", ipa="", morphology=[], defintion=""):
