@@ -11,6 +11,15 @@ class Rule:
             'environment': self.environment
         }
 
+    def get_source(self):
+        return self.source
+
+    def get_target(self):
+        return self.target
+
+    def get_environment(self):
+        return self.environment
+
     def get_pretty(self, use_notation=False):
         """Format rule into a human readable statement."""
         text = ""
@@ -30,7 +39,7 @@ class Rule:
         if type(self.source.__name__) != 'Phoneme':
             print("Rule check failed - invalid source {0}".format(source))
             return False
-        if type(self.target.__name__) != 'Phoneme'):
+        if type(self.target.__name__) != 'Phoneme':
             print("Rule check failed - invalid target {0}".format(target))
             return False
         if type(self.environment.__name__) != 'Environment':

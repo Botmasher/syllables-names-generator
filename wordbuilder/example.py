@@ -1,13 +1,14 @@
 # built and fed to language
 from inventory import Inventory
 from features import Features
-from rules import Rules
 from language import Language
 # instantiated inside language
 from affixes import Affixes
 from phoneme import Phoneme
 from syllable import Syllable
 from environment import Environment
+
+## TEST - make features
 
 # TODO manage syll, phon, env in L as already c Affixes
 features = Features()
@@ -61,14 +62,14 @@ features.add_map({
 # TODO solve feature 'consonant'/'vowel' not getting into features inventory
 print(features.get())
 
+## TEST - use above features to build lang and sylls
 inventory = Inventory()
 
 my_language = Language(
     name='Testerlangubekke',
     display_name='Testaroundish',
     features=features,
-    inventory=inventory,
-    rules=None
+    inventory=inventory
 )
 
 my_language.add_sounds({
@@ -91,19 +92,29 @@ my_language.add_sounds({
 #   - Language.get_sound_features wraps the features (NOT inventory) method
 #       - but only for phonemes in the language
 
-# TODO special symbols like β and two-char ones like ts not getting features
-print(my_language.features.get_features('i'))
-print(my_language.features.get_features('β'))
-#print(my_language.features.features)
-
-# TODO have inventory tie features to chars, and do the add sounds instead of language
-#print(my_language.phonemes)     # recall this is a dict of ipa:phoneme pairs
-print(my_language.get_sound_features('i'))
-
-# TODO weight syllables so CV > just V
-my_language.add_syllable('CVC')
-my_language.add_syllable('VC')
-my_language.add_syllable('CV')
-my_language.print_syllables()
+# # TODO special symbols like β and two-char ones like ts not getting features
+# print(my_language.features.get_features('i'))
+# print(my_language.features.get_features('β'))
+# #print(my_language.features.features)
+#
+# # TODO have inventory tie features to chars, and do the add sounds instead of language
+# #print(my_language.phonemes)     # recall this is a dict of ipa:phoneme pairs
+# print(my_language.get_sound_features('i'))
+#
+# # TODO weight syllables so CV > just V
+# my_language.add_syllable('CVC')
+# my_language.add_syllable('VC')
+# my_language.add_syllable('CV')
+# my_language.print_syllables()
 
 # TODO add word shapes (root, affixes, compounds, or initial VCV but not mid CVVCV)
+
+
+## TEST - run rules (independent of above features, inventory, lang)
+my_language.add_rule(['voiceless'], ['voiced'], 'V_V')
+# /!\ inventory lacks relevant sounds for this rule
+#   - TODO: handle this case better
+#my_language.add_rule(['voiced', 'stop'], ['voiced', 'fricative'], 'V_V')
+print(my_language.apply_rules("kat"))    # expected: "kat", got: ""
+print(my_language.apply_rules("kata"))   # expected: "kada", got: ""
+print(my_language.apply_rules("katta"))  # expected: "katta", got: ""

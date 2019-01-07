@@ -18,11 +18,11 @@ import uuid
 # - see tasks within other class files
 
 class Language:
-    def __init__(self, name="", display_name="", features=None, inventory=None, rules=None):
+    def __init__(self, name="", display_name="", features=None, inventory=None, rules={}):
         self.name = name
         self.display_name = display_name
-        self.features = features
-        self.inventory = inventory
+        self.features = features    # TODO screen for void
+        self.inventory = inventory  # TODO screen for void
         self.rules = rules
         self.affixes = Affixes()
         self.environments = {}  # instantiated environments
@@ -37,17 +37,6 @@ class Language:
     def set_features(self, features):
         """Set the features object for this language"""
         self.features = features
-
-    # TODO compare with Rules.add checks already in place
-    def add_rule(self, source, target, environment):
-        if not (self.features.has_ipa(source) and self.features.has_ipa(target)):
-            print("Language add_rule failed - invalid source or target symbols")
-            return
-        e = Environment(structure=environment)
-        if not e.get():
-            print("Language add_rule failed - invalid environment given")
-            return
-        self.rules.add(source, target, e)
 
     def print_syllables(self):
         syllable_text = ""
@@ -228,18 +217,19 @@ class Language:
         }
         # track any rule matches
         # TODO how to deal with overlaps like V_V in VCVCV?
-        rules_tracker = {
-            rule_id: {
+        rules_tracker = {}
+        for rule_id in self.rules:
+            rule = self.rules[rule_id]
+            environment_structure = rule.get_environment().get_structure()
+            rules_tracker[rule_id] = {
                 'count': 0,
-                'length': len(self.rules[rule_id]['environment']),
+                'length': len(environment_structure),
                 'source': '',    # identified sounds to change
                 'index': None,   # index of identified sound to change
                 'indexes': [],   # target change locations in word
                 'targets': [],   # target sounds they will change into
-                'rule': self.rules[rule_id]
+                'rule': rule
             }
-            for rule_id in self.rules
-        }
 
         def is_features_submatch(features, ipa_symbol):
             for feature in features:
@@ -250,7 +240,7 @@ class Language:
         def clear_rule_data(rule_tracker_entry):
             rule_tracker_entry = {
                 'count': 0,
-                'length': rule_tracker_entry['total'],
+                'length': rule_tracker_entry['length'],
                 'source': '',
                 'index': None,
                 #'indexes': [],
@@ -273,8 +263,8 @@ class Language:
             return new_symbol
 
         # now look up features
-        for word_i in len(range(ipa_string)):
-            symbol = ipa_string[i]
+        for word_i in range(len(ipa_string)):
+            symbol = ipa_string[word_i]
             try:
                 sound_features = word_features[symbol]
             except:
@@ -282,11 +272,11 @@ class Language:
             # match word features to features in rule environment lists
             for rule_id in rules_tracker:
                 rule_data = rules_tracker[rule_id]
-                environment_slot = rule_data['rule']['environment'][rule_data['count']]
+                environment_slot = rule_data['rule'].get_environment().get_structure()[rule_data['count']]
                 # environment slot matches - store sound
                 if environment_slot in ["_", ["_"]]:
                     # check if the sound is one changed by rule source -> target
-                    if is_features_submatch(rule_data['rule']['source'], symbol):
+                    if is_features_submatch(rule_data['rule'].source(), symbol):
                         rule_data['source'] = symbol
                         rule_data['index'] = word_i
                         rule_data['count'] += 1

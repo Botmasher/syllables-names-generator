@@ -10,9 +10,13 @@ class Environment:
         return False
 
     def get(self):
+        return {'structure': self.structure}
+
+    def get_structure(self):
         return self.structure
 
     def get_pretty(self, use_notation=False):
+        """Format environment structure as human readable text"""
         body_text = ""
         intro_text = ""
         for i in range(len(self.structure)):
@@ -57,6 +61,18 @@ class Environment:
         return "{0}{1}".format(intro_text, body_text)
 
     def set(self, structure):
+        # parse short strings like 'C_C'
+        if type(structure) is str:
+            parsed_structure = []
+            short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_"}
+            for symbol in structure:
+                if symbol in short_symbols.keys():
+                    parsed_structure.append(symbol)
+                else:
+                    print("Environment failed to set - unknown structure symbol {0}".format(symbol))
+                    return
+            structure = parsed_structure
+        # store environment elements as list
         if self.is_structure(structure):
             self.structure = structure
         else:
