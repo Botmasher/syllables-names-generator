@@ -27,12 +27,11 @@ class Rule:
             text += "{0} -> {1} / {2}"
         else:
             text += "Change {0} to {1} when it's {2}."
-        text.format(
+        return text.format(
             self.source,
             self.target,
             self.environment.get_pretty(use_notation=use_notation)
         )
-        return text
 
     def check(self):
         """Internal method for checking the validity of rule attributes"""

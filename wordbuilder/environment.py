@@ -15,12 +15,19 @@ class Environment:
     def get_structure(self):
         return self.structure
 
+    def _clip_comma(self, text):
+        if len(text) > 2 and text[-2:] == ", ":
+            text = text[:-2]
+        return text
+
     def get_pretty(self, use_notation=False):
         """Format environment structure as human readable text"""
         body_text = ""
         intro_text = ""
+
         for i in range(len(self.structure)):
             slot = self.structure[i]
+            print(slot)
             # notation
             if use_notation:
                 slot_txt = ""
@@ -50,6 +57,7 @@ class Environment:
                         intro_text += "after "
                     else:
                         intro_text += "between "
+                        body_text = self._clip_comma(body_text)
                         line += " and "
                 else:
                     line += "a {0}".format(slot)
@@ -67,7 +75,7 @@ class Environment:
             short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_"}
             for symbol in structure:
                 if symbol in short_symbols.keys():
-                    parsed_structure.append(symbol)
+                    parsed_structure.append(short_symbols[symbol])
                 else:
                     print("Environment failed to set - unknown structure symbol {0}".format(symbol))
                     return

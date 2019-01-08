@@ -206,6 +206,43 @@ class Language:
 
     ## walk through a word's sounds, see if rule environments match, apply if they do
     # TODO rule layering - currently it's all-at-once!
+
+    ## APPLY_RULE HELPERS
+    # are all features found for this symbol (subset of its features)?
+    def _is_features_submatch(self, features, symbol_features):
+        for feature in features:
+            if feature not in symbol_features:
+                return False
+        return True
+
+    # TODO entirely separate out handling rule tracker
+    # reset a single rule tracker entry
+    def reset_rule_data(self, rule_tracker_entry, clear=False):
+        rule_tracker_entry = {
+            'count': 0,
+            'length': rule_tracker_entry['length'],
+            'source': '',
+            'index': None,
+            'indexes': [] if clear else rule_tracker_entry['indexes'],
+            'targets': [] if clear else rule_tracker_entry['targets'],
+            'rule': rule_tracker_entry['rule']
+        }
+        return rule_tracker_entry
+
+    # use rule to turn symbol from source into target
+    def change_symbol(self, source_features, target_features, ipa_symbol):
+        symbol_features = self.features.get_features(ipa_symbol)
+        new_symbol_features = set(target_features)
+        for feature in symbol_features:
+            if feature in source_features and feature not in target_features:
+                pass
+            else:
+                new_symbol_features.add(feature)
+        new_symbols = self.features.get_ipa(list(new_symbol_features))
+        # TODO choose a new symbol from matching symbols if more than one
+        new_symbol = new_symbols[0]
+        return new_symbol
+
     def apply_rules(self, ipa_string):
         # set of word sounds
         word_sounds = set([c for c in ipa_string])
@@ -231,69 +268,44 @@ class Language:
                 'rule': rule
             }
 
-        def is_features_submatch(features, ipa_symbol):
-            for feature in features:
-                if feature not in word_features[ipa_symbol]:
-                    return False
-            return True
-
-        def clear_rule_data(rule_tracker_entry):
-            rule_tracker_entry = {
-                'count': 0,
-                'length': rule_tracker_entry['length'],
-                'source': '',
-                'index': None,
-                #'indexes': [],
-                #'targets': [],
-                'rule': rule_tracker_entry['rule']
-            }
-            return rule_tracker_entry
-
-        def change_symbol(source_features, target_features, ipa_symbol):
-            symbol_features = self.features.get_features(ipa_symbol)
-            new_symbol_features = set(target_features)
-            for feature in symbol_features:
-                if feature in source_feature and feature not in target_features:
-                    pass
-                else:
-                    new_symbol_features.add(feature)
-            new_symbols = self.features.get_ipa(list(new_symbol_features))
-            # TODO choose a new symbol from matching symbols if more than one
-            new_symbol = new_symbols[0]
-            return new_symbol
-
-        # now look up features
+        # look up features
         for word_i in range(len(ipa_string)):
             symbol = ipa_string[word_i]
             try:
                 sound_features = word_features[symbol]
             except:
+                print("Did not find features for symbol {0}".format(symbol))
                 continue
+            print(sound_features)
             # match word features to features in rule environment lists
             for rule_id in rules_tracker:
                 rule_data = rules_tracker[rule_id]
+                print("Applying rule {0}".format(rule_data['rule']))
+                print("{0}".format(rule_data['rule'].get_pretty()))
                 environment_slot = rule_data['rule'].get_environment().get_structure()[rule_data['count']]
+                print(environment_slot)
                 # environment slot matches - store sound
                 if environment_slot in ["_", ["_"]]:
                     # check if the sound is one changed by rule source -> target
-                    if is_features_submatch(rule_data['rule'].source(), symbol):
+                    if self.is_features_submatch(rule_data['rule'].get_source(), word_features[symbol]):
                         rule_data['source'] = symbol
                         rule_data['index'] = word_i
                         rule_data['count'] += 1
                     else:
-                        clear_rule_data(rule_data)
+                        self.reset_rule_data(rule_data)
                 # surrounding environment matches - keep searching
-                elif is_features_submatch(environment_slot, symbol):
+            elif self.is_features_submatch(environment_slot, word_features[symbol]):
                     rule_data['count'] += 1
                 # no environment match - reset this particular rule
                 # TODO: work with ANY running find in parallel - see tracking TODO above
                 else:
-                    clear_rule_data(rule_data)
+                    self.reset_rule_data(rule_data)
                 # if count is up to the total change the sound
+                print(rules_tracker)
                 if rule_data['count'] >= rule_data['length']:
                     # store the new target and the source index to change
                     if rule_data['source']:
-                        new_symbol = change_symbol(rule_data['rule']['target'], symbol)
+                        new_symbol = self.change_symbol(rule_data['rule'].get_source(), rule_data['rule'].get_target(), symbol)
                         new_index = rule_data['index']
                         rule_data['targets'].append(new_symbol)
                         rule_data['indexes'].append(new_index)
@@ -320,7 +332,7 @@ class Language:
     def lookup(self, spelling):
         if spelling in self.dictionary:
             return self.dictionary[spelling]
-        print("Language word lookup faield - unknown spelling {0}".format(spelling))
+        print("Language word lookup failed - unknown spelling {0}".format(spelling))
         return
 
     def define(self, spelling):

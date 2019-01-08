@@ -72,7 +72,7 @@ class Features:
             else:
                 self.features[feature] = {symbol}
                 #self.add_feature(feature, default_value=symbol)
-                print("Features add_ipa added unkown feature {0}".format(feature))
+                #print("Features add_ipa added new feature {0}".format(feature))
         return self.get_ipa(symbol)
 
     def add_feature(self, feature, default_value=None):
