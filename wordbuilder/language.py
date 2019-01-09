@@ -216,29 +216,37 @@ class Language:
         return True
 
     # TODO entirely separate out handling rule tracker
+    #   - associate more closely with rule than generally with language
     # reset a single rule tracker entry
-    def reset_rule_data(self, rule_tracker_entry, clear=False):
+    def _reset_rule_data(self, rule_tracker_entry, clear=False):
         rule_tracker_entry = {
             'count': 0,
             'length': rule_tracker_entry['length'],
+             # identified sounds to change
             'source': '',
+            # index of identified sound to change
             'index': None,
+            # target change locations in word
             'indexes': [] if clear else rule_tracker_entry['indexes'],
+            # target features they will change to
             'targets': [] if clear else rule_tracker_entry['targets'],
             'rule': rule_tracker_entry['rule']
         }
         return rule_tracker_entry
 
+    # TODO update this checking on changes to features (added ipa:features map)
     # use rule to turn symbol from source into target
     def change_symbol(self, source_features, target_features, ipa_symbol):
         symbol_features = self.features.get_features(ipa_symbol)
         new_symbol_features = set(target_features)
+        print(new_symbol_features)
         for feature in symbol_features:
             if feature in source_features and feature not in target_features:
                 pass
             else:
                 new_symbol_features.add(feature)
         new_symbols = self.features.get_ipa(list(new_symbol_features))
+        print(new_symbols)
         # TODO choose a new symbol from matching symbols if more than one
         new_symbol = new_symbols[0]
         return new_symbol
@@ -257,16 +265,11 @@ class Language:
         rules_tracker = {}
         for rule_id in self.rules:
             rule = self.rules[rule_id]
-            environment_structure = rule.get_environment().get_structure()
-            rules_tracker[rule_id] = {
-                'count': 0,
-                'length': len(environment_structure),
-                'source': '',    # identified sounds to change
-                'index': None,   # index of identified sound to change
-                'indexes': [],   # target change locations in word
-                'targets': [],   # target sounds they will change into
+            environment_length = len(rule.get_environment().get_structure())
+            rules_tracker[rule_id] = self._reset_rule_data({
+                'length': environment_length,
                 'rule': rule
-            }
+            }, clear=True)
 
         # look up features
         for word_i in range(len(ipa_string)):
@@ -276,30 +279,34 @@ class Language:
             except:
                 print("Did not find features for symbol {0}".format(symbol))
                 continue
-            print(sound_features)
+            print("Evaluating the current sound: {0}".format(sound_features))
             # match word features to features in rule environment lists
             for rule_id in rules_tracker:
                 rule_data = rules_tracker[rule_id]
                 print("Applying rule {0}".format(rule_data['rule']))
                 print("{0}".format(rule_data['rule'].get_pretty()))
                 environment_slot = rule_data['rule'].get_environment().get_structure()[rule_data['count']]
-                print(environment_slot)
+                print("Looking for environment matching: {0}".format(environment_slot))
                 # environment slot matches - store sound
                 if environment_slot in ["_", ["_"]]:
                     # check if the sound is one changed by rule source -> target
-                    if self.is_features_submatch(rule_data['rule'].get_source(), word_features[symbol]):
+                    if self._is_features_submatch(rule_data['rule'].get_source(), word_features[symbol]):
+                        print("Found source match (_)! Storing {0}".format(symbol))
                         rule_data['source'] = symbol
                         rule_data['index'] = word_i
                         rule_data['count'] += 1
                     else:
+                        print("Did not find a source match on {0}, even though environment up to this point matched.".format(symbol))
                         self.reset_rule_data(rule_data)
                 # surrounding environment matches - keep searching
-            elif self.is_features_submatch(environment_slot, word_features[symbol]):
+                elif self._is_features_submatch(environment_slot, word_features[symbol]):
+                    print("Found features match in symbol: {0}".format(symbol))
                     rule_data['count'] += 1
                 # no environment match - reset this particular rule
                 # TODO: work with ANY running find in parallel - see tracking TODO above
                 else:
-                    self.reset_rule_data(rule_data)
+                    print("Found no features match - resetting the rule")
+                    self._reset_rule_data(rule_data)
                 # if count is up to the total change the sound
                 print(rules_tracker)
                 if rule_data['count'] >= rule_data['length']:
@@ -309,7 +316,7 @@ class Language:
                         new_index = rule_data['index']
                         rule_data['targets'].append(new_symbol)
                         rule_data['indexes'].append(new_index)
-                    clear_rule_data(rule_data)
+                    self._reset_rule_data(rule_data)
         # TODO use constructed rule data ['targets'] and ['indexes'] to update word
         new_ipa_string = ""
         return new_ipa_string

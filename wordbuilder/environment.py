@@ -27,7 +27,6 @@ class Environment:
 
         for i in range(len(self.structure)):
             slot = self.structure[i]
-            print(slot)
             # notation
             if use_notation:
                 slot_txt = ""

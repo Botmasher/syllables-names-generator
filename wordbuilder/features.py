@@ -18,35 +18,45 @@
 # features to and from phonetic symbols
 class Features:
     def __init__(self):
-        self.features = {}
+        self.features = {}  # map feature:{ipa}
+        self.ipa = {}       # map ipa:{features}
 
-    def get(self):
-        """Read the features collection"""
+    def has_ipa(self, symbol):
+        """Check if the symbol exists in the ipa map"""
+        return type(symbol) is str and symbol in self.ipa
+
+    def has_feature(self, feature):
+        """Check if the feature exists in the features map"""
+        return type(feature) is str and feature in self.features
+
+    def map_by_features(self):
+        """Read the ipa-per-features map"""
         return self.features
 
-    def get_features(self, ipa):
+    def map_by_ipa(self):
+        """Read the features-per-ipa map"""
+        return self.ipa
+
+    def get_features(self, symbol):
         """Find all features associated with a phonetic symbol"""
-        if type(ipa) is not str:
+        if not self.has_ipa(symbol):
             print("Features get_features failed - invalid phonetic symbol {0}".format(ipa))
             return []
-        found_features = set()
-        for feature, symbols in self.features.items():
-            ipa in symbols and found_features.add(feature)
-        return list(found_features)
+        return list(self.ipa[symbol])
 
-    def get_ipa(self, features):
+    def get_ipa(self, features, exact=True):
         """Find phonetic symbols matching all given features"""
-        if len(features) <= 0 or features[0] not in self.features:
+        if len(features) < 1:
             return []
-        # intersect symbols for listed features
-        found_ipa = set(self.features[features[0]])
-        for feature in features[1:]:
-            if feature in self.features:
-                found_ipa &= self.features[feature]
-            else:
-                return []
-        print(found_ipa)
-        return list(found_ipa)
+        found_symbols = set()
+        # compare test features to stored features for symbol matches
+        for symbol, match_features in self.ipa:
+            if exact and not set(features) ^ match_features:
+                found_symbols.add(symbol)
+            elif match_features.issupperset(features):
+                found_symbols.add(symbol)
+            continue
+        return list(found_symbols)
 
     def add_map(self, ipa_features_map):
         """Add phonetic symbols mapped to their associated features"""
@@ -56,26 +66,47 @@ class Features:
         # new symbols and new features - other methods do one or the other
         for symbol, features in ipa_features_map.items():
             self.add_ipa(symbol, features)
-        return self.get()
+            self.add_features(features, symbol=symbol)
+        return True
 
     # TODO remove or update symbol
     # TODO update feature name (incl avoid conflicts)
 
-    def add_ipa(self, symbol, features):
+    def add_ipa(self, symbol, features, overwrite_symbol=False):
         """Add a phonetic symbol to existing feature symbol sets"""
         if type(symbol) != str or type(features) != list:
             print("Features add_ipa failed - invalid symbol or features")
-            return
+            return False
+        # add new symbol
+        if not self.has_ipa(symbol) or overwrite_symbol:
+            print("Features add_ipa - adding new symbol {0}".format(symbol))
+            self.ipa[symbol] = set()
+        # add features to symbol
         for feature in features:
-            if feature in self.features:
-                self.features[feature].add(symbol)
+            if not self.has_feature(feature):
+                print("Features add_ipa skipped unknown feature {0} for symbol {1}".format(feature, symbol))
             else:
-                self.features[feature] = {symbol}
-                #self.add_feature(feature, default_value=symbol)
-                #print("Features add_ipa added new feature {0}".format(feature))
-        return self.get_ipa(symbol)
+                self.ipa[symbol].add(features)
+        return True
 
-    def add_feature(self, feature, default_value=None):
+    def add_features(self, features, symbol=None):
+        """Add features to the features map with an associated phonetic symbol"""
+        if type(features) is not list:
+            print("Features add_features failed - invalid features list {0}".format(features))
+            return False
+        for feature in features:
+            # log unrecognized or new features
+            type(feature) is not str and print("Features add_feature skipped invalid feature {0}".format(feature))
+            # add feature
+            if not self.has_feature(feature):
+                print("Adding new feature {0}".format(feature))
+                self.features[feature] = set()
+            # add symbol to feature
+            symbol and self.features[feature].add(symbol)
+        return True
+
+    # NOTE: old add feature to add one empty entry (before class updated to double)
+    def _add_feature(self, feature, default_value=None):
         """Add one new feature to the features map"""
         if type(feature) is not str:
             print("Features add_feature failed - invalid feature {0}".format(feature))
@@ -86,10 +117,10 @@ class Features:
         print("Features add_feature ignored {0} - key already exists".format(feature))
         return
 
+    # TODO unrandomize - allow for weighted rank input
     def distribute_sounds(self, ipa):
         """Populate selectable symbols following a Zipf distribution"""
         # construct a mock population that behaves Zipfianly
-        # TODO unrandomize - allow for weighted rank input
         consonants = []
         vowels = []
         consonants_input = list(self.features['consonants'])[:]
@@ -106,14 +137,3 @@ class Features:
             symbol_count = (1 / i) * (most_common_frequency)
             consonants += [consonant] * symbol_count
         return {'consonants': consonants, 'vowels': vowels}
-
-    def has_ipa(self, ipa):
-        """Check if the phonetic symbol exists in the features map"""
-        for feature in self.features:
-            if ipa in self.features[feature]:
-                return True
-        return False
-
-    def has_feature(self, feature):
-        """Check if the feature exists in the features map"""
-        return feature in self.features
