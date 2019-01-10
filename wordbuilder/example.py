@@ -60,7 +60,7 @@ features.add_map({
     'w': ['consonant', 'voiced', 'velar', 'approximant']
 })
 # TODO solve feature 'consonant'/'vowel' not getting into features inventory
-print(features.get())
+print(features.map_by_features())
 
 ## TEST - use above features to build lang and sylls
 inventory = Inventory()
