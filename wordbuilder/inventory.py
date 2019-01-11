@@ -1,3 +1,4 @@
+# TODO handle syllables separately
 class Inventory:
     def __init__(self):
         self.letters = set()

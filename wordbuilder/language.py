@@ -245,6 +245,7 @@ class Language:
                 pass
             else:
                 new_symbol_features.add(feature)
+        print(new_symbol_features)
         new_symbols = self.features.get_ipa(list(new_symbol_features))
         print(new_symbols)
         # TODO choose a new symbol from matching symbols if more than one
@@ -252,6 +253,7 @@ class Language:
         return new_symbol
 
     def apply_rules(self, ipa_string):
+        print("\nApplying rules to word {0}".format(ipa_string))
         # set of word sounds
         word_sounds = set([c for c in ipa_string])
         # features for all sounds in the word
@@ -260,6 +262,8 @@ class Language:
             ipa: self.features.get_features(ipa)
             for ipa in word_sounds
         }
+        # gather (index, symbol replacement) pairs to update final string
+        change_tracker = []
         # track any rule matches
         # TODO how to deal with overlaps like V_V in VCVCV?
         rules_tracker = {}
@@ -306,21 +310,24 @@ class Language:
                 # TODO: work with ANY running find in parallel - see tracking TODO above
                 else:
                     print("Found no features match - resetting the rule")
-                    self._reset_rule_data(rule_data)
+                    rules_tracker[rule_id] = self._reset_rule_data(rule_data)
                 # if count is up to the total change the sound
                 print(rules_tracker)
                 if rule_data['count'] >= rule_data['length']:
                     # store the new target and the source index to change
                     if rule_data['source']:
-                        new_symbol = self.change_symbol(rule_data['rule'].get_source(), rule_data['rule'].get_target(), symbol)
+                        new_symbol = self.change_symbol(rule_data['rule'].get_source(), rule_data['rule'].get_target(), rule_data['source'])
                         new_index = rule_data['index']
                         rule_data['targets'].append(new_symbol)
                         rule_data['indexes'].append(new_index)
-                    self._reset_rule_data(rule_data)
+                        change_tracker.append((new_index, new_symbol))
+                    rules_tracker[rule_id] = self._reset_rule_data(rule_data)
         # TODO use constructed rule data ['targets'] and ['indexes'] to update word
-        new_ipa_string = ""
-        return new_ipa_string
-
+        new_ipa_string = list(ipa_string)
+        for entry in change_tracker:
+            new_ipa_string[entry[0]] = entry[1]
+        print("".join(new_ipa_string))
+        return (ipa_string, "".join(new_ipa_string))
 
     def store_word(self, spelling, phonology, morphology, definition=""):
         entry = {

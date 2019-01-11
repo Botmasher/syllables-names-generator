@@ -96,25 +96,48 @@ class Features:
                 added_features.append(feature)
         return {symbol: added_features}
 
+    # NOTE: maps crud still untested
     def update_symbol(self, symbol, new_symbol):
-        features = self.ipa[symbol]
-        self.ipa.pop(symbol)
+        """Update a symbol in ipa and features maps"""
+        if not self.has_ipa(symbol):
+            return
         self.ipa[new_symbol] = features
-        for feature in features:
-            self.features[feature].remove(symbol)
-            self.features[feature].add(new_symbol)
+        self.remove_symbol(
+            symbol,
+            feature_callback=lambda f: self.features[f].add(new_symbol)
+        )
         return {new_symbol: self.ipa[new_symbol]}
 
-    # TODO remove symbol
-    def remove_symbol(self, symbol):
-        return
+    def remove_symbol(self, symbol, feature_callback=None):
+        """Remove a symbol from ipa and features maps"""
+        if not self.has_ipa(symbol):
+            return
+        features = list(self.ipa[symbol])
+        self.ipa.pop(symbol)
+        for feature in features:
+            self.features[feature].remove(symbol)
+            feature_callback and feature_callback(feature)
+        return features
 
-    # TODO update, remove feature name
-    def update_feature(self, feature):
-        return
+    def update_feature(self, feature, new_feature):
+        """Update a feature in ipa and features maps"""
+        if not self.has_feature(feature):
+            return
+        self.remove_feature(
+            feature,
+            ipa_callback=lambda s: self.ipa[s].add(new_feature)
+        )
+        return {new_feature: self.features[new_feature]}
 
-    def remove_feature(self, feature):
-        return
+    def remove_feature(self, feature, ipa_callback=None):
+        """Remove a feature from ipa and features maps"""
+        if not self.has_feature(feature):
+            return
+        symbols = list(self.features[feature])
+        for symbol in symbols:
+            self.ipa[symbol].remove(feature)
+            ipa_callback and ipa_callback(symbol)
+        return symbols
 
     # TODO unrandomize - allow for weighted rank input
     def distribute_sounds(self, ipa):
