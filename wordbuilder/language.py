@@ -1,9 +1,9 @@
 from syllable import Syllable
 from rule import Rule
+from rules import Rules
 from environment import Environment
 from phoneme import Phoneme
 from affixes import Affixes
-import uuid
 
 # TODO
 # - handle feature checks in language instead of shared Features dependency
@@ -23,7 +23,7 @@ class Language:
         self.display_name = display_name
         self.features = features    # TODO screen for void
         self.inventory = inventory  # TODO screen for void
-        self.rules = rules
+        self.rules = Rules()
         self.affixes = Affixes()
         self.environments = {}  # instantiated environments
         self.syllables = {}     # set of syllables - inventory?
@@ -96,7 +96,7 @@ class Language:
         return self.affixes.get(affix)
 
     # Rules
-    # TODO update, remove
+    # TODO: access Rules update, remove methods
     def add_rule(self, source, target, environment_structure):
         """Add one rule to the language's rules dictionary"""
         environment = Environment(structure=environment_structure)
@@ -107,18 +107,15 @@ class Language:
         if not rule.get():
             print("Language add_rule failed - invalid rule {0}".format(rule))
             return
-        rule_id = uuid.uuid4()
-        self.rules[rule_id] = rule
+        rule_id = self.rules.add(rule)
         return rule_id
 
     def get_rule(self, rule_id, pretty_print=False):
         """Look up one rule in the language's rules dictionary"""
-        if rule_id in self.rules:
-            rule = self.rules[rule_id]
-            pretty_print and rule.get_pretty()
-            return rule
-        print("Language get_rule failed - unknown rule {0}".format(rule_id))
-        return
+        rule = self.rules.get(rule_id=rule_id)
+        pretty_print and rule.get_pretty()
+        not rule and print("Language get_rule failed - unknown rule {0}".format(rule_id))
+        return rule
 
     # TODO decide to handle sound lookups and feature associations here vs inventory
     #   - currently relying on this class symbol:phoneme mapping but building sylls c chars from inv
@@ -264,11 +261,11 @@ class Language:
         }
         # gather (index, symbol replacement) pairs to update final string
         change_tracker = []
+
         # track any rule matches
         # TODO how to deal with overlaps like V_V in VCVCV?
         rules_tracker = {}
-        for rule_id in self.rules:
-            rule = self.rules[rule_id]
+        for rule_id, rule in self.rules.get().items():
             environment_length = len(rule.get_environment().get_structure())
             rules_tracker[rule_id] = self._reset_rule_data({
                 'length': environment_length,
