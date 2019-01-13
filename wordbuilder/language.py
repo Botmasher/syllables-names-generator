@@ -21,11 +21,12 @@ class Language:
     def __init__(self, name="", display_name="", features=None, inventory=None, rules={}):
         self.name = name
         self.display_name = display_name
-        self.features = features    # TODO screen for void
-        self.inventory = inventory  # TODO screen for void
+        self.features = features
+        self.inventory = inventory
         self.rules = Rules()
+        self.rule_tracker = {}  # match environment and apply rules
         self.affixes = Affixes()
-        self.environments = {}  # instantiated environments
+        self.environments = {}  # instantiated environments to limit created syllables
         self.syllables = {}     # set of syllables - inventory?
         self.phonemes = {}      # dict of created phonemes - inventory?
         self.dictionary = {}    # words with ipa, morphology, definition
@@ -215,21 +216,31 @@ class Language:
     # TODO entirely separate out handling rule tracker
     #   - associate more closely with rule than generally with language
     # reset a single rule tracker entry
-    def _reset_rule_data(self, rule_tracker_entry, clear=False):
-        rule_tracker_entry = {
+
+    def _untrack_rule(self, track_id):
+        if track_id not in self.rule_tracker:
+            print("Language failed to untrack rule - invalid tracker track_id {0}".format(track_id))
+            return
+        self.rule_tracker.pop(track_id)
+        return track_id
+
+    def _track_rule(self, rule):
+        if rule not in rules:
+            print("".format(rule))
+            return
+        self.tracker[track_id] = {
+            # the current slot being evaluated for sound matches
             'count': 0,
-            'length': rule_tracker_entry['length'],
+            # the total number of slots to match before applying rule
+            'length': len(rule.get_environment().get_structure()),
              # identified sounds to change
             'source': '',
             # index of identified sound to change
             'index': None,
-            # target change locations in word
-            'indexes': [] if clear else rule_tracker_entry['indexes'],
-            # target features they will change to
-            'targets': [] if clear else rule_tracker_entry['targets'],
-            'rule': rule_tracker_entry['rule']
+            # rule object defining environment and change
+            'rule': rule
         }
-        return rule_tracker_entry
+        return track_id
 
     # TODO update this checking on changes to features (added ipa:features map)
     # use rule to turn symbol from source into target
@@ -249,6 +260,31 @@ class Language:
         new_symbol = new_symbols[0]
         return new_symbol
 
+    # TODO: change from tracking rules as they are applied to tracking "tracks" with rule pointed to
+    #   - each track is a potential change with an id and some data
+    #   - so you will have to see if rule applies, add to tracks, then go through tracker
+    #   - add to first so that you have new ones (incl any single-rules) during tracker iterate
+    #   - so divide looks like this:
+    #     - 0. initialize tracker, list of full matches this iteration
+    #       - tracker needs to know: , source ipa
+    #       - changer needs: source ipa, rule source, rule target
+    #       - full matches list needs: current this pass through new-rules and tracks
+    #     - 1. look at letter, rules, tracks
+    #       - Does it match any new rules that apply to these features? Start track
+    #       - Does it match current environment slots in tracker? Update track
+    #       - Does it fail to match environment slots in tracker? Remove track
+    #       - Does it fully match the entire environment? Add to full match list of track ids
+    #     - 2. look through tracks
+    #       - if no change, remove track
+    #       - if full match determine target sound
+    #       - store target sounds, indexes, (? weights)
+    #       - clear list of full matches (tracks ids) to prepare it for next pass
+    #       - if last letter and not in track ids, get rid of the tracker entry (caught mid-applying)
+    #     - 3. propose and implement changes once all changes stored
+    #       - note that you also have a full tracker object of all applied tracks
+    #       - consider storing tracker and then applying in a separate method
+    #   - eventually weighting rules add another value to sounds to change
+
     def apply_rules(self, ipa_string):
         print("\nApplying rules to word {0}".format(ipa_string))
         # set of word sounds
@@ -263,14 +299,9 @@ class Language:
         change_tracker = []
 
         # track any rule matches
-        # TODO how to deal with overlaps like V_V in VCVCV?
-        rules_tracker = {}
-        for rule_id, rule in self.rules.get().items():
-            environment_length = len(rule.get_environment().get_structure())
-            rules_tracker[rule_id] = self._reset_rule_data({
-                'length': environment_length,
-                'rule': rule
-            }, clear=True)
+        # TODO: use self.rule_tracker and methods, full matches and strategy commented above to handle overlaps
+        #rules_tracker = {}
+        full_matches = []
 
         # look up features
         for word_i in range(len(ipa_string)):
@@ -282,8 +313,17 @@ class Language:
                 continue
             print("Evaluating the current sound: {0}".format(sound_features))
             # match word features to features in rule environment lists
-            for rule_id in rules_tracker:
-                rule_data = rules_tracker[rule_id]
+
+            # TODO: update to check for new rule applications to track
+            for rule_id in self.rules:
+                # do same rule checking as done below for rules for each track
+                # ? pull out slot-checking into own method
+                pass
+
+            # TODO: update tracks to continue checking or discard ongoing rule applications
+            for track_id in rules_tracker:
+
+                rule_data = rules_tracker[rule_id]  # this and following to track_id
                 print("Applying rule {0}".format(rule_data['rule']))
                 print("{0}".format(rule_data['rule'].get_pretty()))
                 environment_slot = rule_data['rule'].get_environment().get_structure()[rule_data['count']]
