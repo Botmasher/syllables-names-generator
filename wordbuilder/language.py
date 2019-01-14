@@ -1,8 +1,9 @@
 from syllable import Syllable
 from rule import Rule
-from rules import Rules
 from environment import Environment
 from phoneme import Phoneme
+from collector import Collector
+from rules import Rules
 from affixes import Affixes
 
 # TODO
@@ -23,10 +24,10 @@ class Language:
         self.display_name = display_name
         self.features = features
         self.inventory = inventory
-        self.rules = Rules()
-        self.rule_tracker = {}  # match environment and apply rules
-        self.affixes = Affixes()
-        self.environments = {}  # instantiated environments to limit created syllables
+        self.rules = Collector()    # switched to generic class instead of Rules()
+        self.rule_tracker = {}      # match environment and apply rules
+        self.affixes = Affixes()    # TODO: switch to generi Collector
+        self.environments = Collector()
         self.syllables = {}     # set of syllables - inventory?
         self.phonemes = {}      # dict of created phonemes - inventory?
         self.dictionary = {}    # words with ipa, morphology, definition
@@ -119,7 +120,6 @@ class Language:
         return rule
 
     # TODO decide to handle sound lookups and feature associations here vs inventory
-    #   - currently relying on this class symbol:phoneme mapping but building sylls c chars from inv
     #   - features knows all possibilities but inventory builds out current set
     def is_ipa(self, symbol):
         if not self.features.has_ipa(symbol):
@@ -142,7 +142,7 @@ class Language:
         return phoneme['letters']
 
 
-    # TODO add weights for letter choice? for rules?
+    # TODO add weights for letter choice? relative chron order for rules?
     #   - current weight intended for distributing phon commonness/freq of occ
     def add_sound(self, ipa, letters=[], weight=0):
         """Add one phonetic symbol, associated letters and optional weight to the language's inventory"""
@@ -242,6 +242,12 @@ class Language:
         }
         return track_id
 
+    def _features_match_slot(symbol_features, slot_features):
+        ## Refactor apply_rule business logic going through slots for each rule_id
+        # compare for "_" (then make sure features match with rule source) or features list
+        return True
+        # NOTE: how to differentiate matches surrounding slot vs matches slot _
+
     # TODO update this checking on changes to features (added ipa:features map)
     # use rule to turn symbol from source into target
     def change_symbol(self, source_features, target_features, ipa_symbol):
@@ -266,7 +272,7 @@ class Language:
     #   - add to first so that you have new ones (incl any single-rules) during tracker iterate
     #   - so divide looks like this:
     #     - 0. initialize tracker, list of full matches this iteration
-    #       - tracker needs to know: , source ipa
+    #       - tracker needs to know: rule, source ipa, environment slot pointer (current count), environment length
     #       - changer needs: source ipa, rule source, rule target
     #       - full matches list needs: current this pass through new-rules and tracks
     #     - 1. look at letter, rules, tracks
@@ -295,15 +301,14 @@ class Language:
             ipa: self.features.get_features(ipa)
             for ipa in word_sounds
         }
-        # gather (index, symbol replacement) pairs to update final string
-        change_tracker = []
+        # gather index, symbol replacement pairs to update final string
+        changed_symbols = []    # list of (string index, new symbol)
 
-        # track any rule matches
-        # TODO: use self.rule_tracker and methods, full matches and strategy commented above to handle overlaps
-        #rules_tracker = {}
-        full_matches = []
+        # prepare to track any rule matches (self.tracker track_ids)
+        full_matches = []   # list of track_ids that completed each pass
 
-        # look up features
+        # look through features and find environment matches for each step of every rule
+        # use with self.rule_tracker and methods, full matches and strategy commented above to handle overlaps
         for word_i in range(len(ipa_string)):
             symbol = ipa_string[word_i]
             try:
@@ -312,23 +317,55 @@ class Language:
                 print("Did not find features for symbol {0}".format(symbol))
                 continue
             print("Evaluating the current sound: {0}".format(sound_features))
-            # match word features to features in rule environment lists
 
             # TODO: update to check for new rule applications to track
-            for rule_id in self.rules:
-                # do same rule checking as done below for rules for each track
-                # ? pull out slot-checking into own method
-                pass
+            # - think through if self.rule_tracker should be class level?
+            # - instead make it local since it's cleared out each call (avoiding leaking to other words)
+            # - then store it (or better the changed symbols list) alongside word in lexicon
 
+            # (1) Rules Loop: do any new rules start to match at this symbol? Track them.
+            # check if any new rule applications can be tracked
+            for rule_id in self.rules:
+
+                # TODO: same rule checking as done below for rules for each track
+                # build out slot checking method signature above
+
+                # compare first environment slot to see if current symbol fits
+                environment_slot_features = self.rules[rule_id].get_environment.get_structure()[0]
+                if _features_match_slot(sound_features, environment_slot_features):
+                    # start tracking for full environment match as iterate through rest of ipa_string
+                    self._track_rule(self.rules(rule_id))
+                    # NOTE: your count for this track is 0, compared to len
+                    # - below will recheck for 0th match.
+                    # - problem: what if the first is a slot match? not storing source and index here
+                    # - solution: maybe let it do that extra check here then more detailed there
+
+            # (2) Tracks Loop: do any tracked applications ("tracks") continue to match?
+            # - Untrack them if they do not
+            # - Continue tracking (update slot match count) if they do
+            # - If found slot _ match, bingo! - store the sound plus the word_i in track["index"] attr
+            # - Add track to full_matches if count reached length
+            #   - untrack and get the popped track entry
+            #   - make sure you have a source sound and an index in the track entry
+            #   - store the popped track in full_matches
+
+            # (3) Full Tracks Loop: go through tracks
+            # - go through each fully successful match
+            # - figure out which target sound to turn the source into
+            # - store the index and target sound
+            # - futureproof support later adding weight / rel chron order
+
+            # BELOW NEEDS REFACTORED intor (1) func _features_match..., (2) rule_tracker track_ids loop
             # TODO: update tracks to continue checking or discard ongoing rule applications
             for track_id in rules_tracker:
+                # match word features to features in rule environment lists
+                rule_data = self.rule_tracker[track_id]
 
-                rule_data = rules_tracker[rule_id]  # this and following to track_id
                 print("Applying rule {0}".format(rule_data['rule']))
                 print("{0}".format(rule_data['rule'].get_pretty()))
                 environment_slot = rule_data['rule'].get_environment().get_structure()[rule_data['count']]
                 print("Looking for environment matching: {0}".format(environment_slot))
-                # environment slot matches - store sound
+                # environment slot match - store sound
                 if environment_slot in ["_", ["_"]]:
                     # check if the sound is one changed by rule source -> target
                     if self._is_features_submatch(rule_data['rule'].get_source(), word_features[symbol]):
@@ -339,7 +376,7 @@ class Language:
                     else:
                         print("Did not find a source match on {0}, even though environment up to this point matched.".format(symbol))
                         self.reset_rule_data(rule_data)
-                # surrounding environment matches - keep searching
+                # surrounding environment match - keep searching
                 elif self._is_features_submatch(environment_slot, word_features[symbol]):
                     print("Found features match in symbol: {0}".format(symbol))
                     rule_data['count'] += 1
@@ -357,11 +394,11 @@ class Language:
                         new_index = rule_data['index']
                         rule_data['targets'].append(new_symbol)
                         rule_data['indexes'].append(new_index)
-                        change_tracker.append((new_index, new_symbol))
+                        changed_symbols.append((new_index, new_symbol))
                     rules_tracker[rule_id] = self._reset_rule_data(rule_data)
         # TODO use constructed rule data ['targets'] and ['indexes'] to update word
         new_ipa_string = list(ipa_string)
-        for entry in change_tracker:
+        for entry in changed_symbols:
             new_ipa_string[entry[0]] = entry[1]
         print("".join(new_ipa_string))
         return (ipa_string, "".join(new_ipa_string))
