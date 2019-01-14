@@ -1,10 +1,5 @@
 import uuid
 
-# TODO abstract this class (restricted store) for any stored type
-#   - label (like self.types=['Rule']) for types to check on create
-#   - store id:object pairs in dict
-#   - maybe expect a dict per key to store subattributes
-
 class Rules():
     def __init__(self):
         self.rules = {}
