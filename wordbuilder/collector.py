@@ -43,6 +43,26 @@ class Collector():
         # found object in map
         return self.map[object_id]
 
+    def get_one(self, object_id):
+        """Alias for get method """
+        return self.get(object_id)
+
+    def get_all(self):
+        """Read the entire collection"""
+        return self.map
+
+    def get_items(self):
+        """Read all keys and values in the collection"""
+        return self.map.items()
+
+    def get_keys(self):
+        """Read all keys in the collection"""
+        return self.map.keys()
+
+    def get_values(self):
+        """Read all values in the collection"""
+        return self.map.values()
+
     def add(self, object):
         """Add one object to the map"""
         if not self.is_valid(object):
