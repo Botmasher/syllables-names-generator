@@ -113,8 +113,10 @@ my_language.add_sounds({
 ## TEST - run rules (independent of above features, inventory, lang)
 my_language.add_rule(['voiceless'], ['voiced'], 'V_V')
 # /!\ inventory lacks relevant sounds for this rule
-#   - TODO: handle this case better
+#   - TODO use features not inventory for changing to target sounds
+#   - TODO then spelling layer can change too but if not default to historical
 #my_language.add_rule(['voiced', 'stop'], ['voiced', 'fricative'], 'V_V')
-print(my_language.apply_rules("kat"))    # expected: "kat", got: ""
-print(my_language.apply_rules("kata"))   # expected: "kada", got: ""
-print(my_language.apply_rules("katta"))  # expected: "katta", got: ""
+print(my_language.apply_rules("kat"))    # expected: "kat", got: "kat"
+print(my_language.apply_rules("kata"))   # expected: "kada", got: "kada"
+print(my_language.apply_rules("katta"))  # expected: "katta", got: "katta"
+print(my_language.apply_rules("akatakatta"))  # expected: "agadagatta", got: "agadagatta"

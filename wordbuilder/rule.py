@@ -33,12 +33,15 @@ class Rule:
             self.environment.get_pretty(use_notation=use_notation)
         )
 
+    # TODO partial feature list (NOT Phoneme) for source, target
     def check(self):
         """Internal method for checking the validity of rule attributes"""
-        if type(self.source.__name__) != 'Phoneme':
+        if type(self.source) is not list:
+        #if type(self.source.__name__) != 'Phoneme':
             print("Rule check failed - invalid source {0}".format(source))
             return False
-        if type(self.target.__name__) != 'Phoneme':
+        if type(self.target) is not list:
+        #if type(self.target.__name__) != 'Phoneme':
             print("Rule check failed - invalid target {0}".format(target))
             return False
         if type(self.environment.__name__) != 'Environment':

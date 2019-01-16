@@ -31,17 +31,21 @@ class Collector():
             return True
         return False
 
-    def get(self, object_id=None):
+    def get(self, key=None):
         """Read the value for one stored object, or all if no id passed in"""
         # fetch all for zero-arg calls
-        if not object_id:
+        if not key:
             return self.map
         # object does not exist in map
-        if not self.has(object_id):
-            print("Collector get failed - unknown object {0}".format(object_id))
+        if not self.has(key):
+            exception_message = "{0}Collector get failed - unknown object {1}"
+            try:
+                print(exception_message.format("%s " % self.accepted_types[0], key))
+            except:
+                print(exception_message.format("", key))
             return
         # found object in map
-        return self.map[object_id]
+        return self.map[key]
 
     def get_one(self, object_id):
         """Alias for get method """
