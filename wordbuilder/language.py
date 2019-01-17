@@ -5,6 +5,7 @@ from phoneme import Phoneme
 from collector import Collector
 from rules import Rules
 from affixes import Affixes
+from dictionary import Dictionary
 import uuid
 
 # TODO
@@ -31,7 +32,7 @@ class Language:
         self.environments = Collector(accepted_types=['Environment'])
         self.syllables = {}     # set of syllables - inventory?
         self.phonemes = {}      # dict of created phonemes - inventory?
-        self.dictionary = {}    # words with ipa, morphology, definition
+        self.dictionary = Dictionary()    # words with ipa, morphology, definition
 
     def set_inventory(self, inventory):
         """Set the inventory object for this language"""
