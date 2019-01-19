@@ -19,6 +19,63 @@ class Dictionary():
         """Check if an indexed entry exists for the spelled word"""
         return self.is_word(word) and index < len(self.dictionary[word])
 
+    # TODO optimize search time - currently exhaustive through all entries no matter what
+    def search(self, keywords=[], max_results=20):
+        """Search entry definitions for keyword matches"""
+        if not keywords or type(keywords) not in (list, str):
+            print("Dictionary search failed - expected keywords")
+            return
+        scored_matches = []   # list of (headword, entry_index, keywords_score) for relevant matches
+        for headword in self.dictionary:
+            for entry_index in self.dictionary[headword]:
+                # definitions are stored under headword entries inside the dictionary
+                definition = self.dictionary[headword][entry_index]['definition']
+                # keep track of keyword matches
+                keywords_score = 0
+                # simple match - look for single string within definition
+                if type(keywords) is str:
+                    if keywords in definition:
+                        keyword_score = 1
+                        scored_matches.append((headword, entry_index, keywords_score))
+                    continue
+                # list match - determine how close the match is
+                for keyword in keywords:
+                    # if type(keyword) is not str:
+                    #     print("Dictionary search failed - keywords list contains non-string keyword {0}".format(keyword))
+                    #     return
+                    if keyword in definition:
+                        keywords_score += 1
+                #  entry if relevant and move to next entry
+                keywords_score and scored_matches.append((headword, entry_index, keywords_score))
+                continue
+
+        # what if scored_matches len is 0?
+        if len(scored_matches) <= 0:
+            return scored_matches
+
+        # sort matches by keywords scores (third element in tuple)
+        ordered_matches = sorted(scored_matches, key=lambda l: l[2])
+
+        # score and rank relevant matches up to requested limit
+        return ordered_matches[:max_results-1]
+
+    def search_sounds(self, ipa="", max_results=10, sound_change=False):
+        """Search for headword entries that have the specified pronunciation"""
+        if not ipa or type(ipa) is not str:
+            print("Dictionary search_sounds failed - invalid pronunciation {0}".format(ipa))
+        # list of headword, entry_index tuples
+        matches = []
+        # search entries for changed sounds instead of underlying sounds
+        sound_key = 'change' if sound_change else 'sound'
+        # search through all entries to find requested number of sound matches
+        for headword in self.dictionary:
+            for entry_index in self.dictionary[headword]:
+                if ipa == self.dictionary[headword][entry_index][sound_key]:
+                    matches.append((headword, entry_index))
+                if len(matches) >= max_results-1:
+                    return matches
+        return matches
+
     # TODO lookup and store words in list (see comment within .add func)
     #   - ability to filter words by ipa
     #   - ability to filter by keywords in definition
@@ -46,6 +103,7 @@ class Dictionary():
 
         # create an entry
         headword = spelling
+        # NOTE: keys created here are accessed throughout class - account for this if change
         entry = {
             'spelling': spelling,
             'definition': definition if type(definition) is str else "",
@@ -102,16 +160,6 @@ class Dictionary():
             print("Dictionary redefine failed - invalid definition {0}".format(definition))
             return
         self.dictionary[headword][entry_index]['definition'] = definition
-        return self.lookup(headword, entry_index=entry_index)
-
-    # TOODO remove - handled by update method
-    def change_sound(self, headword, entry_index=0, sound="", sound_change=""):
-        """Modify the sound representation or sound change representation for one entry"""
-        if not self.is_entry(headword, index=entry_index) or type(sound) is not str or type(sound_change) is not str:
-            print("Dictionary change_sound failed - invalid headword {0}, entry {1}, sound string {2}, or sound change string {3}".format(headword, entry_index, sound, sound_change))
-            return
-        self.dictionary[headword][entry_index]['sound'] = sound
-        self.dictionary[headword][entry_index]['change'] = sound_change
         return self.lookup(headword, entry_index=entry_index)
 
     def remove_entry(self, headword, entry_index=0):
