@@ -5,13 +5,13 @@ import uuid     # track_ids
 # - track an ongoing search for rule environment match in a phonetic string
 # - store the source
 class RuleTracker():
-    def __init__(self, rules):
+    def __init__(self):
         self.tracker = {}
 
-    def track(self, rule, , sound_features):
+    def track(self, rule, sound_features):
         """Add ongoing rule environment slot match check to the rules application tracker"""
         # compare first environment slot to see if current symbol fits
-        rule_environment = rule.get_environment.get_structure()
+        rule_environment = rule.get_environment().get_structure()
         environment_slot = rule_environment[0]
         if not self.is_features_submatch(environment_slot, sound_features):
             print("RuleTracker failed to track - sound {0} did not match environment slot {1}".format(sound_features, environment_slot))
@@ -55,7 +55,7 @@ class RuleTracker():
         if track_id not in self.tracker or not index or not source:
             print("RuleTracker set source failed - unknown track {0}".format(track_id))
             return
-        print("Found source match (_)! Storing {0}".format(symbol))
+        print("Found source match (_)! Storing {0}".format(source))
         self.tracker[track_id]['source'] = source
         self.tracker[track_id]['index'] = index
         self.tracker[track_id]['count'] += 1
@@ -66,7 +66,6 @@ class RuleTracker():
         if track_id not in self.tracker:
             print("RuleTracker count match failed - unknown track {0}".format(track_id))
             return
-        print("Found features match in symbol: {0}".format(symbol))
         self.tracker[track_id]['count'] += 1
         return self.tracker[track_id]
 

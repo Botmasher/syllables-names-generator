@@ -212,7 +212,7 @@ class Language:
         print(symbol_features)
         new_symbol_features = set(target_features)
         print(target_features)
-        print("\nSuccessful rule!")
+        print("Successful rule!")
         print("Currently attempting to turn {0} into a {1}".format(symbol_features, target_features))
         # merge target features into symbol features where rule changes from source->target
         for feature in symbol_features:
@@ -308,13 +308,11 @@ class Language:
                 # - track checked while iterating through rest of ipa_string
                 # - tracker only tracks as long as environment matches
                 # - zeroth nonmatches screened
-                rule_tracker.track(rule)
+                rule_tracker.track(rule, sound_features)
                 # NOTE: your count for successful track is 0, compared to len
                 # - below will recheck for 0th match.
                 # - problem: what if the first is a slot match? not storing source and index here
                 # - solution: maybe let it do that extra check here then more detailed there
-                else:
-                    continue
 
             # (2) Tracks Loop: do any tracked applications ("tracks") continue to match?
             # - Untrack them if they do not
@@ -336,10 +334,11 @@ class Language:
 
             # store completed rule tracks and avoid mutating dict mid iteration
             tracks_to_pop = []
-            for track_id in rule_tracker.get():
+            tracks = rule_tracker.get()
+            for track_id in tracks:
                 # a track is an ongoing attempt to match a single rule
                 # each track is expected to match shape of value added in _track_rule
-                track = rule_tracker[track_id]
+                track = tracks[track_id]
 
                 # the rule being matched by this track
                 # one rule may be associated with multiple (even overlapping) tracks within a sound symbols string
@@ -356,12 +355,12 @@ class Language:
                 did_keep_tracking = False
 
                 # environment source match - store sound to change and keep tracking
-                if rule_tracker.check_source_slot_match(sound_features, environment_slot_features, rule.get_source()):
+                if rule_tracker.is_source_slot_match(sound_features, environment_slot_features, rule.get_source()):
                     rule_tracker.set_source_match(track_id, source=symbol, index=word_index)
                     did_keep_tracking = True
                 # surrounding environment match - keep tracking
-                elif rule_tracker.check_environment_slot_match(sound_features, environment_slot_features):
-                    self.count_features_match(track_id)
+                elif rule_tracker.is_environment_slot_match(sound_features, environment_slot_features):
+                    rule_tracker.count_features_match(track_id)
                     did_keep_tracking = True
                 # no match for this track - prepare to untrack
                 else:
@@ -369,16 +368,19 @@ class Language:
                     tracks_to_pop.append(track_id)
                     #did_keep_tracking = False  # default
 
+                # fetch track again for refreshed count and index data
+                track = rule_tracker.get(track_id=track_id)
+
                 # matched to the end of the rule environment - add to found changes
                 if did_keep_tracking and track['count'] >= track['length']:
                     # new symbol, index pairs for updating the final sound string (changed word)
                     # TODO incorporate weighting or relative chronology as a third value
                     changed_symbols.append((
-                        rule_tracker[track_id]['index'],
+                        track['index'],
                         self.change_symbol(
-                            rule.get_source(),
-                            rule.get_target(),
-                            rule_tracker[track_id]['source']
+                            rule.get_source(),  # rule source features that were matched
+                            rule.get_target(),  # rule target features to transform sound
+                            track['source']     # the matched sound to change
                         )
                     ))
                     # drop this track from the tracker
@@ -396,48 +398,36 @@ class Language:
         print("".join(new_ipa_string))
         return (ipa_string, "".join(new_ipa_string))
 
-    # TODO update below methods to conform to Dictionary object
-    def store_word(self, spelling, phonology, morphology, definition=""):
-        entry = {
-            'spelling': spelling,
-            'ipa': phonology,
-            'morphology': morphology,
-            'definition': definition
-        }
-        # array for homonyms
-        if spelling in self.dictionary:
-            self.dictionary[spelling].append(entry)
-        else:
-            self.dictionary[spelling] = [entry]
-        return self.dictionary[spelling]
-
-    def lookup(self, spelling):
-        if spelling in self.dictionary:
-            return self.dictionary[spelling]
-        print("Language word lookup failed - unknown spelling {0}".format(spelling))
-        return
-
-    def define(self, spelling):
-        words = self.lookup(spelling)
-        if not words:
-            return
-        # iterate over homonyms
-        definitions = [word['definition'] for word in words]
-        return definitions
-
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1):
+    def build_word(self, length=1, definition="", store_dictionary=True, apply_rules=True):
         """Form a word following the defined inventory and syllable structure"""
         if not self.inventory and self.inventory.get_syllables():
             print("Language build_word failed - unrecognized inventory or inventory  syllables")
             return
-        word = ""
+        word_spelling = ""
+        word_ipa = ""
+        # TODO store same-length lists of letters and ipa in dictionary instead of strings
+        # TODO choose letters by weighted freq/uncommonness
         for i in range(length):
             syllable = random.choice(self.inventory.get_syllables())
             syllable_structure = syllable.get()
             for syllable_letter_feature in syllable_structure:
-                letters = self.inventory.get_letter(syllable_letter_feature)
-                # TODO choose letters by weighted freq/uncommonness
-                if letters:
-                    word += random.choice(letters)
-        return word
+                symbols = self.inventory.get_letter(syllable_letter_feature)
+                # TODO you store Phoneme with associated letters so this should be easy
+                #   - right now inventory maps features to letters
+                #   - features maps them to sounds
+                #   - instead stick with features <> ipa <> letters
+                #   - use Features and Phoneme to accomplish (see features.py comment)
+                if symbols:
+                    # assuming what you get out are ipa symbols
+                    symbol = random.choice(symbols)
+                    word_ipa += symbol
+                    # choose letter from letters set inside phoneme object
+                    phoneme = random.choice(self.phonemes.get(key=symbol))
+                    letters = phoneme.get_letters()
+                    word_spelling += random.choice(letters)
+        # NOTE affixation here before sound changes
+        # - see TODO above this method
+        word_changed = self.apply_rules(word_ipa)
+        entry = self.dictionary.add(spelling=word_spelling, sound=word_ipa, sound_change=word_changed, definition=definition)
+        return entry
