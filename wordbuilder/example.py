@@ -102,21 +102,22 @@ my_language.add_sounds({
 # print(my_language.get_sound_features('i'))
 #
 # # TODO weight syllables so CV > just V
-# my_language.add_syllable('CVC')
-# my_language.add_syllable('VC')
-# my_language.add_syllable('CV')
-# my_language.print_syllables()
+my_language.add_syllable('CVC')
+my_language.add_syllable('VC')
+my_language.add_syllable('CV')
+my_language.print_syllables()
 
 # TODO add word shapes (root, affixes, compounds, or initial VCV but not mid CVVCV)
 
-
 ## TEST - run rules (independent of above features, inventory, lang)
 my_language.add_rule(['voiceless'], ['voiced'], 'V_V')
-# /!\ inventory lacks relevant sounds for this rule
-#   - TODO use features not inventory for changing to target sounds
-#   - TODO then spelling layer can change too but if not default to historical
-#my_language.add_rule(['voiced', 'stop'], ['voiced', 'fricative'], 'V_V')
+# TODO verify features not inventory for changing to target sounds
+# TODO spelling layer can change too but if not default to historical
 print(my_language.apply_rules("kat"))    # expected: "kat", got: "kat"
 print(my_language.apply_rules("kata"))   # expected: "kada", got: "kada"
 print(my_language.apply_rules("katta"))  # expected: "katta", got: "katta"
 print(my_language.apply_rules("akatakatta"))  # expected: "agadagatta", got: "agadagatta"
+
+## TEST - build word
+word_entry = my_language.build_word(length=2, definition="camel")
+print(word_entry)

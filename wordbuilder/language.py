@@ -7,6 +7,7 @@ from collector import Collector
 from affixes import Affixes
 #from rules import Rules
 from dictionary import Dictionary
+import random
 
 # TODO
 # - handle feature checks in language instead of shared Features dependency
@@ -399,7 +400,7 @@ class Language:
         return (ipa_string, "".join(new_ipa_string))
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, definition="", store_dictionary=True, apply_rules=True):
+    def build_word(self, length=1, definition="", store_in_dictionary=True, apply_rules=True):
         """Form a word following the defined inventory and syllable structure"""
         if not self.inventory and self.inventory.get_syllables():
             print("Language build_word failed - unrecognized inventory or inventory  syllables")
@@ -409,10 +410,15 @@ class Language:
         # TODO store same-length lists of letters and ipa in dictionary instead of strings
         # TODO choose letters by weighted freq/uncommonness
         for i in range(length):
-            syllable = random.choice(self.inventory.get_syllables())
+            try:
+                syllable = random.choice(self.inventory.get_syllables())
+            except:
+                print("Language build_word failed - no syllables found in inventory")
+                return
             syllable_structure = syllable.get()
-            for syllable_letter_feature in syllable_structure:
-                symbols = self.inventory.get_letter(syllable_letter_feature)
+            for feature_set in syllable_structure:
+                # find the phonetic symbol with these features
+                symbols = self.inventory.get_symbol(feature_set)
                 # TODO you store Phoneme with associated letters so this should be easy
                 #   - right now inventory maps features to letters
                 #   - features maps them to sounds
@@ -423,11 +429,24 @@ class Language:
                     symbol = random.choice(symbols)
                     word_ipa += symbol
                     # choose letter from letters set inside phoneme object
-                    phoneme = random.choice(self.phonemes.get(key=symbol))
-                    letters = phoneme.get_letters()
+                    letters = self.phonemes[symbol].get_letters()
                     word_spelling += random.choice(letters)
+
         # NOTE affixation here before sound changes
         # - see TODO above this method
-        word_changed = self.apply_rules(word_ipa)
-        entry = self.dictionary.add(spelling=word_spelling, sound=word_ipa, sound_change=word_changed, definition=definition)
-        return entry
+
+        # apply sound changes to built word
+        word_changed = self.apply_rules(word_ipa) if apply_rules else ""
+
+        # add to dictionary instance
+        if store_in_dictionary:
+            entry = self.dictionary.add(spelling=word_spelling, sound=word_ipa, sound_change=word_changed, definition=definition)
+            return entry
+        # mimic dictionary entry
+        else:
+            return {
+                'spelling': word_spelling,
+                'sound': word_ipa,
+                'change': word_changed,
+                'definition': definition
+            }
