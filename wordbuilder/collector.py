@@ -21,7 +21,7 @@ class Collector():
 
     def is_valid(self, object):
         """Check if the object is of one of the accepted types"""
-        if self.accepted_types and type(object).__name__ in self.accepted_types:
+        if not self.accepted_types or type(object).__name__ in self.accepted_types:
             return True
         return False
 
@@ -85,16 +85,16 @@ class Collector():
         self.map[object_id] = object
         return object_id
 
-    def remove(self, rule_id):
+    def remove(self, object_id):
         """Remove one object from the map"""
-        if rule_id in self.rules:
-            self.rules.pop(rule_id)
+        if object_id in self.map:
+            self.map.pop(object_id)
             return True
         return False
 
     def clear(self):
         """Reset the map"""
-        map_cache = self.map
+        map_cache = self.map.copy()
         def read_cache():
             return map_cache
         self.map = {}

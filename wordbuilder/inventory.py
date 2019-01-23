@@ -4,7 +4,6 @@ class Inventory:
         self.ipa = set()
         self.ipa_by_feature = {}
         self.symbol_length_limit = 4
-        self.syllables = set()
 
     def get(self, ipa="", features=[]):
         """Find a phonetic symbol from its features or features for a symbol"""
@@ -48,18 +47,14 @@ class Inventory:
                 matching_features.append(feature)
         return matching_features
 
-    def get_syllables(self):
-        """Read all syllables listed in the inventory"""
-        return list(self.syllables)
-
-    def _add_unique(self, letter, feature):
+    def _add_unique(self, symbol, feature):
         """Private add unique phonetic symbol to map of symbols by features"""
-        if not (type(letter) is str and type(feature) is str):
+        if not (type(symbol) is str and type(feature) is str):
             return
         if feature not in self.ipa_by_feature:
             self.ipa_by_feature[feature] = set()
-        if letter not in self.ipa_by_feature[feature]:
-            self.ipa_by_feature[feature].add(letter)
+        if symbol not in self.ipa_by_feature[feature]:
+            self.ipa_by_feature[feature].add(symbol)
         return self.ipa_by_feature[feature]
 
     def add(self, symbol="", features=[]):
@@ -96,6 +91,10 @@ class Inventory:
             symbol in symbols and self.ipa_by_feature[feature].remove(symbol)
             feature in new_features and self.ipa_by_feature[feature].add(symbol)
         return {symbol: self.get_features(symbol)}
+
+    def get_syllables(self):
+        """Read all syllables listed in the inventory"""
+        return list(self.syllables)
 
     def add_syllable(self, syllable):
         """Add a syllable structure to the inventory syllables collection"""
