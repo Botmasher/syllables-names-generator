@@ -67,12 +67,12 @@ class Collector():
         """Read all values in the collection"""
         return self.map.values()
 
-    def add(self, object):
+    def add(self, object, key=None):
         """Add one object to the map"""
         if not self.is_valid(object):
             print("Collector add failed - invalid object {0}".format(object))
             return
-        object_id = uuid.uuid4()
+        object_id = key if key else uuid.uuid4()
         self.map[object_id] = object
         return object_id
 

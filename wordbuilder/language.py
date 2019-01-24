@@ -6,6 +6,7 @@ from ruletracker import RuleTracker
 from collector import Collector
 from setcollector import SetCollector
 from affixes import Affixes
+from phonemes import Phonemes
 #from rules import Rules
 from dictionary import Dictionary
 import random
@@ -28,13 +29,13 @@ class Language:
         self.display_name = display_name
         self.features = features
         self.inventory = inventory
-        self.rules = Collector(accepted_types=['Rule'])    # switched to generic class instead of Rules()
+        self.phonemes = Phonemes()     # dict of created phonemes - inventory?
+        self.rules = Collector(accepted_types=['Rule'])
         self.environments = Collector(accepted_types=['Environment'])
         self.syllables = SetCollector(accepted_types=['Syllable'])
-        self.dictionary = Dictionary()    # words with ipa, morphology, definition
+        self.dictionary = Dictionary()  # words with ipa, morphology, definition
         # TODO instantiate below from generic Collector
         self.affixes = Affixes()
-        self.phonemes = {}      # dict of created phonemes - inventory?
 
     def set_inventory(self, inventory):
         """Set the inventory object for this language"""
@@ -132,18 +133,17 @@ class Language:
         return True
     #
     def get_sound_features(self, ipa):
-        if not self.is_ipa(ipa) or ipa not in self.phonemes:
-            print("Language phonetic symbol not found: {0}".format(ipa))
+        if not self.is_ipa(ipa) or not self.phonemes.has(ipa):
+            print("Language get_sound_features failed - unknown symbol {0}".format(ipa))
             return
-        phoneme = self.phonemes[ipa].get()
-        return self.features.get_features(phoneme['symbol'])
+        return self.features.get_features(ipa)
     #
     def get_sound_letters(self, ipa):
-        if not self.is_ipa(ipa) or ipa not in self.phonemes:
-            print("Language phonetic symbol not found: {0}".format(ipa))
+        if not self.is_ipa(ipa) or not self.phonemes.has(ipa):
+            print("Language get_sound_letters failed - unknown symbol {0}".format(ipa))
             return
-        phoneme = self.phonemes[ipa].get()
-        return phoneme['letters']
+        letters = self.phonemes.get_letters(ipa)
+        return letters
 
     # TODO add weights for letter choice? relative chron order for rules?
     #   - current weight intended for distributing phon commonness/freq of occ
@@ -153,7 +153,8 @@ class Language:
             print("Language add_sound failed - invalid phonetic symbol or letters")
             return {}
         sound = Phoneme(ipa, letters=letters, weight=weight)
-        self.phonemes[ipa] = sound
+        features = self.features.get_features(ipa)
+        self.phonemes.add(sound, features)
         # TODO decide if adding sounds to language (above) or managing through inventory (below)
         #   - right now duplicating data by doing both
         #   - (features stored multiple places, sound stored multiple places)
@@ -162,7 +163,7 @@ class Language:
         #   - consider how to deal with features per ipa and ipa per features
         features = self.features.get_features(ipa)
         self.inventory.add(symbol=ipa, features=features)
-        return {ipa: self.phonemes[ipa]}
+        return {ipa: self.phonemes.get(key=ipa)}
 
     def add_sounds(self, ipa_letters_map):
         """Add multiple sounds to the language's inventory"""
@@ -436,7 +437,7 @@ class Language:
                     symbol = random.choice(symbols)
                     word_ipa += symbol
                     # choose letter from letters set inside phoneme object
-                    letters = self.phonemes[symbol].get_letters()
+                    letters = self.phonemes.get(key=symbol).get_letters()
                     word_spelling += random.choice(letters)
 
         # NOTE affixation here before sound changes
