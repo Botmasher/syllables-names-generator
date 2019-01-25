@@ -9,8 +9,6 @@ from syllable import Syllable
 from environment import Environment
 
 ## TEST - make features
-
-# TODO manage syll, phon, env in L as already c Affixes
 features = Features()
 features.add_map({
     'a': ['vowel', 'front', 'open', 'unrounded'],
@@ -59,19 +57,15 @@ features.add_map({
     'j': ['consonant', 'voiced', 'palatal', 'approximant'],
     'w': ['consonant', 'voiced', 'velar', 'approximant']
 })
-# TODO solve feature 'consonant'/'vowel' not getting into features inventory
-print(features.map_by_features())
 
-## TEST - use above features to build lang and sylls
-inventory = Inventory()
-
+# TEST - build empty language
 my_language = Language(
     name='Testerlangubekke',
     display_name='Testaroundish',
-    features=features,
-    inventory=inventory
+    features=features
 )
 
+# TEST - add inventory to language
 my_language.add_sounds({
     'a': ['a', 'ah'],
     'i': ['i', 'ie'],
@@ -92,10 +86,13 @@ my_language.add_sounds({
 #   - Language.get_sound_features wraps the features (NOT inventory) method
 #       - but only for phonemes in the language
 
-# # TODO special symbols like β and two-char ones like ts not getting features
-# print(my_language.features.get_features('i'))
-# print(my_language.features.get_features('β'))
-# #print(my_language.features.features)
+# TEST - features by ipa and ipa by features readable from Features instance
+print(my_language.features.map_by_ipa())
+print(my_language.features.map_by_features())
+
+# TEST - special symbols like β and two-char ones like ts are readable and have correct features
+print(my_language.features.get_features('ts'))
+print(my_language.features.get_features('β'))
 #
 # # TODO have inventory tie features to chars, and do the add sounds instead of language
 # #print(my_language.phonemes)     # recall this is a dict of ipa:phoneme pairs
@@ -106,18 +103,20 @@ my_language.add_syllable('CVC')
 my_language.add_syllable('VC')
 my_language.add_syllable('CV')
 my_language.print_syllables()
-
 # TODO add word shapes (root, affixes, compounds, or initial VCV but not mid CVVCV)
 
 ## TEST - run rules (independent of above features, inventory, lang)
 my_language.add_rule(['voiceless'], ['voiced'], 'V_V')
-# TODO verify features not inventory for changing to target sounds
 # TODO spelling layer can change too but if not default to historical
 print(my_language.apply_rules("kat"))    # expected: "kat", got: "kat"
 print(my_language.apply_rules("kata"))   # expected: "kada", got: "kada"
 print(my_language.apply_rules("katta"))  # expected: "katta", got: "katta"
 print(my_language.apply_rules("akatakatta"))  # expected: "agadagatta", got: "agadagatta"
 
-## TEST - build word
+## TEST - build root word
 word_entry = my_language.build_word(length=2, definition="camel")
 print(word_entry)
+
+## TEST - add affixes
+
+## TEST - build word with affixes

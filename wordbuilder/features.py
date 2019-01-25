@@ -44,18 +44,24 @@ class Features:
             return []
         return list(self.ipa[symbol])
 
-    def get_ipa(self, features, exact=True):
-        """Find phonetic symbols matching all given features"""
+    def get_ipa(self, features, filter_phonemes=[], exact=True):
+        """Find phonetic symbols (optionally restricted to a filtered list) matching all given features"""
         if len(features) < 1:
             return []
-        found_symbols = set()
+        # optionally restrict phonetic symbols searched
+        phonetic_symbols = filter_phonemes if filter_phonemes else self.ipa.keys()
         # compare test features to stored features for symbol matches
-        for symbol, match_features in self.ipa.items():
+        found_symbols = set()
+        for symbol in phonetic_symbols:
+            if symbol not in self.ipa:
+                print("Features get_ipa skipped unknown phonetic filter symbol {0}".format(symbol))
+                continue
+            # store exact or subset match
+            match_features = self.ipa[symbol]
             if exact and not set(features) ^ match_features:
                 found_symbols.add(symbol)
             elif match_features.issuperset(features):
                 found_symbols.add(symbol)
-            continue
         return list(found_symbols)
 
     def add_map(self, ipa_features_map):

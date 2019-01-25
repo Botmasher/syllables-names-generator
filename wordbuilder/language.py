@@ -11,6 +11,8 @@ from phonemes import Phonemes
 from dictionary import Dictionary
 import random
 
+# NOTE: throughout the code "ipa" (usu uncaps) denotes any stored phonetic symbols associated with a set of features in a language
+
 # TODO
 # - handle feature checks in language instead of shared Features dependency
 #   - check before passing non C xor V to syll
@@ -28,24 +30,28 @@ class Language:
         self.name = name
         self.display_name = display_name
         self.features = features
-        self.inventory = inventory
-        self.phonemes = Phonemes()     # dict of created phonemes - inventory?
-        self.rules = Collector(accepted_types=['Rule'])
+        # collection managers
+        self.phonemes = Phonemes()
         self.environments = Collector(accepted_types=['Environment'])
         self.syllables = SetCollector(accepted_types=['Syllable'])
+        self.rules = Collector(accepted_types=['Rule'])
         self.dictionary = Dictionary()  # words with ipa, morphology, definition
+
         # TODO instantiate below from generic Collector
         self.affixes = Affixes()
 
-    def set_inventory(self, inventory):
-        """Set the inventory object for this language"""
-        self.inventory = inventory
+    # inventory now managed through Phonemes (letters <> ipa) and Features (features <> ipa) instead of previous Inventory class
+    def inventory(self):
+        """Read all phonetic symbols stored for this language"""
+        return self.phonemes.symbols()
 
+    # map of all possible ipa <> features
     def set_features(self, features):
         """Set the features object for this language"""
         self.features = features
 
     def print_syllables(self):
+        """Print out all syllables in a human-readable formatted string"""
         syllable_text = ""
         count = 0
         for syllable in self.syllables.get():
@@ -60,6 +66,7 @@ class Language:
         return syllable_text
 
     def add_syllable(self, syllable_structure, parse_cv=True):
+        """Add one syllable to the syllables collection for this language"""
         # build valid symbol or features list
         syllable_characters = ['_', '#', ' ', 'C', 'V']
         if parse_cv and type(syllable_structure) is str:
@@ -96,14 +103,13 @@ class Language:
     def add_affix(self, category, grammar, affix):
         """Add a grammatical category and value affix in phonetic transcription"""
         for symbol in affix:
-            if symbol != '-' or not self.inventory.has_ipa(symbol):
+            if symbol != '-' or not self.phonemes.has(symbol):
                 print("Language add_affix failed - invalid affix {0}".format(affix))
                 return
         self.affixes.add(category, grammar, affix)
         return self.affixes.get(affix)
 
     # Rules
-    # TODO: access Rules update, remove methods
     def add_rule(self, source, target, environment_structure):
         """Add one rule to the language's rules dictionary"""
         environment = Environment(structure=environment_structure)
@@ -152,17 +158,8 @@ class Language:
         if not self.features.has_ipa(ipa) or not all(isinstance(l, str) for l in letters):
             print("Language add_sound failed - invalid phonetic symbol or letters")
             return {}
-        sound = Phoneme(ipa, letters=letters, weight=weight)
-        features = self.features.get_features(ipa)
-        self.phonemes.add(sound, features)
-        # TODO decide if adding sounds to language (above) or managing through inventory (below)
-        #   - right now duplicating data by doing both
-        #   - (features stored multiple places, sound stored multiple places)
-        #   - phonemes can have letters (even letter/spelling rules)
-        #   - inventory can be a list/collection of phonemes
-        #   - consider how to deal with features per ipa and ipa per features
-        features = self.features.get_features(ipa)
-        self.inventory.add(symbol=ipa, features=features)
+        phoneme = Phoneme(ipa, letters=letters, weight=weight)
+        self.phonemes.add(phoneme)
         return {ipa: self.phonemes.get(key=ipa)}
 
     def add_sounds(self, ipa_letters_map):
@@ -184,6 +181,7 @@ class Language:
     #   - what about compounding?
     #   - what about analytic syntax like say "dnen bmahuwa" for cat-ANIM?
     def apply_affixes(self, root_ipa, grammatical_features={}, boundaries=True):
+        """Add affixes to a phonetic symbol string representing a built word root"""
         morphology = root_ipa
         affixes = self.affixes.get()
         for grammatical_category in grammatical_features:
@@ -226,9 +224,15 @@ class Language:
             else:
                 new_symbol_features.add(feature)
         # find phonetic symbols with these features
+        # choose from all possible symbols not just current inventory
         new_symbols = self.features.get_ipa(list(new_symbol_features))
+
         # TODO choose a new symbol from matching symbols if more than one
         new_symbol = new_symbols[0]
+
+        # TODO also suggest changed spellings
+        # - (default to same if none available)
+
         return new_symbol
 
     # No longer tracking rules as they are applied - tracking "tracks" with rule pointed to
@@ -406,45 +410,49 @@ class Language:
     # TODO add affixes, apply rules and store word letters and symbols
     def build_word(self, length=1, definition="", store_in_dictionary=True, apply_rules=True):
         """Form a word following the defined inventory and syllable structure"""
-        if not self.inventory:
-            print("Language build_word failed - unrecognized inventory {0}".format(self.inventory))
+        # form a list of possible syllables to choose from
+        syllables = list(self.syllables.get())
+        if not syllables:
+            print("Language build_word failed - no possible syllables found in {0}".format(syllables))
             return
-        possible_syllables = list(self.syllables.get())
-        if not possible_syllables:
-            print("Language build_word failed - no possible syllables found in {0}".format(possible_syllables))
-            return
-        word_spelling = ""
-        word_ipa = ""
+
+        # store sound (phonemes) and spelling (graphemes) forms of words being built
         # TODO store same-length lists of letters and ipa in dictionary instead of strings
+        word_spelling = []
+        word_ipa = []
+
         # TODO choose letters by weighted freq/uncommonness
         for i in range(length):
             try:
-                syllable = random.choice(possible_syllables)
+                syllable = random.choice(syllables)
             except:
                 print("Language build_word failed - no syllables found in inventory")
                 return
             syllable_structure = syllable.get()
             for feature_set in syllable_structure:
-                # find the phonetic symbol with these features
-                symbols = self.inventory.get(features=feature_set)
+                # find all inventory ipa that have these features
+                symbols = self.features.get_ipa(feature_set, filter_phonemes=self.inventory())
                 # TODO you store Phoneme with associated letters so this should be easy
                 #   - right now inventory maps features to letters
                 #   - features maps them to sounds
                 #   - instead stick with features <> ipa <> letters
                 #   - use Features and Phoneme to accomplish (see features.py comment)
                 if symbols:
-                    # assuming what you get out are ipa symbols
+                    # choose from ipa symbols that matched subset of features
                     symbol = random.choice(symbols)
-                    word_ipa += symbol
+                    word_ipa.append(symbol)
                     # choose letter from letters set inside phoneme object
-                    letters = self.phonemes.get(key=symbol).get_letters()
-                    word_spelling += random.choice(letters)
+                    letters = self.phonemes.get_letters(symbol)
+                    word_spelling.append(random.choice(letters))
 
         # NOTE affixation here before sound changes
         # - see TODO above this method
 
         # apply sound changes to built word
         word_changed = self.apply_rules(word_ipa)[1] if apply_rules else word_ipa
+
+        word_spelling = "".join(word_spelling)
+        word_ipa = "".join(word_ipa)
 
         # add to dictionary instance
         if store_in_dictionary:
