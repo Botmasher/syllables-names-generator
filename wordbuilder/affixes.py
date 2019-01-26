@@ -1,5 +1,9 @@
-# TODO manage suffixes and prefixes by grammatical feature
-#   - morpheme rules like (root)-noun-animate or class-noun
+# TODO think about and implement how affixes work
+#   - affixes do not have to be one affix per value
+#   - often overlapping values to get to a single affix
+#       - perhaps some langs are root-p:1-num:pl
+#       - but others are root-(1 pl inclusive)
+#       - a similar way to how Features handled sounds?
 class Affixes:
     def __init__(self):
         self.affixes = {}

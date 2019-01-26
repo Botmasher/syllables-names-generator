@@ -1,5 +1,6 @@
 from phoneme import Phoneme
 from syllable import Syllable
+from affix import Affix
 from environment import Environment
 from rule import Rule
 from ruletracker import RuleTracker
@@ -100,14 +101,37 @@ class Language:
         self.syllables.add(syllable)
         return
 
-    def add_affix(self, category, grammar, affix):
-        """Add a grammatical category and value affix in phonetic transcription"""
-        for symbol in affix:
-            if symbol != '-' or not self.phonemes.has(symbol):
-                print("Language add_affix failed - invalid affix {0}".format(affix))
+    def add_affix(self, affix_string, category="", grammeme=""):
+        """Add a grammatical category and value affix with one hyphen and phonetic symbols"""
+        # check that affix is composed entirely of known ipa and hyphen
+        for symbol in affix_string:
+            if not (symbol == "-" or self.phonemes.has(symbol):
+                print("Language add_affix failed - unrecognized symbols in affix string {0}".format(affix_string))
                 return
-        self.affixes.add(category, grammar, affix)
-        return self.affixes.get(affix)
+        # break affix string
+        split_affix = affix_string.split("-")
+        # treat the affix string as a circumfix
+        if len(split_affix) > 1:
+            # check for hyphen overcount
+            if len(split_affix) != 2:
+                print("Language add_affix failed - expected only one hyphen in affix {0}".format(affix_string))
+                return
+            prefix, suffix = split_affix
+        # treat the affix string as either a prefix or a suffix
+        else:
+            prefix = split_affix[0] if affix_string[0] == "-" else ""
+            suffix = split_affix[0] if affix_string[len(affix_string)-1] == "-" else ""
+        # create new affix
+        affix = Affix(prefix=prefix, suffix=suffix, category=category, grammeme=grammeme)
+
+        # TODO redo collection class and methods for Affixes
+        #   - filter affixes using Affix dict attrs
+        #   - search for specific affixes
+        #   - structure for affixes object?
+        #   - add affixes to affixes instance
+
+        #self.affixes.add(category, grammar, affix)
+        #return self.affixes.get(affix)
 
     # Rules
     def add_rule(self, source, target, environment_structure):
