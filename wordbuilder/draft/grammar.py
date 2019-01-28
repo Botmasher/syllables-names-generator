@@ -15,32 +15,97 @@ class Grammar:
         # NOTE do we need categories at all or just grammemes?
         self.grammemes = {} # dict of category: {grammeme, ...} set pairs
 
-        # map affixes to or from grammemes
-        self.affixes = {}               # map of details about each affix
-        self.grammemes_per_affix = {}   # affix: [{grammeme,...}, ...] list pairs
-        self.affixes_per_grammeme = {}  # grammeme: [affix, ...] list pairs
-        # TODO same but for particles (or just store bound bool for affixes)
-        self.particles = {}
+        self.word_classes = []
+        # store morphosyntactic word classes, features and values
+        self.properties = {
+            # 'word class': {
+            #   'feature': [
+            #       'value',
+            #       ...
+            #   ]
+            # }
+        }
 
-    def add_grammeme(self, category, grammeme):
+        # map affixes to or from grammemes
+        self.exponents = {}                 # map of details about each exponent
+        self.properties_per_exponent = {}   # exponent: [{grammeme,...}, ...] list pairs
+        self.exponents_per_property = {}    # grammeme: [exponent, ...] list pairs
+
+    def add_word_class(self, word_class):
+        """Add a new word class to the morphosyntax"""
+        if word_class not in self.properties:
+            self.properties[word_class] = {}
+        else:
+            print("Grammar add_word_class skipped existing class {0}".format(word_class))
+        return self.properties[word_class]
+
+    def add_property(self, word_class="*", category="", grammeme="", abbreviation="", description=""):
         """Add one grammatical feature category and value to the grammar"""
+        if not (type(category) is str and type(grammar) is str and type(word_class) is str):
+            print("Grammar add_property failed - expected string arguments")
+            return
+        self.add_word_class(word_class)
+        # TODO consider flattening so that all levels are just listable features for the grammar builder
         if category not in self.grammemes:
-            self.grammemes[category] = set()
+            self.grammemes[word_class][category][grammeme] = {
+                'value': grammeme,
+                'abbreviation': abbreviation,
+                'description': description
+            }
         self.grammemes[category].add(grammeme)
         return self.grammemes[category]
 
-    def is_grammeme(self, grammeme):
-        """Check if the grammatical value name is part of the grammar"""
-        for category in self.grammemes:
-            if grammeme in self.grammemes[category]:
-                return True
+    def is_property(self, word_class="", category="", grammeme=""):
+        """Check if the word class, grammatical category or grammatical value are part of the grammar"""
+        # flags for searching
+        found_word_class = False if word_class else True
+        found_category = False if category else True
+        found_grammeme = False if grammeme else True
+
+        # expect one category and one grammeme
+        if type(category) is not str or type(grammeme) is not str:
+            print("Grammar is_property failed - invalid category or grammeme")
+            return
+
+        # give flexibility for searching through one, many or all word classses
+        word_classes = []
+        if type(word_class) in (list, tuple, set):
+            # multiple passed-in word classes
+            word_classes = list(word_classes)
+        elif not word_class or word_class = "*":
+            # all word classes
+            word_classes = self.properties.keys()
+        elif type(word_class) is str:
+            # one passed-in word class
+            word_classes = [word_class]
+        else:
+            print("Grammar is_property failed - unrecognized word class {0}".format(word_class))
+            return
+
+        # TODO simplify to search for one so this method stays predictable to caller
+        for grammar_word_class in word_classes:
+            if grammar_word_class not in self.properties:
+                return False
+            else:
+                found_word_class = True
+            for grammar_category in self.properties[grammar_word_class]:
+                if category == grammar_category:
+                    found_category = True
+                # TODO update to search for stored grammeme dicts
+                if grammar_grammeme in self.properties[grammar_word_class][grammar_category]:
+                    found_grammeme = True
+                    return True
+
+        # for category in self.grammemes:
+        #     if grammeme in self.grammemes[category]:
+        #         return True
         return False
 
     # TODO what about prefix and suffix attributes - just read from hyphen position?
     #   - instead map affixes with affix_ids (just store phon-graph feats)
     #   - then use affix_ids in affixes_per_grammeme and grammemes_per_affix
     #   - store optional definition for specific grammeme combinations?
-    def add_affix(self, prefix="", suffix="", grammemes=[], is_bound=True):
+    def add_exponent(self, pre="", post="", grammemes=[], is_bound=True):
         """Add one affix with its associated grammatical categories and values"""
         # check that all grammemes exist
         if type(grammemes) not in (list, set, tuple) or len(grammemes) < 1:
@@ -52,22 +117,22 @@ class Grammar:
                 return
 
         # id for joining affix lookups and details
-        affix_id = uuid.uuid4()
+        exponent_id = uuid.uuid4()
 
         # add to lookup maps
         for grammeme in grammemes:
-            if grammeme not in self.affixes_per_grammeme:
-                self.affixes_per_grammeme[grammeme] = set()
-            self.affixes_per_grammeme[grammeme].add(affix_id)
-        self.grammemes_per_affix[affix_id] = set(grammemes)
+            if grammeme not in self.exponents_per_property:
+                self.exponents_per_property[grammeme] = set()
+            self.exponents_per_property[grammeme].add(exponent_id)
+        self.properties_per_exponent[exponent_id] = set(grammemes)
 
         # add to details map
-        self.affixes[affix_id] = {
-            'prefix': prefix,
-            'suffix': suffix,
+        self.exponents[exponent_id] = {
+            'pre': prefix,
+            'post': suffix,
             'bound': is_bound
         }
-        return affix_id
+        return exponent_id
 
     # TODO affixes take into account word class as well as features?
     def build_affixed_word(self, root_word="", word_class="", grammemes=[]):
