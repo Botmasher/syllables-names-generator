@@ -12,94 +12,109 @@ import random
 
 class Grammar:
     def __init__(self):
-        # NOTE do we need categories at all or just grammemes?
-        self.grammemes = {} # dict of category: {grammeme, ...} set pairs
-
-        self.word_classes = []
         # store morphosyntactic word classes, features and values
-        self.properties = {
-            # 'word class': {
-            #   'feature': [
-            #       'value',
-            #       ...
-            #   ]
-            # }
-        }
-
+        # NOTE flattened properties just relate sounds to grammar
+        # - previously mapped {word classes: {features: [values]}}
+        # - now just a property has many exponents, an exponent has many properties
+        # - borrow patterns used for features <> ipa
+        # - each property name must be unique OR you can use ids and property objects
         # map affixes to or from grammemes
         self.exponents = {}                 # map of details about each exponent
-        self.properties_per_exponent = {}   # exponent: [{grammeme,...}, ...] list pairs
-        self.exponents_per_property = {}    # grammeme: [exponent, ...] list pairs
+        self.properties = {}                # map of details about each property
+        self.properties_per_exponent = {}   # exponent_id: [property_id, ...] pairs
+        self.exponents_per_property = {}    # property_id: [exponent_id, ...] pairs
 
-    def add_word_class(self, word_class):
-        """Add a new word class to the morphosyntax"""
-        if word_class not in self.properties:
-            self.properties[word_class] = {}
-        else:
-            print("Grammar add_word_class skipped existing class {0}".format(word_class))
-        return self.properties[word_class]
-
-    def add_property(self, word_class="*", category="", grammeme="", abbreviation="", description=""):
-        """Add one grammatical feature category and value to the grammar"""
-        if not (type(category) is str and type(grammar) is str and type(word_class) is str):
-            print("Grammar add_property failed - expected string arguments")
+    # TODO rely only on exponents_per_property
+    def add_property(self, property, abbreviation="", description="", overwrite=False):
+        """Add one word class, category or grammeme to the grammar"""
+        if not property or type(property) is not str:
+            print("Grammar add_property failed - expected property to be non-empty string")
             return
-        self.add_word_class(word_class)
-        # TODO consider flattening so that all levels are just listable features for the grammar builder
-        if category not in self.grammemes:
-            self.grammemes[word_class][category][grammeme] = {
-                'value': grammeme,
+        property_id = property  # generate ids if allowing same name properties
+        # store property using name as lookup key
+        if overwrite or property not in self.properties:
+            self.properties[property] = {
+                'name': property,
                 'abbreviation': abbreviation,
                 'description': description
             }
-        self.grammemes[category].add(grammeme)
-        return self.grammemes[category]
-
-    def is_property(self, word_class="", category="", grammeme=""):
-        """Check if the word class, grammatical category or grammatical value are part of the grammar"""
-        # flags for searching
-        found_word_class = False if word_class else True
-        found_category = False if category else True
-        found_grammeme = False if grammeme else True
-
-        # expect one category and one grammeme
-        if type(category) is not str or type(grammeme) is not str:
-            print("Grammar is_property failed - invalid category or grammeme")
-            return
-
-        # give flexibility for searching through one, many or all word classses
-        word_classes = []
-        if type(word_class) in (list, tuple, set):
-            # multiple passed-in word classes
-            word_classes = list(word_classes)
-        elif not word_class or word_class = "*":
-            # all word classes
-            word_classes = self.properties.keys()
-        elif type(word_class) is str:
-            # one passed-in word class
-            word_classes = [word_class]
         else:
-            print("Grammar is_property failed - unrecognized word class {0}".format(word_class))
+            print("Grammar add_property failed - cannot overwrite existing property")
+            return
+        return property_id
+
+    # TODO update
+    def add_exponent(self, pre="", post="", bound=True, overwrite=False):
+        """Add one grammatical exponent to the grammar"""
+        if not ((pre or post) and (type(pre) is str and type(post) is str)):
+            print("Grammar add_exponent failed - expected pre or post exponent string")
+            return
+        exponent_id = uuid.uuid4
+        if overwrite or exponent not in self.exponents:
+            self.exponents[exponent_id] = {
+                'id': exponent_id,
+                'pre': pre,
+                'post': post,
+                'bound': bound
+            }
+        else:
+            print("Grammar add_property failed - cannot overwrite existing property")
+            return
+        return exponent_id
+
+    def exponent_word(self, word, exponent_id=""):
+        """Attach a grammatical exponent to a word"""
+        if not (word and exponent_id) or not self.is_exponent(exponent_id):
+            return
+        exponented_word = word
+        exponent = self.exponents[exponent_id]
+
+        # exponent is affix
+        if exponent['bound']:
+            exponented_word = exponent['pre'] + exponented_word + exponent['post']
+        # exponent is particle or adposition structure
+        else:
+            if exponent['pre']:
+                exponented_word = "{0} {1}".format(exponent['pre'], exponented_word)
+            if exponent['post']:
+                exponented_word = "{0} {1}".format(exponented_word, exponent['post'])
+        return exponented_word
+
+    # TODO exponents are not theoretical unlike properties; must tolerate same phones
+    # - only store in exponents_per_property and reduce over it
+    def add(self, pre="", post="", bound=True, properties=[], overwrite=False):
+        """Add a grammatical exponent and its associated properties (word class, categories, grammemes) to the grammar"""
+        exponent_id = self.add_exponent(pre=pre, post=post, bound=bound)
+        if not exponent_id:
+            print("Grammar add failed - exponent already exists or is invalid")
             return
 
-        # TODO simplify to search for one so this method stays predictable to caller
-        for grammar_word_class in word_classes:
-            if grammar_word_class not in self.properties:
-                return False
-            else:
-                found_word_class = True
-            for grammar_category in self.properties[grammar_word_class]:
-                if category == grammar_category:
-                    found_category = True
-                # TODO update to search for stored grammeme dicts
-                if grammar_grammeme in self.properties[grammar_word_class][grammar_category]:
-                    found_grammeme = True
-                    return True
+        for property in properties:
+            if not self.add_property(property, overwrite=overwrite) and not self.is_property(property):
+                print("Grammar add failed - one or more invalid properties")
+                return
 
-        # for category in self.grammemes:
-        #     if grammeme in self.grammemes[category]:
-        #         return True
-        return False
+        for property in properties:
+            if property not in self.exponents_per_property:
+                self.exponents_per_property[property] = set()
+            self.exponents_per_property[property].add(exponent_id)
+
+        return exponent_id
+
+    # TODO rely only on exponents_per_property
+    def is_exponent(self, exponent):
+        """Check if a string of sounds is an exponent in this grammar"""
+        if not (exponent and type(exponent) is str):
+            print("Grammar is_exponent failed - expected valid exponent string")
+            return False
+        return exponent in self.exponents
+
+    def is_property(self, property):
+        """Check if a word class, category or grammeme is part of the grammar"""
+        if not (property and type(property) is str):
+            print("Grammar is_property failed - expected valid property string")
+            return False
+        return property in self.properties
 
     # TODO what about prefix and suffix attributes - just read from hyphen position?
     #   - instead map affixes with affix_ids (just store phon-graph feats)
