@@ -1,4 +1,5 @@
 import uuid
+import re
 import random
 
 # TODO rethink how affixes, particles, word relations work
@@ -19,13 +20,13 @@ class Grammar:
         # - borrow patterns used for features <> ipa
         # - each property name must be unique OR you can use ids and property objects
         # map affixes to or from grammemes
-        self.exponents = {}                 # map of details about each exponent
-        self.properties = {}                # map of details about each property
-        self.properties_per_exponent = {}   # exponent_id: [property_id, ...] pairs
+        self.exponents = {}     # map of details about each exponent
+        self.properties = {}    # map of details about each property
+        #self.properties_per_exponent = {}   # exponent_id: [property_id, ...] pairs
         self.exponents_per_property = {}    # property_id: [exponent_id, ...] pairs
 
     # TODO rely only on exponents_per_property
-    def add_property(self, property, abbreviation="", description="", overwrite=False):
+    def add_property(self, property, abbreviation=None, description=None, overwrite=False):
         """Add one word class, category or grammeme to the grammar"""
         if not property or type(property) is not str:
             print("Grammar add_property failed - expected property to be non-empty string")
@@ -35,13 +36,55 @@ class Grammar:
         if overwrite or property not in self.properties:
             self.properties[property] = {
                 'name': property,
-                'abbreviation': abbreviation,
-                'description': description
+                'abbreviation': abbreviation if type(abbreviation) is str else None,
+                'description': description if type(description) is str else None
             }
         else:
             print("Grammar add_property failed - cannot overwrite existing property")
             return
         return property_id
+
+    def remove_property(self, property):
+        """Delete the record for one property from the grammar"""
+        try:
+            removed_property = self.properties[property]
+            self.properties.pop(property)
+            return removed_property
+        except:
+            print("Grammar remove_property failed - unknown property {0}".format(property))
+            return
+        # TODO please REMOVE property from exponents_per_property when augmenting words
+
+    def unabbreviate_property(self, abbreviation):
+        """Return full property names for properties that use the abbreviation"""
+        # NOTE this works when property ids and names are the same and unique
+        properties = []
+        for property, property_details in self.properties.items():
+            if abbreviation = property_details['abbreviation']:
+                properties.append(property)
+        return properties
+
+    def identify_properties(self, properties, use_abbreviations=False):
+        """Split a string or list of property names into a set of property ids"""
+        if type(properties) not in (tuple, set, list, str):
+            print("Grammar failed to parse properties - expected a list or string")
+            return
+        # create a set of unique property terms
+        properties_split = re.split(r"\W+", properties) if type(properties) is str else properties
+        property_ids = []
+        # search for property name in properties
+        # NOTE this commits the Grammar to relying on unique full property names
+        for property in properties_split:
+            # add found full property names including optionally for abbreviated properties
+            if property in self.properties:
+                property_ids.append(property)
+            elif use_abbreviations:
+                unabbreviated_properties = self.unabbreviate_property(property)
+                unabbreviated_properties and property_ids.append(unabbreviated_properties[0])
+            else:
+                continue
+        properties_set = set(properties_split)
+        return properties_set
 
     # TODO update
     def add_exponent(self, pre="", post="", bound=True, overwrite=False):
@@ -62,11 +105,28 @@ class Grammar:
             return
         return exponent_id
 
-    def exponent_word(self, word, exponent_id=""):
-        """Attach a grammatical exponent to a word"""
-        if not (word and exponent_id) or not self.is_exponent(exponent_id):
+    def build_word(self, root, properties, layer_exponents=False):
+        """Build up relevant morphology using the given grammatical properties"""
+        # TODO determine relevant sets of properties, associate with exponents
+        # - break into exponent property sets
+        # - each property could appear in multiple exponent property sets
+        # - layering exponents allows property subsets to overlap where exponents exist:
+        #   - if True, a relevant exponent's property set is proper subset of another, do not use that exponent
+        #   - if False, a relevant property subset can determine an exponent
+        #   - example: True may attach a verb exponent, a verb transitive one and a verb second person singular one
+        #   - NOTE perhaps throw out this option for practicality
+        # - store the found exponents that have those properties
+        # - call attach_exponent to add each found exponent to the word
+
+        # TODO when searching exponent properties check if they exist in self.properties
+        # - if not, delete them since they've been removed via remove_property
+        # - alternatively store blacklist or scrublist populated through remove_property
+
+    def attach_exponent(self, stem, exponent_id=""):
+        """Attach one grammatical exponent to a string of phones"""
+        if not (stem and exponent_id) or not self.is_exponent(exponent_id):
             return
-        exponented_word = word
+        exponented_word = stem
         exponent = self.exponents[exponent_id]
 
         # exponent is affix
@@ -102,6 +162,10 @@ class Grammar:
         return exponent_id
 
     # TODO rely only on exponents_per_property
+    # - for: exponents could be unique enough to have different property sets
+    # - for: avoids duplicating data and means clean functional access (reduce and filter)
+    # - against: stored extra details about a property and an exponent are useful
+    # - against: since exponents are not unique (unlike theoretically ipa) the back-forth mapping relies on exponent_ids and exponent details data
     def is_exponent(self, exponent):
         """Check if a string of sounds is an exponent in this grammar"""
         if not (exponent and type(exponent) is str):
@@ -115,65 +179,3 @@ class Grammar:
             print("Grammar is_property failed - expected valid property string")
             return False
         return property in self.properties
-
-    # TODO what about prefix and suffix attributes - just read from hyphen position?
-    #   - instead map affixes with affix_ids (just store phon-graph feats)
-    #   - then use affix_ids in affixes_per_grammeme and grammemes_per_affix
-    #   - store optional definition for specific grammeme combinations?
-    def add_exponent(self, pre="", post="", grammemes=[], is_bound=True):
-        """Add one affix with its associated grammatical categories and values"""
-        # check that all grammemes exist
-        if type(grammemes) not in (list, set, tuple) or len(grammemes) < 1:
-            print("Grammar add_affix failed - invalid grammemes list")
-            return
-        for grammeme in grammemes:
-            if not self.is_grammeme(grammeme):
-                print("Grammar add_affix failed - unrecognized grammeme {0}".format(grammeme))
-                return
-
-        # id for joining affix lookups and details
-        exponent_id = uuid.uuid4()
-
-        # add to lookup maps
-        for grammeme in grammemes:
-            if grammeme not in self.exponents_per_property:
-                self.exponents_per_property[grammeme] = set()
-            self.exponents_per_property[grammeme].add(exponent_id)
-        self.properties_per_exponent[exponent_id] = set(grammemes)
-
-        # add to details map
-        self.exponents[exponent_id] = {
-            'pre': prefix,
-            'post': suffix,
-            'bound': is_bound
-        }
-        return exponent_id
-
-    # TODO affixes take into account word class as well as features?
-    def build_affixed_word(self, root_word="", word_class="", grammemes=[]):
-        """Attach affixes to a word"""
-        if type(root_word) is not str or type(grammemes) not in (list, set, tuple):
-            print("Grammar build_affixed_word failed - invalid root word or grammemes")
-            return
-        # nothing to attach
-        if not grammemes:
-            return root_word
-        # find relevant grammatical affix_ids
-        matching_affixes = set(self.affixes_per_grammeme[grammemes[0]])
-        if len(grammemes) > 1:
-            for grammeme in grammemes[1:]:
-                matching_affixes ˆ= self.affixes_per_grammeme[grammeme]
-        # choose one affix_id
-        affix_id = random.choice(matching_affixes)
-        if affix_id not in self.affixes:
-            print("Grammar build_affixed_word failed - unrecognized affix_id chosen")
-            return
-        # build new word with that affix
-        affixed_word = root_word
-        affix_data = self.affixes[affix_id]
-        if affix_data['suffix']:
-            if
-            new_word += affix_data['suffix']
-        if affix_data['prefix']:
-            new_word = affix_data['prefix'] + new_word
-        return affixed_word
