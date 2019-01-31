@@ -20,50 +20,152 @@ class Grammar:
         # - borrow patterns used for features <> ipa
         # - each property name must be unique OR you can use ids and property objects
         # map affixes to or from grammemes
+
+        # TODO point to properties per exponent, maybe also exponents under properties
         self.exponents = {}     # map of details about each exponent
         self.properties = {}    # map of details about each property
-        #self.properties_per_exponent = {}   # exponent_id: [property_id, ...] pairs
-        self.exponents_per_property = {}    # property_id: [exponent_id, ...] pairs
 
-    # TODO rely only on exponents_per_property
-    def add_property(self, property, abbreviation=None, description=None, overwrite=False):
+    # TODO store ids here or in add_exponent
+    def add_property(self, property, abbreviation=None, description=None):
         """Add one word class, category or grammeme to the grammar"""
         if not property or type(property) is not str:
             print("Grammar add_property failed - expected property to be non-empty string")
             return
-        property_id = property  # generate ids if allowing same name properties
         # store property using name as lookup key
-        if overwrite or property not in self.properties:
-            self.properties[property] = {
-                'name': property,
-                'abbreviation': abbreviation if type(abbreviation) is str else None,
-                'description': description if type(description) is str else None
-            }
-        else:
-            print("Grammar add_property failed - cannot overwrite existing property")
-            return
+        property_id = "grammatical-property-{0}".format(uuid.uuid4)
+        self.properties[property_id] = {
+            'id': property_id,
+            'name': property,
+            'abbreviation': abbreviation if type(abbreviation) is str else None,
+            'description': description if type(description) is str else None
+        }
         return property_id
 
-    def remove_property(self, property):
-        """Delete the record for one property from the grammar"""
-        try:
-            removed_property = self.properties[property]
-            self.properties.pop(property)
-            return removed_property
-        except:
-            print("Grammar remove_property failed - unknown property {0}".format(property))
+    def add_exponent(self, pre="", post="", bound=True):
+        """Add one grammatical exponent to the grammar"""
+        if not ((pre or post) and (type(pre) is str and type(post) is str)):
+            print("Grammar add_exponent failed - expected pre or post exponent string")
             return
-        # TODO please REMOVE property from exponents_per_property when augmenting words
+        # store exponent details
+        exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4)
+        self.exponents[exponent_id] = {
+            'id': exponent_id,
+            'pre': pre,
+            'post': post,
+            'bound': bound,
+            # TODO find and add property ids here too
+            'properties': set()
+        }
+        return exponent_id
 
+    def remove_property(self, property_id):
+        """Delete the record for and exponent references to one property from the grammar"""
+        if property_id not in self.exponents:
+            print("Grammar remove_property failed - unknown id {0}".format(property_id))
+            return
+        # delete property key and details
+        removed_property = self.properties[property_id]
+        self.properties.pop(property_id)
+        # delete property from exponents that have it
+        for exponent_id, exponent_details in self.exponents.items():
+            if property_id in exponent_details['properties']:
+                self.exponents[exponent_id]['properties'].remove(property_id)
+        return removed_property
+
+    def remove_exponent(self, exponent_id):
+        """Delete the record for one exponent from the grammar"""
+        if exponent_id not in self.exponents:
+            print("Grammar remove_exponent failed - unknown id {0}".format(exponent_id))
+            return
+        # delete exponent id and details
+        removed_exponent = self.exponents[exponent_id]
+        self.exponents.pop(exponent_id)
+        return removed_exponent
+
+    def update_property(self, property_id, name=None, abbreviation=None, description=None):
+        """Modify any details for one grammatical property"""
+        if not self.is_property_id(property_id):
+            print("Grammar update_property failed - invalid property id")
+            return
+        property = self.properties[property_id]
+        self.properties[property_id] = {
+            'id': property['id'],
+            'name': name if name and type(name) is str else property['name'],
+            'abbreviation': abbreviation if abbreviation and type(abbreviation) is str else property['abbreviation'],
+            'description': description if abbreviation and type(abbreviation) is bool else property['description']
+        }
+        return property_id
+
+    def update_exponent(self, exponent_id, pre="", post="", bound=None):
+        """Modify any details for one grammatical exponent"""
+        if not self.is_exponent_id(exponent_id):
+            print("Grammar update_exponent failed - invalid exponent id")
+            return
+        exponent = self.exponents[exponent_id]
+        self.exponents[exponent_id] = {
+            'id': exponent['id'],
+            'pre': pre if pre and type(pre) is str else exponent['pre'],
+            'post': post if post and type(post) is str else exponent['post'],
+            'bound': bound if bound and type(bound) is bool else exponent['bound'],
+            'properties': exponent['properties']
+        }
+        return exponent_id
+
+    # read
     def unabbreviate_property(self, abbreviation):
         """Return full property names for properties that use the abbreviation"""
         # NOTE this works when property ids and names are the same and unique
         properties = []
-        for property, property_details in self.properties.items():
+        for property_id, property_details in self.properties.items():
             if abbreviation = property_details['abbreviation']:
-                properties.append(property)
+                properties.append(property_id)
         return properties
 
+    def find_property_ids(self, name=None, abbreviation=None, description=None, first_only=False):
+        """Return every property (or optionally the first only) with the matching details"""
+        if not name or abbreviation or details:
+            print("Grammar find_property_ids failed - invalid details given")
+            return
+        found_property_ids = []
+        query_details = {
+            'name': name,
+            'abbreviation': abbreviation,
+            'description': description
+        }
+        # search through properties where details match query details not left blank
+        for property_id, property_details in self.properties.items():
+            query_details['name'] = name if name is not None else property_details['name']
+            query_details['abbreviation'] = abbreviation if abbreviation is not None else property_details['abbreviation']
+            query_details['description'] = description if description is not None else property_details['description']
+            if query_details['name'] == property_details['name'] and query_details['description'] == property_details['description'] and query_details['abbreviation'] == property_details['abbreviation']:
+                found_property_ids.append(property_id)
+            if first_only:
+                return found_property_ids
+        return found_property_ids
+
+    def find_exponent_ids(self, pre=None, post=None, bound=None, first_only=False):
+        """Return every exponent (or optionall the first only) with the matching details"""
+        if pre is None and post is None:
+            print("Grammar find_exponent_ids failed - invalid details given")
+            return
+        found_exponent_ids = []
+        query_details = {
+            'pre': None,
+            'post': None,
+            'bound': None
+        }
+        # search for exponents where details match non-blank query details
+        for exponent_id, exponent_details in self.exponents.items():
+            query_details['pre'] = pre if pre is not None else exponent_details['name']
+            query_details['post'] = post if post is not None else exponent_details['post']
+            query_details['bound'] = bound if bound is not None else exponent_details['bound']
+            if query_details['pre'] == exponent_details['pre'] and query_details['post'] == exponent_details['post'] and query_details['bound'] == exponent_details['bound']:
+                found_exponent_ids.append(exponent_id)
+            if first_only:
+                return found_exponent_ids
+        return found_exponent_ids
+
+    # TODO incorporate property name -> id reads from above instead of treating names as ids
     def identify_properties(self, properties, use_abbreviations=False):
         """Split a string or list of property names into a set of property ids"""
         if type(properties) not in (tuple, set, list, str):
@@ -86,35 +188,11 @@ class Grammar:
         properties_set = set(properties_split)
         return properties_set
 
-    # TODO update
-    def add_exponent(self, pre="", post="", bound=True, overwrite=False):
-        """Add one grammatical exponent to the grammar"""
-        if not ((pre or post) and (type(pre) is str and type(post) is str)):
-            print("Grammar add_exponent failed - expected pre or post exponent string")
-            return
-        exponent_id = uuid.uuid4
-        if overwrite or exponent not in self.exponents:
-            self.exponents[exponent_id] = {
-                'id': exponent_id,
-                'pre': pre,
-                'post': post,
-                'bound': bound
-            }
-        else:
-            print("Grammar add_property failed - cannot overwrite existing property")
-            return
-        return exponent_id
-
-    def build_word(self, root, properties, layer_exponents=False):
+    def build_word(self, root, properties):
         """Build up relevant morphology using the given grammatical properties"""
         # TODO determine relevant sets of properties, associate with exponents
         # - break into exponent property sets
         # - each property could appear in multiple exponent property sets
-        # - layering exponents allows property subsets to overlap where exponents exist:
-        #   - if True, a relevant exponent's property set is proper subset of another, do not use that exponent
-        #   - if False, a relevant property subset can determine an exponent
-        #   - example: True may attach a verb exponent, a verb transitive one and a verb second person singular one
-        #   - NOTE perhaps throw out this option for practicality
         # - store the found exponents that have those properties
         # - call attach_exponent to add each found exponent to the word
 
@@ -166,16 +244,45 @@ class Grammar:
     # - for: avoids duplicating data and means clean functional access (reduce and filter)
     # - against: stored extra details about a property and an exponent are useful
     # - against: since exponents are not unique (unlike theoretically ipa) the back-forth mapping relies on exponent_ids and exponent details data
-    def is_exponent(self, exponent):
-        """Check if a string of sounds is an exponent in this grammar"""
-        if not (exponent and type(exponent) is str):
-            print("Grammar is_exponent failed - expected valid exponent string")
-            return False
-        return exponent in self.exponents
+    #
+    # Alternatively: store relations under self.properties or self.exponents
+    # - the attr adds ids set under key to existing dicts rather than entirely new dicts
+    # - could do one and use lookups and calc or do both and have quick access but more crudwork
+    def is_exponent_id(self, exponent_id):
+        """Check if the id is in the grammar exponent map"""
+        return exponent_id in self.exponents
 
-    def is_property(self, property):
-        """Check if a word class, category or grammeme is part of the grammar"""
-        if not (property and type(property) is str):
-            print("Grammar is_property failed - expected valid property string")
-            return False
-        return property in self.properties
+    def is_property_id(self, property_id):
+        """Check if the id is in the grammatical properties map"""
+        return property_id in self.properties
+
+    def is_exponent(self, pre="", post=""):
+        """Check if the given sounds are an exponent in this grammar"""
+        if not (pre or post):
+            print("Grammar is_exponent failed - expected pre or post string")
+            return
+        # search details for pre/post matches
+        for exponent_details in self.exponents.values():
+            # circumfix or circumposition
+            if exponent_details['pre'] and exponent_details['post'] and pre == exponent_details['pre'] and post == exponent_details['post']:
+                return True
+            # prefix or preposition
+            if exponent_details['pre'] and pre == exponent_details['pre']:
+                return True
+            # suffix or postposition
+            if exponent_details['post'] and post == exponent_details['post']:
+                return True
+        return False
+
+    def is_property(self, name="", abbreviation=""):
+        """Check if a grammatical property name or abbreviation is part of the grammar"""
+        if name and abbreviation:
+            print("Grammar is_property failed - expected either property name or abbreviation")
+            return
+        # search property details for matching name or abbreviation
+        for property_details in self.properties.values():
+            if abbreviation and name == property_details['abbreviation']:
+                return True
+            if name and name == property_details['name']:
+                return True
+        return True
