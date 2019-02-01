@@ -2,28 +2,17 @@ import uuid
 import re
 import random
 
-# TODO rethink how affixes, particles, word relations work
-#   - affixes, adpositions, particles aren't always one per value
-#   - often overlapping values to get to a single morpheme
-#       - some langs have root-p:1-num:pl
-#       - others have root-(1 pl inclusive)
-#   - consider: how did Features handle sounds?
-#       - strings per feature-value set
-#       - feature-value sets per string
-
+# NOTE the grammar relates grammatical exponents <> grammatical properties
+# - exponents are phones of affixes, adpositions, particles, pre or post a base
+# - properties are word classes, categories, grammemes
 class Grammar:
     def __init__(self):
-        # store morphosyntactic word classes, features and values
-        # NOTE flattened properties just relate sounds to grammar
-        # - previously mapped {word classes: {features: [values]}}
-        # - now just a property has many exponents, an exponent has many properties
-        # - borrow patterns used for features <> ipa
-        # - each property name must be unique OR you can use ids and property objects
-        # map affixes to or from grammemes
-
-        # TODO point to properties per exponent, maybe also exponents under properties
-        self.exponents = {}     # map of details about each exponent
-        self.properties = {}    # map of details about each property
+        # map of details about each property
+        # NOTE if property names are not unique this will cause conflicts on read
+        # TODO consider returning to property names instead of generated ids
+        self.properties = {}
+        # map of exponent details, including pointing to an exponent's property ids
+        self.exponents = {}
 
     # TODO store ids here or in add_exponent
     def add_property(self, property, abbreviation=None, description=None):
@@ -41,11 +30,24 @@ class Grammar:
         }
         return property_id
 
-    def add_exponent(self, pre="", post="", bound=True):
+    def add_exponent(self, pre="", post="", bound=True, properties=[]):
         """Add one grammatical exponent to the grammar"""
         if not ((pre or post) and (type(pre) is str and type(post) is str)):
             print("Grammar add_exponent failed - expected pre or post exponent string")
             return
+
+        # TODO update to use unique names as ids
+        exponent_properties = set()
+        for property in properties:
+            property_id = self.find_property_ids(name=property, first_only=True)
+            if not property_id:
+                property_id = self.find_property_ids(abbreviation=property, first_only=True)
+                if not property_id:
+                    print("Grammar add_exponent failed - properties has unknown property name or abbreviation {0}".format(property))
+                    return
+            exponent_properties.add(property_id)
+
+        'properties': properties if type(properties) is list else []
         # store exponent details
         exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4)
         self.exponents[exponent_id] = {
@@ -53,8 +55,7 @@ class Grammar:
             'pre': pre,
             'post': post,
             'bound': bound,
-            # TODO find and add property ids here too
-            'properties': set()
+            'properties': exponent_properties
         }
         return exponent_id
 
@@ -138,9 +139,9 @@ class Grammar:
             query_details['abbreviation'] = abbreviation if abbreviation is not None else property_details['abbreviation']
             query_details['description'] = description if description is not None else property_details['description']
             if query_details['name'] == property_details['name'] and query_details['description'] == property_details['description'] and query_details['abbreviation'] == property_details['abbreviation']:
+                if first_only:
+                    return property_id
                 found_property_ids.append(property_id)
-            if first_only:
-                return found_property_ids
         return found_property_ids
 
     def find_exponent_ids(self, pre=None, post=None, bound=None, first_only=False):
@@ -160,9 +161,9 @@ class Grammar:
             query_details['post'] = post if post is not None else exponent_details['post']
             query_details['bound'] = bound if bound is not None else exponent_details['bound']
             if query_details['pre'] == exponent_details['pre'] and query_details['post'] == exponent_details['post'] and query_details['bound'] == exponent_details['bound']:
+                if first_only:
+                    return exponent_id
                 found_exponent_ids.append(exponent_id)
-            if first_only:
-                return found_exponent_ids
         return found_exponent_ids
 
     # TODO incorporate property name -> id reads from above instead of treating names as ids
@@ -188,21 +189,47 @@ class Grammar:
         properties_set = set(properties_split)
         return properties_set
 
-    def build_word(self, root, properties):
+    def build_word(self, root, properties, avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical properties"""
-        # TODO determine relevant sets of properties, associate with exponents
-        # - break into exponent property sets
-        # - each property could appear in multiple exponent property sets
-        # - store the found exponents that have those properties
-        # - call attach_exponent to add each found exponent to the word
+        if not(type(root) is str and properties and type(properties) in (list, tuple, set)):
+            print("Grammar build_word failed - invalid root string {0} or properties list {1}".format(root, properties))
+            return
 
-        # TODO when searching exponent properties check if they exist in self.properties
-        # - if not, delete them since they've been removed via remove_property
-        # - alternatively store blacklist or scrublist populated through remove_property
+        # find all relevant exponents
+        matching_exponents = []
+        for exponent_id, exponent_details in self.exponents.items():
+            # all of the exponent properties match requested word properties
+            if exponent_details['properties'].issubset(properties):
+                matching_exponents.append(exponent_id)
 
-    def attach_exponent(self, stem, exponent_id=""):
+        # pick through exponents to find only highest supersets of each other
+        # NOTE quadratic
+        if avoid_redundant_exponents:
+            # compare properties for properties supersets
+            # example: ditch verb exponent if also found a verb, transitive one
+            superproperty_exponents = []
+            for i in range(len(matching_exponents)):
+                exponent_properties = self.exponents[matching_exponents[i]]['properties']
+                is_properties_subset = False
+                # compare all exponents to find if other properties sets cover this one
+                for j in range(len(matching_exponents)):
+                    compared_properties = self.exponents[matching_exponents[j]]['properties']
+                    if i != j and exponent_properties.issubset(compared_properties):
+                        is_properties_subset = True
+                        break
+                not is_properties_subset and superproperty_exponents.append(matching_exponents[i])
+            matching_exponents = superproperty_exponents
+
+        # add exponents to build up the word
+        word = root
+        for exponent_id in matching_exponents:
+            word = self.attach_exponent(word, exponent_id=exponent_id)
+        return word
+
+    def attach_exponent(self, stem, exponent_id=None):
         """Attach one grammatical exponent to a string of phones"""
         if not (stem and exponent_id) or not self.is_exponent(exponent_id):
+            print("Grammar attach_exponent failed - unknown stem word or exponent id")
             return
         exponented_word = stem
         exponent = self.exponents[exponent_id]
@@ -218,36 +245,7 @@ class Grammar:
                 exponented_word = "{0} {1}".format(exponented_word, exponent['post'])
         return exponented_word
 
-    # TODO exponents are not theoretical unlike properties; must tolerate same phones
-    # - only store in exponents_per_property and reduce over it
-    def add(self, pre="", post="", bound=True, properties=[], overwrite=False):
-        """Add a grammatical exponent and its associated properties (word class, categories, grammemes) to the grammar"""
-        exponent_id = self.add_exponent(pre=pre, post=post, bound=bound)
-        if not exponent_id:
-            print("Grammar add failed - exponent already exists or is invalid")
-            return
-
-        for property in properties:
-            if not self.add_property(property, overwrite=overwrite) and not self.is_property(property):
-                print("Grammar add failed - one or more invalid properties")
-                return
-
-        for property in properties:
-            if property not in self.exponents_per_property:
-                self.exponents_per_property[property] = set()
-            self.exponents_per_property[property].add(exponent_id)
-
-        return exponent_id
-
-    # TODO rely only on exponents_per_property
-    # - for: exponents could be unique enough to have different property sets
-    # - for: avoids duplicating data and means clean functional access (reduce and filter)
-    # - against: stored extra details about a property and an exponent are useful
-    # - against: since exponents are not unique (unlike theoretically ipa) the back-forth mapping relies on exponent_ids and exponent details data
-    #
-    # Alternatively: store relations under self.properties or self.exponents
-    # - the attr adds ids set under key to existing dicts rather than entirely new dicts
-    # - could do one and use lookups and calc or do both and have quick access but more crudwork
+    # TODO test script and check that storing properties under self.exponents works
     def is_exponent_id(self, exponent_id):
         """Check if the id is in the grammar exponent map"""
         return exponent_id in self.exponents
