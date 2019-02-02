@@ -30,6 +30,24 @@ class Grammar:
         }
         return property_id
 
+    def add_properties(self, properties_details):
+        """Add a list of word classes, categories or grammemes to the grammar"""
+        if not properties_details or type(properties_details) is not list:
+            print("Grammar add_properties failed - invalid list of properties {0}".format(properties_details))
+            return
+        # pass each property through and store its id in the grammar
+        property_ids = []
+        for property in properties_details:
+            if type(property) is not dict or 'name' not in property:
+                print("Grammar add_properties skipped invalid element - expected dict with 'name', got {0}".format(property))
+                continue
+            name = property['name']
+            abbreviation = property['abbreviation'] if 'abbreviation' in property else None
+            description = property['description'] if 'description' in property else None
+            property_id = self.add_property(name, abbreviation=abbreviation, description=description)
+            property_id and property_ids.append(property_id)
+        return property_ids
+
     def add_exponent(self, pre="", post="", bound=True, properties=[]):
         """Add one grammatical exponent to the grammar"""
         if not ((pre or post) and (type(pre) is str and type(post) is str)):
@@ -47,7 +65,6 @@ class Grammar:
                     return
             exponent_properties.add(property_id)
 
-        'properties': properties if type(properties) is list else []
         # store exponent details
         exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4)
         self.exponents[exponent_id] = {
@@ -118,7 +135,7 @@ class Grammar:
         # NOTE this works when property ids and names are the same and unique
         properties = []
         for property_id, property_details in self.properties.items():
-            if abbreviation = property_details['abbreviation']:
+            if abbreviation == property_details['abbreviation']:
                 properties.append(property_id)
         return properties
 
@@ -189,6 +206,45 @@ class Grammar:
         properties_set = set(properties_split)
         return properties_set
 
+    def is_exponent_id(self, exponent_id):
+        """Check if the id is in the grammar exponent map"""
+        return exponent_id in self.exponents
+
+    def is_property_id(self, property_id):
+        """Check if the id is in the grammatical properties map"""
+        return property_id in self.properties
+
+    def is_exponent(self, pre="", post=""):
+        """Check if the given sounds are an exponent in this grammar"""
+        if not (pre or post):
+            print("Grammar is_exponent failed - expected pre or post string")
+            return
+        # search details for pre/post matches
+        for exponent_details in self.exponents.values():
+            # circumfix or circumposition
+            if exponent_details['pre'] and exponent_details['post'] and pre == exponent_details['pre'] and post == exponent_details['post']:
+                return True
+            # prefix or preposition
+            if exponent_details['pre'] and pre == exponent_details['pre']:
+                return True
+            # suffix or postposition
+            if exponent_details['post'] and post == exponent_details['post']:
+                return True
+        return False
+
+    def is_property(self, name="", abbreviation=""):
+        """Check if a grammatical property name or abbreviation is part of the grammar"""
+        if name and abbreviation:
+            print("Grammar is_property failed - expected either property name or abbreviation")
+            return
+        # search property details for matching name or abbreviation
+        for property_details in self.properties.values():
+            if abbreviation and name == property_details['abbreviation']:
+                return True
+            if name and name == property_details['name']:
+                return True
+        return True
+
     def build_word(self, root, properties, avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical properties"""
         if not(type(root) is str and properties and type(properties) in (list, tuple, set)):
@@ -245,42 +301,43 @@ class Grammar:
                 exponented_word = "{0} {1}".format(exponented_word, exponent['post'])
         return exponented_word
 
-    # TODO test script and check that storing properties under self.exponents works
-    def is_exponent_id(self, exponent_id):
-        """Check if the id is in the grammar exponent map"""
-        return exponent_id in self.exponents
+# 1 - build up grammar
+grammar = Grammar()
 
-    def is_property_id(self, property_id):
-        """Check if the id is in the grammatical properties map"""
-        return property_id in self.properties
+# expect grammar to add individually
+# TODO ignore caps
+grammar.add_property("verb", abbreviation="v", description="word class: for verbs")
+grammar.add_property("noun", abbreviation="n", description="word class: for nouns")
+grammar.add_property("adjective", abbreviation="adj", description="word class: for adjectives")
+grammar.add_property("adverb", abbreviation="adv", description="word class: for adverbs")
+grammar.add_property("particle", abbreviation="part", description="word class: for particles")
 
-    def is_exponent(self, pre="", post=""):
-        """Check if the given sounds are an exponent in this grammar"""
-        if not (pre or post):
-            print("Grammar is_exponent failed - expected pre or post string")
-            return
-        # search details for pre/post matches
-        for exponent_details in self.exponents.values():
-            # circumfix or circumposition
-            if exponent_details['pre'] and exponent_details['post'] and pre == exponent_details['pre'] and post == exponent_details['post']:
-                return True
-            # prefix or preposition
-            if exponent_details['pre'] and pre == exponent_details['pre']:
-                return True
-            # suffix or postposition
-            if exponent_details['post'] and post == exponent_details['post']:
-                return True
-        return False
+# expect grammar to add all
+# TODO limit/filter which properties must be excluded or included with another?
+# - example: cases can include only nouns, adjectives
+# TODO allow multiple abbreviations, ? maybe strip of dot so nom. pl. -> nom pl
+grammar.add_properties([
+    {'name': "case", 'description': "category: nominal case"},
+    {'name': "nominative", 'abbreviation': "nom", 'description': "grammeme: case mainly for subjects"},
+    {'name': "accusative", 'abbreviation': "acc", 'description': "grammeme: case mainly for objects"},
+    {'name': "number", 'abbreviation': "num", 'description': "category: grammatical number"},
+    {'name': "singular", 'abbreviation': "s", 'description': "grammeme: singular number"},
+    {'name': "plural", 'abbreviation': "pl", 'description': "grammeme: plural number"},
+    {'name': "deixis", 'description': "category: distance indicators"},
+    {'name': "proximal", 'abbreviation': "prox", 'description': "grammeme: near distance"},
+    {'name': "distal", 'abbreviation': "dist", 'description': "grammeme: far distance"},
+    {'name': "tense", 'abbreviation': "tns", 'description': "category: verbal tense"},
+    {'name': "present", 'abbreviation': "pres", 'description': "grammeme: present tense"},
+    {'name': "mood", 'description': "grammeme: verbal mood"},
+    {'name': "indicative", 'abbreviation': "ind", 'description': "grammeme: indicative mood"},
+    {'name': "voice", 'abbreviation': "vc", 'description': "category: voice"},
+    {'name': "active", 'abbreviation': "act", 'description': "grammeme: active voice"}
+])
+# expect grammar to detect issue, avoid adding and return None
+grammar.add_properties([])
+grammar.add_properties([{}])
+grammar.add_properties(['chocolate'])
+grammar.add_properties([{'name': "xyz", 'favorites': 0}])
+grammar.add_properties([{'favorites': 0}])
 
-    def is_property(self, name="", abbreviation=""):
-        """Check if a grammatical property name or abbreviation is part of the grammar"""
-        if name and abbreviation:
-            print("Grammar is_property failed - expected either property name or abbreviation")
-            return
-        # search property details for matching name or abbreviation
-        for property_details in self.properties.values():
-            if abbreviation and name == property_details['abbreviation']:
-                return True
-            if name and name == property_details['name']:
-                return True
-        return True
+# 2 - build demo words
