@@ -21,7 +21,7 @@ class Grammar:
             print("Grammar add_property failed - expected property to be non-empty string")
             return
         # store property using name as lookup key
-        property_id = "grammatical-property-{0}".format(uuid.uuid4)
+        property_id = "grammatical-property-{0}".format(uuid.uuid4())
         self.properties[property_id] = {
             'id': property_id,
             'name': property,
@@ -32,7 +32,7 @@ class Grammar:
 
     def add_properties(self, properties_details):
         """Add a list of word classes, categories or grammemes to the grammar"""
-        if not properties_details or type(properties_details) is not list:
+        if type(properties_details) is not list:
             print("Grammar add_properties failed - invalid list of properties {0}".format(properties_details))
             return
         # pass each property through and store its id in the grammar
@@ -66,7 +66,7 @@ class Grammar:
             exponent_properties.add(property_id)
 
         # store exponent details
-        exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4)
+        exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4())
         self.exponents[exponent_id] = {
             'id': exponent_id,
             'pre': pre,
@@ -75,6 +75,24 @@ class Grammar:
             'properties': exponent_properties
         }
         return exponent_id
+
+    def add_exponents(self, exponents_details):
+        """Add a list of grammatical exponents with properties"""
+        if type(exponents_details) is not list:
+            print("Grammar add_exponents failed - invalid list of exponents {0}".format(exponents_details))
+            return
+        exponent_ids = []
+        for exponent in exponents_details:
+            if type(exponent) is not dict or 'properties' not in exponent or not ('pre' in exponent or 'post' in exponent):
+                print("Grammar add_exponents skipped invalid element - expected dict with 'properties' and 'pre' or 'post', got {0}".format(exponent))
+                continue
+            pre = exponent['pre'] if 'pre' in exponent else ""
+            post = exponent['post'] if 'post' in exponent else ""
+            bound = exponent['bound'] if 'bound' in exponent else True
+            properties = exponent['properties']
+            exponent_id = self.add_exponent(pre=pre, post=post, bound=bound, properties=properties)
+            exponent_id and exponent_ids.append(exponent_id)
+        return exponent_ids
 
     def remove_property(self, property_id):
         """Delete the record for and exponent references to one property from the grammar"""
@@ -141,7 +159,7 @@ class Grammar:
 
     def find_property_ids(self, name=None, abbreviation=None, description=None, first_only=False):
         """Return every property (or optionally the first only) with the matching details"""
-        if not name or abbreviation or details:
+        if not name or abbreviation or description:
             print("Grammar find_property_ids failed - invalid details given")
             return
         found_property_ids = []
@@ -245,7 +263,18 @@ class Grammar:
                 return True
         return True
 
-    def build_word(self, root, properties, avoid_redundant_exponents=False):
+    # TODO deal with properties smaller or larger than what's in the grammar
+    #
+    # - case 1: built word properties are less verbose than stored exponent properties
+    #   - example: word is ['verb', 'past'] but past affix is ['verb', 'past', 'tense']
+    #
+    # - case 2: built word properties are more verbose than exponent
+    #   - example: word is ['verb', 'past', 'tense'] but past affix is ['past']
+    #
+    # - case 3: built word properties are less verbose but cover multiple exponents
+    #   - example: word is ['verb', 'past', 'tense'] but affixes are ['verb', 'finite'] and ['past', 'tense']
+    #
+    def build_word(self, root, properties=[], avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical properties"""
         if not(type(root) is str and properties and type(properties) in (list, tuple, set)):
             print("Grammar build_word failed - invalid root string {0} or properties list {1}".format(root, properties))
@@ -253,11 +282,17 @@ class Grammar:
 
         # find all relevant exponents
         matching_exponents = []
+        # find the most likely properties match
+        exponent_property_sets = []
         for exponent_id, exponent_details in self.exponents.items():
-            # all of the exponent properties match requested word properties
-            if exponent_details['properties'].issubset(properties):
+            # all of the requested word properties
+            if exponent_details['properties'].issuperset(properties):
                 matching_exponents.append(exponent_id)
+            # TODO determine exponent-word properties match, accounting for cases above
+            else:
+                exponent_property_sets.append(exponent_id)
 
+        print(matching_exponents)
         # pick through exponents to find only highest supersets of each other
         # NOTE quadratic
         if avoid_redundant_exponents:
@@ -301,7 +336,7 @@ class Grammar:
                 exponented_word = "{0} {1}".format(exponented_word, exponent['post'])
         return exponented_word
 
-# 1 - build up grammar
+# 1 - build properties
 grammar = Grammar()
 
 # expect grammar to add individually
@@ -310,13 +345,14 @@ grammar.add_property("verb", abbreviation="v", description="word class: for verb
 grammar.add_property("noun", abbreviation="n", description="word class: for nouns")
 grammar.add_property("adjective", abbreviation="adj", description="word class: for adjectives")
 grammar.add_property("adverb", abbreviation="adv", description="word class: for adverbs")
-grammar.add_property("particle", abbreviation="part", description="word class: for particles")
+added_property = grammar.add_property("particle", abbreviation="part", description="word class: for particles")
+print(added_property)
 
 # expect grammar to add all
 # TODO limit/filter which properties must be excluded or included with another?
 # - example: cases can include only nouns, adjectives
 # TODO allow multiple abbreviations, ? maybe strip of dot so nom. pl. -> nom pl
-grammar.add_properties([
+added_properties = grammar.add_properties([
     {'name': "case", 'description': "category: nominal case"},
     {'name': "nominative", 'abbreviation': "nom", 'description': "grammeme: case mainly for subjects"},
     {'name': "accusative", 'abbreviation': "acc", 'description': "grammeme: case mainly for objects"},
@@ -326,13 +362,18 @@ grammar.add_properties([
     {'name': "deixis", 'description': "category: distance indicators"},
     {'name': "proximal", 'abbreviation': "prox", 'description': "grammeme: near distance"},
     {'name': "distal", 'abbreviation': "dist", 'description': "grammeme: far distance"},
+    {'name': "aspect", 'abbreviation': "asp", 'description': "category: verbal aspect"},
+    {'name': "perfective", 'description': "grammeme: perfective aspect"},
+    {'name': "imperfective", 'description': "grammeme: imperfective aspect"},
     {'name': "tense", 'abbreviation': "tns", 'description': "category: verbal tense"},
     {'name': "present", 'abbreviation': "pres", 'description': "grammeme: present tense"},
+    {'name': "past", 'abbreviation': "past", 'description': "grammeme: past tense"},
     {'name': "mood", 'description': "grammeme: verbal mood"},
     {'name': "indicative", 'abbreviation': "ind", 'description': "grammeme: indicative mood"},
     {'name': "voice", 'abbreviation': "vc", 'description': "category: voice"},
     {'name': "active", 'abbreviation': "act", 'description': "grammeme: active voice"}
 ])
+print(added_properties)
 # expect grammar to detect issue, avoid adding and return None
 grammar.add_properties([])
 grammar.add_properties([{}])
@@ -340,4 +381,25 @@ grammar.add_properties(['chocolate'])
 grammar.add_properties([{'name': "xyz", 'favorites': 0}])
 grammar.add_properties([{'favorites': 0}])
 
-# 2 - build demo words
+print(grammar.is_property(name="mood"))
+print(grammar.is_property(abbreviation="pl"))
+print(grammar.is_property(name="verb", abbreviation="v"))
+
+# 2 - build exponents
+grammar.add_exponent(post="tele", bound=False, properties=["noun", "deixis", "proximal"])
+added_exponent = grammar.add_exponent(post="talak", bound=False, properties=["noun", "deixis", "distal"])
+added_exponents = grammar.add_exponents([
+    {'post': "l", 'bound': True, 'properties': ["verb", "present", "tense", "perfective", "aspect", "indicative", "mood", "active", "voice"]},
+    {'post': "hapa", 'bound': True, 'properties': ["verb", "past", "tense", "perfective", "aspect", "indicative", "mood", "active", "voice"]}
+])
+print(added_exponent)
+print(added_exponents)
+grammar.add_exponent(properties=["noun", "deixis", "proximal"])
+grammar.add_exponent(pre=[], post=[], properties=[])
+grammar.add_exponent(pre="", post="", properties=[])
+
+# 3 - build demo words
+word_1 = grammar.build_word("poiuyt", properties=["verb", "past"])
+word_2 = grammar.build_word("poiuyt", properties=["verb"])
+print(word_1)
+print(word_2)
