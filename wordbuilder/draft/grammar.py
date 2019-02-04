@@ -280,6 +280,7 @@ class Grammar:
             print("Grammar build_word failed - invalid root string {0} or properties list {1}".format(root, properties))
             return
 
+        print("Building word...")
         # find all relevant exponents
         matching_exponents = []
         # typecast for set operations
@@ -298,17 +299,28 @@ class Grammar:
             # - expect requested properties set to be larger per requested exponent if requesting multiple exponents
             # - expect requested properties set not to duplicate properties possibly repeated in multiple exponents
             # - expect exponent properties set to contain all relevant properties possibly requested
-            #
-            property_intersection = properties_set & exponent_details['properties']
-                # found properties in common
-                if property_intersection:
-                    # found a perfect match - set it as the exponent
-                    if len(property_intersection) == len(properties_set):
-                        matching_exponents = [exponent_id]
-                        break
-                    # store the exponent and intersection to compare for most relevant exponents later
-                    common_properties[exponent_id] = property_intersection
 
+            # retrieve all property names for this exponent
+
+            # TODO if using property names, AGAIN ask why not just have them be unique?)
+            # TODO consider must-exclude and must-include properties sets (see note in branches below)
+
+            exponent_properties_set = {self.properties[property_id]['name'] for property_id in exponent_details['properties']}
+            # check for common members between requested properties and exponent properties
+            property_intersection = properties_set & exponent_properties_set
+            # search for properties in common
+            if property_intersection:
+                # store the exponent and intersection to compare for most relevant exponents later
+                common_properties[exponent_id] = property_intersection
+                # found a perfect match - set it as the exponent
+                if len(property_intersection) == len(properties_set):
+                    # NOTE stops at first match of multiple; consider that {verb} may "exactly" match many
+                    print("found exact exponent properties match: ", properties_set)
+                    matching_exponents = [exponent_id]
+                    break
+
+        print("common properties: ", common_properties)
+        print("matching exponents: ", matching_exponents)
         # hold the requested properties steady, throw exponent properties against it
         # if any exponent properties match at all, keep them
         # not ditching them because they have fewer or greater common_properties
@@ -353,7 +365,7 @@ class Grammar:
 
     def attach_exponent(self, stem, exponent_id=None):
         """Attach one grammatical exponent to a string of phones"""
-        if not (stem and exponent_id) or not self.is_exponent(exponent_id):
+        if not (stem and exponent_id) or not self.is_exponent_id(exponent_id):
             print("Grammar attach_exponent failed - unknown stem word or exponent id")
             return
         exponented_word = stem
@@ -434,6 +446,6 @@ grammar.add_exponent(pre="", post="", properties=[])
 
 # 3 - build demo words
 word_1 = grammar.build_word("poiuyt", properties=["verb", "past"])
-word_2 = grammar.build_word("poiuyt", properties=["verb"])
 print(word_1)
+word_2 = grammar.build_word("poiuyt", properties=["verb"])
 print(word_2)
