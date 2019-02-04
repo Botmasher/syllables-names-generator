@@ -282,34 +282,68 @@ class Grammar:
 
         # find all relevant exponents
         matching_exponents = []
+        # typecast for set operations
+        properties_set = set(properties)
+        # exponent ids and their shared properties with requested properties
+        common_properties = {}
         # find the most likely properties match
-        exponent_property_sets = []
         for exponent_id, exponent_details in self.exponents.items():
-            # all of the requested word properties
-            if exponent_details['properties'].issuperset(properties):
-                matching_exponents.append(exponent_id)
             # TODO determine exponent-word properties match, accounting for cases above
-            else:
-                exponent_property_sets.append(exponent_id)
-
-        print(matching_exponents)
-        # pick through exponents to find only highest supersets of each other
-        # NOTE quadratic
-        if avoid_redundant_exponents:
-            # compare properties for properties supersets
-            # example: ditch verb exponent if also found a verb, transitive one
-            superproperty_exponents = []
-            for i in range(len(matching_exponents)):
-                exponent_properties = self.exponents[matching_exponents[i]]['properties']
-                is_properties_subset = False
-                # compare all exponents to find if other properties sets cover this one
-                for j in range(len(matching_exponents)):
-                    compared_properties = self.exponents[matching_exponents[j]]['properties']
-                    if i != j and exponent_properties.issubset(compared_properties):
-                        is_properties_subset = True
+            # - store matched exponent id with match set of query properties
+            # - if later exponent intersects those query properties and more, toss the old id and replace it
+            # - ? so go through all interims each loop and replace?
+            # - ? if any are subsets
+            #
+            # - expect requested properties set to be smaller per requested exponent than the exponents
+            # - expect requested properties set to be larger per requested exponent if requesting multiple exponents
+            # - expect requested properties set not to duplicate properties possibly repeated in multiple exponents
+            # - expect exponent properties set to contain all relevant properties possibly requested
+            #
+            property_intersection = properties_set & exponent_details['properties']
+                # found properties in common
+                if property_intersection:
+                    # found a perfect match - set it as the exponent
+                    if len(property_intersection) == len(properties_set):
+                        matching_exponents = [exponent_id]
                         break
-                not is_properties_subset and superproperty_exponents.append(matching_exponents[i])
-            matching_exponents = superproperty_exponents
+                    # store the exponent and intersection to compare for most relevant exponents later
+                    common_properties[exponent_id] = property_intersection
+
+        # hold the requested properties steady, throw exponent properties against it
+        # if any exponent properties match at all, keep them
+        # not ditching them because they have fewer or greater common_properties
+        # only ditching them if their common_properties are perfect subsets of other property matchsets
+        #
+        # PROBLEM: what if you only match {verb, tense} but not the specific tense?
+        #   - either add one exponent arbitrarily (the zeroth one found)
+        #   - or add a bunch of exponents for different verb tenses
+        #   - really tenable? instead resort to the most atomic properties only (grammemes-like)?
+
+        # PROBLEM: is {verb, tense, past, indicative, first, person, singular} a better match than {verb, tense, past}?
+
+        # no exact match exponent superset found - guess likely matches
+        # pick through exponents to find only highest supersets of each other
+        # /!\ NOTE quadratic /!\
+        if not matching_exponents:
+            # iterate through exponents with intersecting ("common") properties
+            # find "better" intersections until you're left with a "best":
+            # - if an exponent has a property set that is a strict superset of this one, it is a better intersection
+            # - if no exponent_ids have larger property sets than this, keep it
+            # TODO can you check for best supersections during the intersection loop above instead of this comparison?
+            best_matches = set()
+            for exponent_id, property_intersection in common_properties.items():
+                best_match = exponent_id
+                best_property_set = property_intersection
+                # check for largest strict supersets of the common property set
+                for compared_exponent_id, compared_property_intersection in common_properties.items():
+                    if compared_property_intersection.issuperset(best_property_set) and len(compared_property_intersection) > len(best_property_set):
+                        best_match = compared_exponent_id
+                        best_property_set = compared_property_intersection
+                best_matches.add(best_match)
+            matching_exponents = list(best_matches)
+
+        # list of either one exact exponent properties match or one or more guesses
+        print(matching_exponents)
 
         # add exponents to build up the word
         word = root
