@@ -34,20 +34,38 @@ class Grammar:
     #   - each grammeme has a unique name
     #   - exponents explicitly lay out include/exclude properties, allowing vetting of broader terms in requested
 
+    # TODO: break merge_maps out as a util instead of limiting it to this class
+    # functional dict building to avoid direct mutations in word class, property and exponent update methods
+    def merge_maps(self, base_map, overlay_map, check=lambda x: x):
+        """Overlay map pairs with filtered values onto a base map and return the new map"""
+        # expect both an old "base" and a new "overlay" dict
+        if not(type(base_map) is dict and type(overlay_map) is dict):
+            print("Grammar merge_maps failed - invalid base map or overlay map")
+            return
+        # expect a valid filter function to validate overlayed values
+        if not check or type(check).__name__ != 'function':
+            print("Grammar merge_maps failed - invalid checker/filter function {0}".format(checker))
+            return
+        # unpack old and new maps filtering the new one for proper types
+        new_map = {
+            **base_map,
+            **{k: v for k, v in overlay_map.items() if check(v)}
+        }
+        return new_map
+
     def add_word_class(self, word_class, abbreviation=None, description=None):
         """Add one word class or part of speech to the grammar"""
         if word_class in self.word_classes:
             print("Grammar add_word_class skipped {0} - word class already exists".format(word_class))
             return
+        # create a new entry for the part of speech
         self.word_classes[word_class] = {
             'name': word_class,
             'abbreviation': abbreviation,
             'description': description
         }
+        # read the created part of speech
         return self.word_classes[word_class]
-
-    # TODO test out a merge map details that only overwrites dict entries with truthy string kwargs
-    # - this could be called in update methods below
 
     def update_word_class(self, word_class, abbreviation=None, description=None):
         """Modify the details (but not the name) of a single word class"""
@@ -55,28 +73,37 @@ class Grammar:
             print("Grammar update_word_class failed - unknown word class {0}".format(word_class))
             return
         # create new word class entry updating only changed details
-        word_class_details = {
-            **self.word_classes[word_class],
-            **{detail: value for detail,value in
-                {'abbreviation': abbreviation, 'description': description}
-                .items() if value and type(value) is str
-            }
-        }
+        word_class_details = self.merge_maps(self.word_classes[word_class], {
+            'abbreviation': abbreviation,
+            'description': description
+        }, check=lambda x: type(x) is str)
         self.word_classes[word_class] = word_class_details
+        # read the modified part of speech
         return self.word_classes[word_class]
 
-    # TODO delete word class
-    # - also consider deleting categories in remove_properties if a category's values get emptied out
     def remove_word_class(self, word_class):
         """Delete one word class from word classes map and exponents that reference it"""
-        return
+        if word_class not in self.word_classes:
+            print("Grammar remove_word_class failed - unrecognized word class {0}".format(word_class))
+            return
+        # delete part of speech from the map
+        removed_word_class = self.word_classes[word_class]
+        self.word_classes[word_class].pop(word_class)
+        # remove part of speech from all exponents that exclude and include it
+        for exponent_id, exponent_details in self.exponents:
+            if word_class in exponent_details['exclude']:
+                self.exponents[exponent_id]['exclude'].remove(word_class)
+            if word_class in exponent_details['include']:
+                self.exponents[exponent_id]['include'].remove(word_class)
+        # return deleted details
+        return removed_word_class
 
     def get_property(self, category=None, value=None):
         """Read one grammatical value from one category in the grammar"""
         try:
             return self.properties[category][value]
         except:
-            return None
+            return
 
     def add_property(self, category=None, value=None, abbreviation=None, description=None, create_category=True):
         """Add one grammatical value to an existing category in the grammar"""
@@ -93,12 +120,14 @@ class Grammar:
         if value in self.properties[category]:
             print("Grammar add_property failed - category {0} already contains grammatical value {1} - did you mean to run update_property?".format(category, value))
             return
+        # create a new entry for the grammeme
         self.properties[category][value] = {
             'category': category,
             'value': value,
             'abbreviation': abbreviation if type(abbreviation) is str else None,
             'description': description if type(description) is str else None
         }
+        # read the created entry
         return self.get_property(category, value)
 
     def add_properties(self, properties_details):
@@ -141,15 +170,13 @@ class Grammar:
             print("Grammar update_property failed - invalid category value {0}:{1}".format(category, value))
             return
         # create new property entry with modified details
-        grammatical_value_details = {
-            **self.properties[category][value],
-            **{detail: value for detail,value in
-                {'abbreviation': abbreviation, 'description': description}
-                .items() if value and type(value) is str
-            }
-        }
+        grammatical_value_details = self.merge_maps(self.properties[category][value], {
+            'abbreviation': abbreviation,
+            'description': description
+        }, check=lambda x: type(x) is str)
         self.properties[category][value] = grammatical_value_details
-        return grammatical_value_details
+        # access and return the created details
+        return self.get_property(category, value)
 
     def remove_property(self, category, value):
         """Delete the record for and exponent references to one property from the grammar"""
@@ -163,11 +190,20 @@ class Grammar:
         # delete property from exponent properties category sets that have it
         for exponent_id, exponent_details in self.exponents.items():
             if category in exponent_details['properties'] and value in exponent_details['properties'][category]:
-                self.exponents[exponent_id]['properties'].remove(value)
+                self.exponents[exponent_id]['properties'][category].remove(value)
+                # also delete the category from properties if it is left empty
+                if self.exponents[exponent_id]['properties'][category] == set():
+                    self.exponents[exponent_id]['properties'].pop(category)
+        # return the deleted details
         return removed_property
 
     # TODO: update exponents to cohere with category:values property structure
-    def add_exponent(self, pre="", post="", bound=True, properties={}, excluded=[], included=[]):
+    # NOTE: properties now expect this structure:
+    # ['properties'] = {
+    #   category: {value, ...},     # grammemes set NOT dict of value:details pairs as in self.properties
+    #   ...
+    # }
+    def add_exponent(self, pre="", post="", bound=True, properties={}, include=[], exclude=[]):
         """Add one grammatical exponent to the grammar"""
         if not ((pre or post) and (type(pre) is str and type(post) is str)):
             print("Grammar add_exponent failed - expected pre or post exponent string")
@@ -194,12 +230,13 @@ class Grammar:
 
         # check excluded word classes
         # TODO: allow excluded properties of any kind
-        excluded_word_classes = set()
-        for word_class in excluded:
-            if word_class not in self.properties['word_class']:
-                print("Grammar add_exponent failed - unknown excluded word class {0}".format(word_class))
-                return
-            excluded_word_classes.add(word_class)
+        included_word_classes = {word_class for word_class in exclude if word_class in self.word_classes}
+        excluded_word_classes = {word_class for word_class in include if word_class in self.word_classes}
+        #for word_class in excluded:
+        #    if word_class not in self.properties['word_class']:
+        #        print("Grammar add_exponent failed - unknown excluded word class {0}".format(word_class))
+        #        return
+        #    excluded_word_classes.add(word_class)
 
         # store exponent details
         exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4())
@@ -209,6 +246,7 @@ class Grammar:
             'post': post,
             'bound': bound,
             'properties': exponent_properties,
+            'include': included_word_classes,
             'exclude': excluded_word_classes
         }
         return exponent_id
@@ -294,21 +332,24 @@ class Grammar:
         if pre is None and post is None:
             print("Grammar find_exponent_ids failed - invalid details given")
             return
+        # prepare to store exponents with matching details
         found_exponent_ids = []
-        query_details = {
-            'pre': None,
-            'post': None,
-            'bound': None
-        }
         # search for exponents where details match non-blank query details
         for exponent_id, exponent_details in self.exponents.items():
-            query_details['pre'] = pre if pre is not None else exponent_details['name']
-            query_details['post'] = post if post is not None else exponent_details['post']
-            query_details['bound'] = bound if bound is not None else exponent_details['bound']
-            if query_details['pre'] == exponent_details['pre'] and query_details['post'] == exponent_details['post'] and query_details['bound'] == exponent_details['bound']:
-                if first_only:
-                    return exponent_id
+            # overlay a new details map switching in non-null query args
+            query_details = self.merge_maps(exponent_details, {
+                'pre': pre,
+                'post': post,
+                'bound': bound
+            }, check=lambda x: x is not None)
+            # check if the query exponent details match the current exponent
+            if query_details == exponent_details:
+                # build up a list of all exponents matching these same details
                 found_exponent_ids.append(exponent_id)
+                # return the exponent immediately if only one is requested
+                if first_only:
+                    break
+        # return a list of exponents with matching details
         return found_exponent_ids
 
     # TODO incorporate property name -> id reads from above instead of treating names as ids
