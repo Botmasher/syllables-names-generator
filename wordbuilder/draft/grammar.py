@@ -25,10 +25,10 @@ class Grammar:
     #   - perhaps store a list of word_classes
     #   - perhaps store word_classes per exponent that are included/excluded
     # - implementation:
-    #   - give properties a category and value in add, update, remove and read
-    #   - requested properties now expect {'category': 'value', ...} pairs
-    #   - excluded properties can be set of categories or values
-    #   - give exponents a reference to their must include {'category': 'value'} pairs
+    #   - give properties a category and grammeme in add, update, remove and read
+    #   - requested properties now expect {'category': 'grammeme', ...} pairs
+    #   - excluded properties can be set of categories or grammemes
+    #   - give exponents a reference to their must include {'category': 'grammemes'} pairs
     #   - give exponents a list of excluded properties
     #
     # - proposed solution B: limit ONLY to grammemes (expect everything to be low level)
@@ -87,161 +87,36 @@ class Grammar:
         if word_class not in self.word_classes:
             print("Grammar remove_word_class failed - unrecognized word class {0}".format(word_class))
             return
-        # delete part of speech from the map
+        # delete part of speech from the word classes map
         removed_word_class = self.word_classes[word_class]
         self.word_classes[word_class].pop(word_class)
-        # remove part of speech from all exponents that exclude and include it
-        for exponent_id, exponent_details in self.exponents:
-            if word_class in exponent_details['exclude']:
-                self.exponents[exponent_id]['exclude'].remove(word_class)
-            if word_class in exponent_details['include']:
-                self.exponents[exponent_id]['include'].remove(word_class)
+        # remove part of speech from all property grammeme entries that reference it
+        for category in self.properties:
+            for grammeme, grammeme_details in self.properties[category].items():
+                if word_class in grammeme_details['exclude']:
+                    self.properties[category][grammeme]['exclude'].remove(word_class)
+                if word_class in grammeme_details['include']:
+                    self.exponents[category][grammeme]['include'].remove(word_class)
         # return deleted details
         return removed_word_class
 
-    def get_property(self, category=None, value=None):
+    def get_property(self, category=None, grammeme=None):
         """Read one grammatical value from one category in the grammar"""
         try:
-            return self.properties[category][value]
+            return self.properties[category][grammeme]
         except:
             return
 
-    def add_property(self, category=None, value=None, abbreviation=None, description=None, create_category=True):
+    # TODO: allow updating category or modifying grammeme includes and excludes
+
+    def add_property(self, category=None, grammeme=None, abbreviation=None, description=None, include=[], exclude=[], create_category=True):
         """Add one grammatical value to an existing category in the grammar"""
-        if not (category and value and type(category) is str and type(value) is str):
-            print("Grammar add_property failed - expected category and value to be non-empty strings")
-            return
-        # check if property category or grammeme already exists
-        if category not in self.properties:
-            if create_category:
-                self.properties[category] = {}
-            else:
-                print("Grammar add_property failed - unrecognized category {0}".format(category))
-                return
-        if value in self.properties[category]:
-            print("Grammar add_property failed - category {0} already contains grammatical value {1} - did you mean to run update_property?".format(category, value))
-            return
-        # create a new entry for the grammeme
-        self.properties[category][value] = {
-            'category': category,
-            'value': value,
-            'abbreviation': abbreviation if type(abbreviation) is str else None,
-            'description': description if type(description) is str else None
-        }
-        # read the created entry
-        return self.get_property(category, value)
-
-    def add_properties(self, properties_details):
-        """Add a map of grammatical values within categories to the grammar"""
-        if type(properties_details) is not dict:
-            print("Grammar add_properties failed - invalid properties map {0}".format(properties_details))
-            return
-        # store each new grammatical value added to the grammar
-        # verify it has the expected details structure:
-        # {
-        #   category: [
-        #       {'value': str, 'abbreviation': str, 'description': str},
-        #       ...
-        #   ],
-        #   ...
-        # }
-        added_properties = []
-        for category, values in properties_details.items():
-            # skip non-list categories
-            if type(values) not in (list, tuple):
-                print("Grammar add_properties skipped category {0} - invalid values list {1}".format(category, values))
-                continue
-            # iterate through values and add each category:value
-            for value in values:
-                if type(value) is not dict or 'value' not in value:
-                    print("Grammar add_properties skipped invalid entry {0}:{1} - expected map with a 'value'".format(category, value))
-                    continue
-                # pass value to create along with optional attributes
-                value = property['value']
-                abbreviation = value['abbreviation'] if 'abbreviation' in value else None
-                description = value['description'] if 'description' in value else None
-                property = self.add_property(category=category, value=value, abbreviation=abbreviation, description=description)
-                # build up list of added properties
-                property and added_properties.append(property)
-        return added_properties
-
-    def update_property(self, category, value, abbreviation=None, description=None):
-        """Modify any details for one grammatical property"""
-        if not self.get_property(category, value):
-            print("Grammar update_property failed - invalid category value {0}:{1}".format(category, value))
-            return
-        # create new property entry with modified details
-        grammatical_value_details = self.merge_maps(self.properties[category][value], {
-            'abbreviation': abbreviation,
-            'description': description
-        }, value_check=lambda x: type(x) is str)
-        self.properties[category][value] = grammatical_value_details
-        # access and return the created details
-        return self.get_property(category, value)
-
-    def remove_property(self, category, value):
-        """Delete the record for and exponent references to one property from the grammar"""
-        if category not in self.properties or value not in self.properties[category]:
-            print("Grammar remove_property failed - unknown category value {0}:{1}".format(category, value))
-            return
-        # reference deleted details
-        removed_property = self.get_property(category, value)
-        # delete property key and details
-        self.properties[category].pop(value)
-        # delete property from exponent properties category sets that have it
-        for exponent_id, exponent_details in self.exponents.items():
-            if category in exponent_details['properties'] and value in exponent_details['properties'][category]:
-                self.exponents[exponent_id]['properties'][category].remove(value)
-                # also delete the category from properties if it is left empty
-                if self.exponents[exponent_id]['properties'][category] == set():
-                    self.exponents[exponent_id]['properties'].pop(category)
-        # return the deleted details
-        return removed_property
-
-    # TODO: parse single-string exponent properties as category:value pairs
-    #   - like "present tense indicative mood"
-    #   - even tolerate dropping the category like "present tense indicative"
-
-    # TODO: shouldn't the properties be the ones storing include/exclude?
-    #   - it's not that some exponents are present tense verbs and others are for present tense nouns
-    #   - it's that a grammar may have a property associated with a word class
-
-    # NOTE: exponent['properties'] now have this structure:
-    # {
-    #   category: {value, ...},     # grammemes set NOT dict of value:details pairs as in self.properties
-    #   category: 'value'           # a single string category also allowed
-    #   ...
-    # }
-    def add_exponent(self, pre="", post="", bound=True, properties={}, include=[], exclude=[]):
-        """Add one grammatical exponent to the grammar"""
-        if not ((pre or post) and (type(pre) is str and type(post) is str)):
-            print("Grammar add_exponent failed - expected pre or post exponent string")
+        if not (category and grammeme and type(category) is str and type(grammeme) is str):
+            print("Grammar add_property failed - expected category and grammeme to be non-empty strings")
             return
 
-        # structure the categories and values of included properties
-        exponent_properties = {}
-        for category, values in properties.items():
-            # avoid non-existing categories
-            if category not in self.properties:
-                print("Grammar add_exponent failed - invalid grammatical category {0}".format(category))
-                return
-            exponent_properties[category] = set()
-            # format a set for a single grammeme in one category, like past tense
-            if type(values) is str:
-                if not self.get_property(category, value):
-                    print("Grammar add_exponent failed - invalid grammatical value {0}".format(value))
-                    return
-                values = {values}
-            # add one or more grammemes in one category, like past and present tense
-            for value in values:
-                # check that property exists then build it into this exponent
-                if not self.get_property(category, value):
-                    print("Grammar add_exponent failed - invalid grammatical value {0} in category {1}".format(value, category))
-                    return
-                exponent_properties[category].add(value)
-
-        # check excluded word classes
-        # TODO: allow excluded properties of any kind
+        # collect valid word classes to include or exclude when property is applied
+        # TODO: also allow including or excluding other categories or grammemes
         included_word_classes = {
             word_class for word_class in exclude
             if word_class in self.word_classes
@@ -251,6 +126,170 @@ class Grammar:
             if word_class in self.word_classes
         }
 
+        # check if property category or grammeme already exists
+        if category not in self.properties:
+            if create_category:
+                self.properties[category] = {}
+            else:
+                print("Grammar add_property failed - unrecognized category {0}".format(category))
+                return
+        if grammeme in self.properties[category]:
+            print("Grammar add_property failed - category {0} already contains grammeme {1} - did you mean to run update_property?".format(category, grammeme))
+            return
+        # create a new entry for the grammeme
+        self.properties[category][grammeme] = {
+            'category': category,
+            'grammeme': grammeme,
+            'abbreviation': abbreviation if type(abbreviation) is str else None,
+            'description': description if type(description) is str else None,
+            'include': included_word_classes,
+            'exclude': excluded_word_classes
+        }
+        # read the created entry
+        return self.get_property(category, grammeme)
+
+    def add_properties(self, properties_details):
+        """Add a map of grammatical values within categories to the grammar"""
+        if type(properties_details) is not dict:
+            print("Grammar add_properties failed - invalid properties map {0}".format(properties_details))
+            return
+        # store each new grammatical value added to the grammar
+        # verify it has the expected details structure:
+        # {
+        #   # string representing the lookup category over the grammeme
+        #   category: [
+        #       # pass a map full of the new property's attributes
+        #       {
+        #           # required name (also doubles as its unique id)
+        #           'grammeme': str,
+        #           # optional attributes
+        #           'abbreviation': str,
+        #           'description': str,
+        #           'include': list,        # word classes the property applies to
+        #           'exclude': list         # word classes the property does not apply to
+        #       },
+        #       # or pass only a string to turn into the property's grammeme name and id
+        #       str,
+        #       ...
+        #   ],
+        #   ...
+        # }
+        added_properties = []
+        for category, grammemes in properties_details.items():
+            # NOTE: do not skip unknown category or grammeme - both can be added
+            # expect each category to contain a collection of entries
+            if type(grammemes) not in (list, tuple, set):
+                print("Grammar add_properties skipped category {0} - invalid grammemes collection {1}".format(category, grammemes))
+                continue
+            # go through category:grammemes and add each valid pair
+            for grammeme in grammemes:
+                # create a new grammeme passing along only its category name and grammeme name
+                # NOTE: this bare-minimum method leaves all other attributes empty
+                if type(grammeme) is str:
+                    added_property = self.add_property(category=category, grammeme=grammeme)
+                # expect any non-strings to be maps of grammeme details
+                elif type(grammeme) is not dict or 'grammeme' not in grammeme:
+                    print("Grammar add_properties skipped {0}:{1} - expected a map with a 'grammeme' key".format(category, grammeme))
+                    continue
+                # create a fuller grammeme entry from a map with supplied attributes
+                else:
+                    # create a bare entry with defaults to underlay missing details
+                    default_details = {
+                        'grammeme': grammeme,
+                        'abbreviation': None,
+                        'description': None,
+                        'include': [],
+                        'exclude': []
+                    }
+                    # pass grammeme to create along with optional attributes
+                    # filter grammeme keys to restrict them to known properties attributes
+                    property_details = self.merge_maps(
+                        default_details,
+                        grammeme,
+                        key_check=lambda x: x in default_details
+                    )
+                    # create property reading merged custom details + defaults for missing details
+                    added_property = self.add_property(
+                        category=property_details['category'],
+                        grammeme=property_details['grammeme'],
+                        abbreviation=property_details['abbreviation'],
+                        description=property_details['description'],
+                        include=property_details['include'],
+                        exclude=property_details['exclude']
+                    )
+                # collect successfully added properties
+                added_property and added_properties.append(property)
+        return added_properties
+
+    # TODO: make method to update includes and excludes
+
+    def update_property(self, category, grammeme, abbreviation=None, description=None):
+        """Modify any details for one grammatical property"""
+        if not self.get_property(category, grammeme):
+            print("Grammar update_property failed - invalid category value {0}:{1}".format(category, grammeme))
+            return
+        # create new property entry with modified details
+        grammeme_details = self.merge_maps(self.properties[category][grammeme], {
+            'abbreviation': abbreviation,
+            'description': description
+        }, value_check=lambda x: type(x) is str)
+        self.properties[category][grammeme] = grammeme_details
+        # access and return the created details
+        return self.get_property(category, grammeme)
+
+    def remove_property(self, category, grammeme):
+        """Delete the record for and exponent references to one property from the grammar"""
+        if category not in self.properties or grammeme not in self.properties[category]:
+            print("Grammar remove_property failed - unknown category value {0}:{1}".format(category, grammeme))
+            return
+        # reference deleted details
+        removed_property = self.get_property(category, grammeme)
+        # delete property key and details
+        self.properties[category].pop(grammeme)
+        # delete property from exponent properties category sets that have it
+        for exponent_id, exponent_details in self.exponents.items():
+            if category in exponent_details['properties'] and grammeme in exponent_details['properties'][category]:
+                self.exponents[exponent_id]['properties'][category].remove(grammeme)
+                # also delete the category from properties if it is left empty
+                if self.exponents[exponent_id]['properties'][category] == set():
+                    self.exponents[exponent_id]['properties'].pop(category)
+        # return the deleted details
+        return removed_property
+
+    # NOTE: added exponent['properties'] details now expect this structure:
+    # {
+    #   category: {grammeme, ...},     # grammemes set NOT dict of value:details pairs as in self.properties
+    #   category: 'grammeme'           # a single string is also allowed
+    #   ...
+    # }
+    def add_exponent(self, pre="", post="", bound=True, properties={}):
+        """Add one grammatical exponent to the grammar"""
+        if not ((pre or post) and (type(pre) is str and type(post) is str)):
+            print("Grammar add_exponent failed - expected pre or post exponent string")
+            return
+
+        # structure the categories and values of included properties
+        exponent_properties = {}
+        for category, grammemes in properties.items():
+            # avoid non-existing categories
+            if category not in self.properties:
+                print("Grammar add_exponent failed - invalid grammatical category {0}".format(category))
+                return
+            exponent_properties[category] = set()
+            # format a set for a single grammeme in one category, like past tense
+            if type(grammemes) is str:
+                if not self.get_property(category, grammemes):
+                    print("Grammar add_exponent failed - invalid grammatical value {0}".format(grammemes))
+                    return
+                grammemes = {grammemes}
+            # add one or more grammemes in one category, like past and present tense
+            for grammeme in grammemes:
+                # check that property exists then build it into this exponent
+                if not self.get_property(category, grammeme):
+                    print("Grammar add_exponent failed - invalid grammatical value {0} in category {1}".format(grammeme, category))
+                    return
+                exponent_properties[category].add(grammeme)
+
         # store exponent details
         exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4())
         self.exponents[exponent_id] = {
@@ -258,9 +297,7 @@ class Grammar:
             'pre': pre,
             'post': post,
             'bound': bound,
-            'properties': exponent_properties,
-            'include': included_word_classes,
-            'exclude': excluded_word_classes
+            'properties': exponent_properties
         }
         return exponent_id
 
