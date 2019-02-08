@@ -335,54 +335,48 @@ class Grammar:
         self.exponents[exponent_id] = updated_exponent_details
         return exponent_id
 
-    # TODO: update finding, checking and building methods below
-    #       to use the data and grammatical crud methods above
-    #
-    # /!\ actively under construction /!\
-    #
-
-    def unabbreviate_property(self, abbreviation, first_only=False):
-        """Search for full property names that use the abbreviation"""
-        # NOTE: this works based on property ids and names being unique
-        property_names = []
-        # search through all properties details for matching abbreviations
-        for property_id, property_details in self.properties.items():
-            if abbreviation == property_details['abbreviation']:
-                property_names.append(property_id)
-                # stop the search at the first matching property
-                if first_only:
-                    break
-        return property_names
-
-    def find_property_ids(self, name=None, abbreviation=None, description=None, first_only=False):
+    # identify, describe or unabbreviate property - alternative to getting direct category:grammeme
+    def find_properties(self, name=None, abbreviation=None, description=None, count=None):
         """Return every property (or optionally the first only) with the matching details"""
-        if not name or abbreviation or description:
-            print("Grammar find_property_ids failed - invalid details given")
+        # check that at least one of the attributes is filled in
+        if not (type(name) is str or type(abbreviation) is str or type(description) is str):
+            print("Grammar find_properties failed - expected at least one detail present")
             return
-        found_property_ids = []
-        query_details = {
-            'name': name,
-            'abbreviation': abbreviation,
-            'description': description
-        }
-        # search through properties where details match query details not left blank
-        for property_id, property_details in self.properties.items():
-            query_details['name'] = name if name is not None else property_details['name']
-            query_details['abbreviation'] = abbreviation if abbreviation is not None else property_details['abbreviation']
-            query_details['description'] = description if description is not None else property_details['description']
-            if query_details['name'] == property_details['name'] and query_details['description'] == property_details['description'] and query_details['abbreviation'] == property_details['abbreviation']:
-                if first_only:
-                    return property_id
-                found_property_ids.append(property_id)
-        return found_property_ids
+        # store category:{grammeme} pairs for grammemes with matching details
+        found_properties = {}
+        # current number of property matches for assessing if count is reached
+        matches_count = 0
+        # search through properties where details match query details
+        for category in self.properties.items():
+            for grammatical_value in self.properties[category]:
+                details = self.properties[category][grammatical_value]
+                # create comparison details with overlayed non-blank queried attributes
+                query_details = self.merge_maps(details, {
+                    'name': name,
+                    'abbreviation': abbreviation,
+                    'description': description
+                }, value_check = lambda x: x is not None)
+                # check for matches between comparison details and existing ones
+                if details == query_details:
+                    # store successful matches in category:{grammeme} sets
+                    if category not in found_properties:
+                        found_properties[category] = set()
+                    found_properties[category].add(grammatical_value)
+                    # immediately stop searching at the requested number of matches
+                    count += 1
+                    if count and matches_count == count:
+                        break
+        return found_properties
 
-    def find_exponent_ids(self, pre=None, post=None, bound=None, first_only=False):
-        """Return every exponent (or optionall the first only) with the matching details"""
-        if pre is None and post is None:
-            print("Grammar find_exponent_ids failed - invalid details given")
+    def find_exponents(self, pre=None, post=None, bound=None, count=None):
+        """List exponent ids (all or up to a count limit) with the matching details"""
+        if pre is None and post is None and bound is None:
+            print("Grammar find_exponents failed - expected at least one detail")
             return
         # prepare to store exponents with matching details
-        found_exponent_ids = []
+        found_exponents = []
+        # tally matching exponents to return at count limit if defined
+        matches_count = 0
         # search for exponents where details match non-blank query details
         for exponent_id, exponent_details in self.exponents.items():
             # overlay a new details map switching in non-null query args
@@ -393,25 +387,80 @@ class Grammar:
             }, value_check=lambda x: x is not None)
             # check if the query exponent details match the current exponent
             if query_details == exponent_details:
-                # build up a list of all exponents matching these same details
-                found_exponent_ids.append(exponent_id)
+                # collect ids of exponents matching the compared details
+                found_exponents.append(exponent_id)
                 # return the exponent immediately if only one is requested
-                if first_only:
+                count += 1
+                if count and count == matches_count:
                     break
         # return a list of exponents with matching details
-        return found_exponent_ids
+        return found_exponents
 
-    # TODO incorporate property name -> id reads from above instead of treating names as ids
-    def identify_properties(self, properties, use_abbreviations=False):
-        """Split a string or list of property names into a set of property ids"""
-        if type(properties) not in (tuple, set, list, str):
-            print("Grammar failed to parse properties - expected a list or string")
+    # TODO: use new .properties structure of category:grammeme names
+    # /!\ Everything below is actively under construction /!\
+
+    def parse_properties(self, properties, use_abbreviations=False):
+        """Turn a string of grammatical categories-values into a properties map,
+        optionally checking for abbreviated names as well"""
+        # check the properties data structure
+        if type(properties) is not str:
+            print("Grammar failed to parse properties - expected a properties string")
             return
-        # create a set of unique property terms
-        properties_split = re.split(r"\W+", properties) if type(properties) is str else properties
-        property_ids = []
-        # search for property name in properties
-        # NOTE this commits the Grammar to relying on unique full property names
+
+        # create an ordered collection of grammatical terms
+        unidentified_terms = re.split(r"\W+", properties)
+
+        # set up a map of matching properties and classes to fill out and return
+        parsed_properties = {
+            'word_class': None,
+            'properties': {}
+        }
+
+        # TODO: create logic for parsing properties correctly into map
+
+        # flexibly store latest confirmed member of category:grammeme pairs
+        # allowing category to lead, follow or be dropped from beside grammeme
+        current_category = None
+        current_grammeme = None
+
+        for term in unidentified_terms:
+            print("unidentified term: {0}".format(term))
+            continue
+
+            # check if an unidentified term is a word class then store it as such
+            #   - subcheck for abbreviations
+
+            # then check if it's a category, if it is store as current_category
+            #   - if it is and there's a current grammeme, store found category:grammeme
+
+            # check if it's a grammeme
+            #   - if it is and there's a current category, store found category:grammeme
+            #   - subcheck for abbreviations
+
+        # NOTE: think about the incoming data and how well you will parse cases
+        #
+        # (1) Consider shapes of strings expected to be parsed above:
+        #   "present tense indicative mood verb"
+        #   "tense: present, mood: indicative, verb"
+        #   "tense:pres mood:ind v"
+        #   "pres ind v"
+        #   "present tense indicative verb"
+        #   "v, present, indicative"
+        #   "pres-ind-v"
+        #   ""
+        #   "vpres"
+        #
+        # (2) Now resolve conflicts arising from flexibility:
+        #   - dropped category name: perfective aspect past verb
+        #   - two grammemes in a row: aspect:perfective past tense
+        #   - a grammeme-category category-grammeme: present tense mood indicative
+        #   - are these accounted for by the following heuristics?
+        #       - "if I am a grammeme and the thing after me is a grammeme, I must have a category"
+        #           - "if a category is before me, that is my category"
+        #           - "if no category is before me, assume (find) my category"
+        #       - "if I am a category, the thing to my right or my left must be a grammeme"
+        #       - "if I am a word class, I can be treated in isolation "
+
         for property in properties_split:
             # add found full property names including optionally for abbreviated properties
             if property in self.properties:
@@ -423,14 +472,6 @@ class Grammar:
                 continue
         properties_set = set(properties_split)
         return properties_set
-
-    def is_exponent_id(self, exponent_id):
-        """Check if the id is in the grammar exponent map"""
-        return exponent_id in self.exponents
-
-    def is_property_id(self, property_id):
-        """Check if the id is in the grammatical properties map"""
-        return property_id in self.properties
 
     def is_exponent(self, pre="", post=""):
         """Check if the given sounds are an exponent in this grammar"""
@@ -450,20 +491,8 @@ class Grammar:
                 return True
         return False
 
-    def is_property(self, name="", abbreviation=""):
-        """Check if a grammatical property name or abbreviation is part of the grammar"""
-        if name and abbreviation:
-            print("Grammar is_property failed - expected either property name or abbreviation")
-            return
-        # search property details for matching name or abbreviation
-        for property_details in self.properties.values():
-            if abbreviation and name == property_details['abbreviation']:
-                return True
-            if name and name == property_details['name']:
-                return True
-        return True
-
-    # TODO deal with properties smaller or larger than what's in the grammar
+    # TODO: use modified .properties and .exponents structure to handle
+    # requested properties smaller or larger than what's in the grammar
     #
     # - case 1: built word properties are less verbose than stored exponent properties
     #   - example: word is ['verb', 'past'] but past affix is ['verb', 'past', 'tense']
