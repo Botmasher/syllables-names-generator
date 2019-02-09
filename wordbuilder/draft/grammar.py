@@ -436,6 +436,10 @@ class Grammar:
     # TODO: use new .properties structure of category:grammeme names
     # /!\ Everything below is actively under construction /!\
 
+    # TODO: consider how you're breaking down properties and abbreviations
+    # - what about abbreviations for category?
+    # - is a participle a category or a grammeme?
+
     def parse_properties(self, properties, use_abbreviations=False):
         """Turn a string of grammatical categories-values into a properties map,
         optionally checking for abbreviated names as well"""
@@ -449,7 +453,7 @@ class Grammar:
 
         # set up a map of matching properties and classes to fill out and return
         parsed_properties = {
-            'word_class': None,
+            'word_class': set(),
             'properties': {}
         }
 
@@ -460,19 +464,67 @@ class Grammar:
         current_category = None
         current_grammeme = None
 
+        # TODO: optimize lookups or perhaps store class abbreviations separately
+        # reduce word class and property details to abbreviation:name pairs for easy lookups
+        if use_abbreviations:
+            word_class_abbreviations = {}   # map of abbreviation:pos pairs
+            property_abbreviations = {}     # map of abbreviation:(category, grammeme) pairs
+            # store abbreviations for each word class that has them and point to full pos name
+            for word_class, word_class_details in self.word_classes.items():
+                abbreviation = word_class_details['abbreviation']
+                if abbreviation and abbreviation not in word_class_abbreviations:
+                    word_class_abbreviations[abbreviation] = word_class
+            # store the first of each abbreviation for a property and point to full property category:grammeme
+            for category in self.properties:
+                for grammeme, grammeme_details in self.properties[category]:
+                    abbreviation = grammeme_details['abbreviation']
+                    if abbreviation and abbreviation not in property_abbreviations:
+                        property_abbreviations[abbreviation] = (category, grammeme)
+
+        # TODO: once a known grammeme name is reached, identify its category and store in properties
+        #   - consider cases where categories are not explicit
+        #   - once you hit another grammeme even if there is no known category yet, you have two properties to store
+
+        # search through word classes and properties for recognizable matches
         for term in unidentified_terms:
-            print("unidentified term: {0}".format(term))
-            continue
+            # check unidentified terms for pos matches
+            # subcheck for abbreviated word classes
+            if term in self.word_classes or (use_abbreviations and term in word_class_abbreviations):
+                # immediately store
+                parsed_properties['word_class'].add(term)
 
-            # check if an unidentified term is a word class then store it as such
-            #   - subcheck for abbreviations
+            # check and store unidentified terms for properties
+            # start by looking for a category
+            elif term in self.properties:
+                # replace the identified category and await a grammeme match
+                # conflicting current categories mean stranded or unidentified grammeme
+                current_category = term
 
-            # then check if it's a category, if it is store as current_category
-            #   - if it is and there's a current grammeme, store found category:grammeme
+            # hold non-pos non-category terms for consideration as grammemes
+            else:
+                current_grammeme = term
 
-            # check if it's a grammeme
-            #   - if it is and there's a current category, store found category:grammeme
-            #   - subcheck for abbreviations
+            # empty current category and grammeme into map if both are identified
+            if current_category and current_grammeme:
+                # check that suspected but unverified grammeme is valid
+                # NOTE: check held off until here because grammeme term may be found before or after its parent category
+                if current_grammeme not in self.properties[current_category]:
+                    # subcheck for abbreviated rather than full name grammeme match
+                    if use_abbreviations and current_grammeme in property_abbreviations:
+                        current_category, current_grammeme = property_abbreviations[current_grammeme]
+                    # the term fits no recognized grammeme
+                    else:
+                        # toss the suspected grammeme and keep parsing
+                        print("Grammar parse_properties skipped parsed but unrecognized category:grammeme pair {0}:{1}".format(current_category, current_grammeme))
+                        current_grammeme = None
+                        continue
+                # create an entry for the category and grammeme in the parsed map
+                if current_category not in parsed_properties:
+                    parsed_properties['properties'][current_category] = set()
+                parsed_properties['properties'][current_category].add(current_grammeme)
+                # reset the category:grammeme for the next unidentified pairing
+                current_category = None
+                current_grammeme = None
 
         # NOTE: think about the incoming data and how well you will parse cases
         #
@@ -631,16 +683,22 @@ class Grammar:
 
     def attach_exponent(self, stem, exponent_id=None):
         """Attach one grammatical exponent to a string of phones"""
-        if not (stem and exponent_id) or not self.is_exponent_id(exponent_id):
-            print("Grammar attach_exponent failed - unknown stem word or exponent id")
+        # check for a good stem and an exponent to attach to it
+        if type(stem) is not str:
+            print("Grammar attach_exponent failed - invalid word stem {0}".format(stem))
             return
+        if exponent_id not in self.exponents:
+            print("Grammar attach_exponent failed - unknown exponent id {0}".format(exponent_id))
+            return
+
+        # prepare the base and attachment data
         exponented_word = stem
         exponent = self.exponents[exponent_id]
 
-        # exponent is affix
+        # add exponent as affix
         if exponent['bound']:
-            exponented_word = exponent['pre'] + exponented_word + exponent['post']
-        # exponent is particle or adposition structure
+            exponented_word = "{}{}{}".format(exponent['pre'], exponented_word, exponent['post'])
+        # add exponent as particle or adposition structure
         else:
             if exponent['pre']:
                 exponented_word = "{0} {1}".format(exponent['pre'], exponented_word)
