@@ -224,7 +224,7 @@ class Grammar:
     # TODO: make method to update includes and excludes
 
     def update_property(self, category, grammeme, abbreviation=None, description=None):
-        """Modify any details for one grammatical property"""
+        """Modify text details for one grammatical property"""
         if not self.get_property(category, grammeme):
             print("Grammar update_property failed - invalid category value {0}:{1}".format(category, grammeme))
             return
@@ -373,32 +373,31 @@ class Grammar:
         return exponent_id
 
     # identify, describe or unabbreviate property - alternative to getting direct category:grammeme
-    def find_properties(self, name=None, abbreviation=None, description=None, count=None):
-        """Return every property (or optionally the first only) with the matching details"""
+    def find_properties(self, grammeme=None, category=None, abbreviation=None, description=None, count=None):
+        """List every property (or optionally the first only) with the matching details"""
         # check that at least one of the attributes is filled in
-        if not (type(name) is str or type(abbreviation) is str or type(description) is str):
+        if not (type(grammeme) is str or type(category) is str or type(abbreviation) is str or type(description) is str):
             print("Grammar find_properties failed - expected at least one detail present")
             return
-        # store category:{grammeme} pairs for grammemes with matching details
-        found_properties = {}
+        # store category grammemes for propreties with matching details
+        found_properties = []
         # current number of property matches for assessing if count is reached
         matches_count = 0
         # search through properties where details match query details
         for category in self.properties.items():
-            for grammatical_value in self.properties[category]:
-                details = self.properties[category][grammatical_value]
+            for grammeme in self.properties[category]:
+                details = self.properties[category][grammeme]
                 # create comparison details with overlayed non-blank queried attributes
                 query_details = self.merge_maps(details, {
-                    'name': name,
+                    'grammeme': grammeme,
+                    'category': category,
                     'abbreviation': abbreviation,
                     'description': description
                 }, value_check = lambda x: x is not None)
                 # check for matches between comparison details and existing ones
                 if details == query_details:
-                    # store successful matches in category:{grammeme} sets
-                    if category not in found_properties:
-                        found_properties[category] = set()
-                    found_properties[category].add(grammatical_value)
+                    # store successful matches as category grammeme pairs
+                    found_properties.append((category, grammeme))
                     # immediately stop searching at the requested number of matches
                     count += 1
                     if count and matches_count == count:
@@ -440,9 +439,9 @@ class Grammar:
     # - what about abbreviations for category?
     # - is a participle a category or a grammeme?
 
-    def parse_properties(self, properties, use_abbreviations=False):
-        """Turn a string of grammatical categories-values into a properties map,
-        optionally checking for abbreviated names as well"""
+    def parse_terms(self, properties, use_abbreviations=False):
+        """Turn a string of grammatical terms into a map of properties and word classes,
+        optionally checking for abbreviations as well"""
         # check the properties data structure
         if type(properties) is not str:
             print("Grammar failed to parse properties - expected a properties string")
@@ -452,7 +451,7 @@ class Grammar:
         unidentified_terms = re.split(r"\W+", properties)
 
         # set up a map of matching properties and classes to fill out and return
-        parsed_properties = {
+        parsed_terms = {
             'word_class': set(),
             'properties': {}
         }
@@ -465,6 +464,8 @@ class Grammar:
         current_grammeme = None
 
         # TODO: optimize lookups or perhaps store class abbreviations separately
+        #   - OR remove support for abbreviations until better tested
+
         # reduce word class and property details to abbreviation:name pairs for easy lookups
         if use_abbreviations:
             word_class_abbreviations = {}   # map of abbreviation:pos pairs
@@ -491,7 +492,7 @@ class Grammar:
             # subcheck for abbreviated word classes
             if term in self.word_classes or (use_abbreviations and term in word_class_abbreviations):
                 # immediately store
-                parsed_properties['word_class'].add(term)
+                parsed_terms['word_class'].add(term)
 
             # check and store unidentified terms for properties
             # start by looking for a category
@@ -502,6 +503,22 @@ class Grammar:
 
             # hold non-pos non-category terms for consideration as grammemes
             else:
+                # guess past grammeme unassociated with category
+                if current_grammeme:
+                    # find the property by its grammeme name only
+                    matching_properties = self.find_properties(grammeme=current_grammeme)
+                    # create an entry for the identified category and its grammeme
+                    if matching_properties:
+                        parsed_terms['properties'][matching_properties[0][0]] = parsed_terms['properties'].get(matching_properties[0][0], set()).add(matching_properties[0][1])
+                    # no match - instead try treating term as an abbreviation
+                    elif use_abbreviation and current_grammeme in property_abbreviations:
+                        # find the category grammeme pair for this abbreviation
+                        current_property = property_abbreviations[current_grammeme]
+                        # add grammeme under category set in properties
+                        parsed_terms['properties'][current_property[0]] = parsed_terms['properties'].get(current_property[0], set()).add(current_property[1])
+                    # reset the previously held over but now handled grammeme
+                    current_grammeme = None
+                # fill what should be an empty grammeme
                 current_grammeme = term
 
             # empty current category and grammeme into map if both are identified
@@ -519,9 +536,9 @@ class Grammar:
                         current_grammeme = None
                         continue
                 # create an entry for the category and grammeme in the parsed map
-                if current_category not in parsed_properties:
-                    parsed_properties['properties'][current_category] = set()
-                parsed_properties['properties'][current_category].add(current_grammeme)
+                if current_category not in parsed_terms:
+                    parsed_terms['properties'][current_category] = set()
+                parsed_terms['properties'][current_category].add(current_grammeme)
                 # reset the category:grammeme for the next unidentified pairing
                 current_category = None
                 current_grammeme = None
@@ -550,17 +567,7 @@ class Grammar:
         #       - "if I am a category, the thing to my right or my left must be a grammeme"
         #       - "if I am a word class, I can be treated in isolation "
 
-        for property in properties_split:
-            # add found full property names including optionally for abbreviated properties
-            if property in self.properties:
-                property_ids.append(property)
-            elif use_abbreviations:
-                unabbreviated_properties = self.unabbreviate_property(property)
-                unabbreviated_properties and property_ids.append(unabbreviated_properties[0])
-            else:
-                continue
-        properties_set = set(properties_split)
-        return properties_set
+        return parsed_terms
 
     def is_exponent(self, pre="", post=""):
         """Check if the given sounds are an exponent in this grammar"""
