@@ -237,6 +237,102 @@ class Grammar:
         # access and return the created details
         return self.get_property(category, grammeme)
 
+    # Specific property attribute updates and removals
+    
+    def add_property_word_class(self, category, grammeme, include=None, exclude=None):
+        """Add one included or excluded word class to the grammatical property"""
+        # check that the property exists and that there is a part of speech to add
+        if not self.get_property(category, grammeme):
+            print("Grammar add_property_word_class failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
+            return
+        if not (include or exclude) or not (type(include) is str or type(exclude) is str):
+            print("Grammar add_property_word_class failed - expected at least one include or exclude string")
+            return
+
+        # add verified parts of speech to grammeme word class sets
+        if exclude and exclude in self.word_classes:
+            self.properties[category][grammeme]['exclude'].add(exclude)
+        if include and include in self.word_classes:
+            self.properties[category][grammeme]['include'].add(include)
+
+        return self.get_property(category, grammeme)
+
+    def remove_property_word_class(self, category, grammeme, include=None, exclude=None):
+        """Remove one included or excluded word class from the grammatical property"""
+        # check for the property
+        if not self.get_property(category, grammeme):
+            print("Grammar remove_property_word_class failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
+            return
+
+        # remove part of speech from grammeme details excluded word classes
+        try:
+            include and self.properties[category][grammeme]['exclude'].remove(exclude)
+        except ValueError:
+            print("Grammar remove_property_word_class skipped removing unknown word class from excludes: {0}".format(exclude))
+
+        # remove word class from includes
+        try:
+            exclude and self.properties[category][grammeme]['include'].remove(include)
+        except ValueError:
+            print("Grammar remove_property_word_class skipped removing unknown word class from includes: {0}".format(include))
+
+        return self.get_property(category, grammeme)
+
+    def change_property_word_classes(self, category, grammeme, include=[], exclude=[]):
+        """Update the included or excluded word classes for a property"""
+        # verify that the property exists
+        if not self.get_property(category, grammeme):
+            print("Grammar change_property_word_classes failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
+            return
+        # check for valid include and exclude part of speech lists
+        if not (include or exclude) or type(include) not in (list, tuple, set) or type(exclude) not in (list, tuple, set):
+            print("Grammar change_property_word_classes failed - invalid include or exclude lists")
+            return
+
+        # collect only recognized parts of speech
+        included_word_classes = {pos for pos in include if pos in self.word_classes}
+        excluded_word_classes = {pos for pos in exclude if pos in self.word_classes}
+
+        # store word classes
+        self.merge_maps(
+            self.properties[category][grammeme],
+            {
+                'include': included_word_classes,
+                'exclude': excluded_word_classes
+            },
+            value_check=lambda x: x != set()
+        )
+
+        return self.get_property(category, grammeme)
+
+    def change_property_category(self, category, grammeme, new_category):
+        """Update a property's category name and the location of its details in the properties map"""
+        # verify that the updated category is good and that the property exists
+        if not (new_category and type(new_category) is str):
+            print("Grammar change_property_category failed - invalid non-empty new category string {0}".format(new_category))
+            return
+        if not self.get_property(category, grammeme):
+            print("Grammar change_property_category failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
+            return
+
+        # create a new details entry
+        grammeme_details = self.merge_maps(
+            self.properties[category][grammeme],
+            {'category': new_category}
+        )
+
+        # move updated details to the new category within properties
+        self.propertes[new_category] = self.properties.get(new_category, {})
+        self.properties[new_category][grammeme] = grammeme_details
+
+        # remove the old grammeme and its details
+        self.properties[category].pop(grammeme)
+        # remove the old category if it is empty
+        not self.properties[category] and self.properties.pop(category)
+
+        # send back the newly created and stored entry
+        return self.get_property(new_category, grammeme)
+
     def remove_property(self, category, grammeme):
         """Delete the record for and exponent references to one property from the grammar"""
         if category not in self.properties or grammeme not in self.properties[category]:
