@@ -238,7 +238,7 @@ class Grammar:
         return self.get_property(category, grammeme)
 
     # Specific property attribute updates and removals
-    
+
     def add_property_word_class(self, category, grammeme, include=None, exclude=None):
         """Add one included or excluded word class to the grammatical property"""
         # check that the property exists and that there is a part of speech to add
@@ -540,7 +540,7 @@ class Grammar:
         optionally checking for abbreviations as well"""
         # check the properties data structure
         if type(properties) is not str:
-            print("Grammar failed to parse properties - expected a properties string")
+            print("Grammar failed to parse terms - expected a word class / properties string")
             return
 
         # create an ordered collection of grammatical terms
@@ -548,7 +548,7 @@ class Grammar:
 
         # set up a map of matching properties and classes to fill out and return
         parsed_terms = {
-            'word_class': set(),
+            'word_classes': set(),
             'properties': {}
         }
 
@@ -588,7 +588,7 @@ class Grammar:
             # subcheck for abbreviated word classes
             if term in self.word_classes or (use_abbreviations and term in word_class_abbreviations):
                 # immediately store
-                parsed_terms['word_class'].add(term)
+                parsed_terms['word_classes'].add(term)
 
             # check and store unidentified terms for properties
             # start by looking for a category
@@ -628,7 +628,7 @@ class Grammar:
                     # the term fits no recognized grammeme
                     else:
                         # toss the suspected grammeme and keep parsing
-                        print("Grammar parse_properties skipped parsed but unrecognized category:grammeme pair {0}:{1}".format(current_category, current_grammeme))
+                        print("Grammar parse_terms skipped parsed but unrecognized category:grammeme pair {0}:{1}".format(current_category, current_grammeme))
                         current_grammeme = None
                         continue
                 # create an entry for the category and grammeme in the parsed map
@@ -695,19 +695,81 @@ class Grammar:
     # - case 3: built word properties are less verbose but cover multiple exponents
     #   - example: word is ['verb', 'past', 'tense'] but affixes are ['verb', 'finite'] and ['past', 'tense']
     #
-    def build_word(self, root, properties=[], avoid_redundant_exponents=False):
-        """Build up relevant morphology using the given grammatical properties"""
-        if not(type(root) is str and properties and type(properties) in (list, tuple, set)):
-            print("Grammar build_word failed - invalid root string {0} or properties list {1}".format(root, properties))
+    def build_word(self, root, properties=[], word_classes=[], avoid_redundant_exponents=False):
+        """Build up relevant morphology using the given grammatical terms"""
+        # basic type checks - properties checked in more detail below
+        if type(root) is not str:
+            print("Grammar build_word failed - invalid root word string {0}".format(root))
+            return
+        if type(word_classes) not in (list, tuple, set):
+            print("Grammar build_word failed - invalid word classes list {0}".format(word_classes))
             return
 
-        print("Building word...")
-        # find all relevant exponents
+        # Make a map of recognizable requested properties flexibly from different inputs
+        # in order to compare it with properties in exponents
+        # Completed map has flexible structure: {'category': {'grammeme', ...}, 'category': 'grammeme', ...}
+        requested_properties = {}
+        # break properties string into word class and category:grammeme map
+        if type(properties) is str:
+            # parse into nested category:grammeme map
+            requested_properties = self.parse_properties(properties)
+        # treat flat terms list as property leaf grammemes or word classes
+        elif type(properties) in (list, tuple, set):
+            # prepare a map with expected structure for comparing exponent properties and classes
+            for term in properties:
+                # store listed term as a category grammeme
+                matching_properties = self.find_properties(grammeme=term, count=1)
+                if matching_properties:
+                    category = matching_properties[0]['category']
+                    grammeme = matching_properties[0]['grammeme']
+                    terms_map['properties'][category] = terms_map['properties'].get(category, set())
+                    terms_map['properties'][category].add(grammeme)
+                # listed term matches no property
+                else:
+                    print("Grammar build_word failed - unknown requested property {0}".format(term))
+                    return
+        # method called with a map - check that map has the expected structure
+        elif type(properties) is dict:
+            # build up a map of categories and grammemes requested for this exponent
+            for suspected_category, suspected_grammemes in properties.items():
+                # dead end unknown categories to avoid choosing unexpected exponents
+                if suspected_category not in self.properties:
+                    print("Grammar build_word failed - unknown requested property category {0}".format(suspected_category))
+                    return
+                # only one grammeme requested for this category - store it
+                elif type(suspected_grammemes) is str and suspected_grammemes in self.properties[category]:
+                    requested_properties[category] = {suspected_grammemes}
+                # collection of grammemes requested - check them against grammar properties
+                elif type(suspected_grammemes) in (list, tuple, set):
+                    requested_properties[category] = {grammeme for grammeme in suspected_grammemes if grammeme in self.properties[category]}
+                    # dead end when not all grammemes are found in grammar properties
+                    if len(requested_properties[category]) != len(set(suspected_grammemes)):
+                        print("Grammar build_word failed - one or more unknown grammemes for category {0}: requested {1}, of which grammar only recognizes {1}".format(category, set(suspected_grammemes), requested_propertes[category]))
+                        return
+                # dead end when grammemes were not a valid collection or string
+                else:
+                    print("Grammar build_word failed - invalid category:grammemes {0}:{1}".format(suspected_category, suspected_grammemes))
+                    return
+        # requested properties do not meet expectations for parsing or collecting
+        else:
+            print("Grammar build_word failed - expected collection or string of properties, not {0}".format(properties))
+            return
+
+        # also store recognized word classes for checking against exponent includes and excludes
+        requested_word_classes = {word_class for word_class in word_classes if word_class in self.word_classes}
+        # dead end when not all word classes were recognized
+        if len(requested_word_classes) != len(set(word_classes)):
+            print("Grammar build_word failed - one or more unknown word classes: requested {0}, only recognized {1}".format(word_classes, requested_word_classes))
+            return
+
+        # TODO: exponents compare vetted properties instead of searching for best matches
+
+        # collect relevant exponents
         matching_exponents = []
-        # typecast for set operations
-        properties_set = set(properties)
+
         # exponent ids and their shared properties with requested properties
         common_properties = {}
+
         # find the most likely properties match
         for exponent_id, exponent_details in self.exponents.items():
             # TODO determine exponent-word properties match, accounting for cases above
