@@ -35,6 +35,9 @@ class Grammar:
     #   - each grammeme has a unique name
     #   - exponents explicitly lay out include/exclude properties, allowing vetting of broader terms in requested
 
+
+    # Method group A: Functional map building and layering
+
     # TODO: break merge_maps out as a util instead of limiting it to this class
     # functional dict building to avoid direct mutations in word class, property and exponent update methods
     def merge_maps(self, base_map, overlay_map, key_check=lambda x: x, value_check=lambda x: x):
@@ -53,6 +56,38 @@ class Grammar:
             **{k: v for k, v in overlay_map.items() if key_check(k) and value_check(v)}
         }
         return new_map
+
+    def intersect_maps(self, base_map, overlay_map):
+        """Recursively evaluate shared pairs within two maps and return a map copy of their intersection"""
+        if not isinstance(base_map, dict) or not isinstance(overlay_map, dict):
+            print("Grammar intersect_maps failed - expected two valid maps")
+            return
+
+        intersection_map = {}
+
+        # TODO: narrow down values; expect either vettable subdict or equal value
+        #   - problem: what about sets of strings vs dicts c those keys in current case
+        def traverse_kv_pairs(map_a, map_b):
+            common_keys = map_a.keys() & map_b.keys()
+            common_map = {}
+            for k in common_keys:
+                if isinstance(map_a[k], dict):
+                    common_map[k] = traverse_kv_pairs(v)
+                # collections
+                elif isinstance(map_a[k], list) and isinstance(map_b[k], list):
+                    common_map[k] = [element for element in map_a[k] if element in map_b[k]]
+                # basic data types
+                elif map_a[k] == map_b[k]:
+                    continue
+                else:
+                    pass
+
+        intersection_map = traverse_kv_pairs(base_map, overlay_map)
+
+        return intersection_map
+
+
+    # Method group B: Core CRUD for mapping properties, word classes and exponents
 
     def add_word_class(self, word_class, abbreviation=None, description=None):
         """Add one word class or part of speech to the grammar"""
