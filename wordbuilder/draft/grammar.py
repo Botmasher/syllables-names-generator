@@ -531,16 +531,101 @@ class Grammar:
     # TODO: use new .properties structure of category:grammeme names
     # /!\ Everything below is actively under construction /!\
 
-    # TODO: consider how you're breaking down properties and abbreviations
+    # TODO: rethink breaking down properties and abbreviations
+    # - consider removing abbreviations for now, readding later as abbreviation:property map bound to class instance
     # - what about abbreviations for category?
     # - is a participle a category or a grammeme?
 
-    def parse_terms(self, properties, use_abbreviations=False):
-        """Turn a string of grammatical terms into a map of properties and word classes,
+    def parse_word_classes(self, word_classes):
+        """Turn a string of grammatical terms into a map of word classes"""
+        # check for a string to parse
+        if type(word_classes) is not str:
+            print("Grammar failed to parse word classes - expected a string not {0}".format(word_classes))
+            return
+
+        # split the string into a collection of terms to check
+        suspected_word_classes = re.split(r"\W+", word_classes)
+
+        # prepare collection for parsing and adding known parts of speech
+        parsed_word_classes = set()
+
+        # collect recognized word class names into the returned set
+        for term in suspected_word_classes:
+            if term in self.word_classes:
+                parsed_word_classes.add(term)
+            # skip unrecognized word classes
+            else:
+                print("Grammar parse_word_classes skipped unknown word class {0}".format(term))
+                continue
+
+        return parsed_word_classes
+
+    def is_properties_map(self, properties={}):
+        """Verify a well-structured map containing known categories and grammemes"""
+        # expect a map to compare
+        if not isinstance(properties, dict):
+            return False
+        # vet every single grammeme within every property category
+        for category in properties:
+            # verify paralleled structure of nested collections inside map
+            for grammeme in category:
+                # check against properties stored in the grammar
+                if not self.is_property(category, grammeme):
+                    return False
+        # no properties or structures fell through during checks
+        return True
+
+    # TODO: instead find faster or abstract way of intersecting of maps
+    def filter_properties_map(self, properties={}):
+        """Return a copy of a properties map filtered to hold only verified category:grammemes"""
+        # verify that a map was provided
+        if not isinstance(properties, dict):
+            print("Grammar filter_properties_map failed - expected properties dict not {0}".format(properties))
+            return
+
+        # map collections for all known categories
+        filtered_map = {
+            # collect only known grammemes under known categories
+            category: {
+                grammeme for grammeme in properties[category]
+                if self.find_property(category, grammeme)
+            }
+            for category in properties if category in self.properties
+        }
+
+        return filtered_map
+
+    def map_uncategorized_properties(self, properties=[]):
+        """Build a map of properties using a list of grammeme names"""
+        # typecheck for properties list
+        if not isinstance(properties, list):
+            print("Grammar map_uncategorized_properties failed - invalid properties list {0}".format(properties))
+            return
+
+        # collect recognizable/guessable properties and map them as category:grammemes
+        properties_map = {}
+        for property in properties:
+            # read the first category:grammeme details where the grammeme matches this string
+            properties_details = self.find_properties(property, count=1)
+            # abandon mapping if a property is not found
+            if not properties_details or 'grammeme' not in properties_details[0]:
+                print("Grammar map_uncategorized_properties failed - unknown property {0}".format(property))
+                return
+            # retrieve the category and grammeme from the stored details
+            property_entry = properties_details[0]
+            category = property_entry['category']
+            grammeme = property_entry['grammeme']
+            # add grammeme beneath its category - to new set if needed
+            properties_map[category] = properties_map.get(category, set()).add(grammeme)
+
+        return properties_map
+
+    def parse_properties(self, properties, use_abbreviations=False):
+        """Turn a string of grammatical terms into a map of properties,
         optionally checking for abbreviations as well"""
         # check the properties data structure
         if type(properties) is not str:
-            print("Grammar failed to parse terms - expected a word class / properties string")
+            print("Grammar failed to parse properties - expected a string not {0}".format(properties))
             return
 
         # create an ordered collection of grammatical terms
@@ -756,7 +841,7 @@ class Grammar:
             return
 
         # also store recognized word classes for checking against exponent includes and excludes
-        requested_word_classes = {word_class for word_class in word_classes if word_class in self.word_classes}
+        requested_word_classes = self.parse_word_classes(word_classes)
         # dead end when not all word classes were recognized
         if len(requested_word_classes) != len(set(word_classes)):
             print("Grammar build_word failed - one or more unknown word classes: requested {0}, only recognized {1}".format(word_classes, requested_word_classes))
