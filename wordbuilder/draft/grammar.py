@@ -57,34 +57,35 @@ class Grammar:
         }
         return new_map
 
+    # NOTE: idiosyncratic implementation for comparing structures in the Grammar
+    #   - stored properties nests dicts down to leaf detail entries
+    #   - requested properties associates its top-level keys with sets of strings
+    #   - each string in a requested properties set represents nested keys in stored properties
+    #   - requested properties are passed in by caller as well as stored by exponents
     def intersect_maps(self, base_map, overlay_map):
-        """Recursively evaluate shared pairs within two maps and return a map copy of their intersection"""
-        if not isinstance(base_map, dict) or not isinstance(overlay_map, dict):
-            print("Grammar intersect_maps failed - expected two valid maps")
-            return
-
-        intersection_map = {}
-
-        # TODO: narrow down values; expect either vettable subdict or equal value
-        #   - problem: what about sets of strings vs dicts c those keys in current case
-        def traverse_kv_pairs(map_a, map_b):
-            common_keys = map_a.keys() & map_b.keys()
-            common_map = {}
-            for k in common_keys:
-                if isinstance(map_a[k], dict):
-                    common_map[k] = traverse_kv_pairs(v)
-                # collections
-                elif isinstance(map_a[k], list) and isinstance(map_b[k], list):
-                    common_map[k] = [element for element in map_a[k] if element in map_b[k]]
-                # basic data types
-                elif map_a[k] == map_b[k]:
-                    continue
-                else:
-                    pass
-
-        intersection_map = traverse_kv_pairs(base_map, overlay_map)
-
-        return intersection_map
+        """Deeply evaluate shared pairs within two maps and return a map copy of their intersections.
+        Intersections are shared keys, shared leaf values and shared values within collections
+        returned as intersected sets."""
+        # recursively branch through map along shared keys
+        if isinstance(base_map, dict) and isinstance(overlay_map, dict):
+            # intersection representing shared keys
+            common_keys = base_map.keys() & overlay_map.keys()
+            # check the values under those keys
+            return {
+                k: self.intersect_maps(base_map[k], overlay_map[k])
+                for k in common_keys
+            }
+        # both are flat containers - test for shared values
+        elif type(base_map) in (list, set, tuple) and type(overlay_map) in (list, set, tuple):
+            # intersect the two containers
+            common_values = set(base_map) & set(overlay_map)
+            return common_values
+        # expect non-collection values to match
+        elif base_map == overlay_map:
+            return base_map
+        # no shared material found under this key
+        else:
+            return {}
 
 
     # Method group B: Core CRUD for mapping properties, word classes and exponents
@@ -563,6 +564,7 @@ class Grammar:
         # return a list of exponents with matching details
         return found_exponents
 
+
     # TODO: use new .properties structure of category:grammeme names
     # /!\ Everything below is actively under construction /!\
 
@@ -571,29 +573,7 @@ class Grammar:
     # - what about abbreviations for category?
     # - is a participle a category or a grammeme?
 
-    def parse_word_classes(self, word_classes):
-        """Turn a string of grammatical terms into a map of word classes"""
-        # check for a string to parse
-        if type(word_classes) is not str:
-            print("Grammar failed to parse word classes - expected a string not {0}".format(word_classes))
-            return
-
-        # split the string into a collection of terms to check
-        suspected_word_classes = re.split(r"\W+", word_classes)
-
-        # prepare collection for parsing and adding known parts of speech
-        parsed_word_classes = set()
-
-        # collect recognized word class names into the returned set
-        for term in suspected_word_classes:
-            if term in self.word_classes:
-                parsed_word_classes.add(term)
-            # skip unrecognized word classes
-            else:
-                print("Grammar parse_word_classes skipped unknown word class {0}".format(term))
-                continue
-
-        return parsed_word_classes
+    # Helper methods for comparing maps and identifying requested properties
 
     def is_properties_map(self, properties={}):
         """Verify a well-structured map containing known categories and grammemes"""
@@ -655,6 +635,12 @@ class Grammar:
 
         return properties_map
 
+    # TODO: optimize lookups or perhaps store class abbreviations separately
+    #   - removed support for abbreviations until better tested
+    #   - previous use of abbreviations: add/update (crud), parse_properties (identification - originally parse_terms)
+
+    # TODO: overall parser that can manage handing out terms between parse_properties and parse_word_classes
+
     def parse_properties(self, properties, use_abbreviations=False):
         """Turn a string of grammatical terms into a map of properties,
         optionally checking for abbreviations as well"""
@@ -667,36 +653,13 @@ class Grammar:
         unidentified_terms = re.split(r"\W+", properties)
 
         # set up a map of matching properties and classes to fill out and return
-        parsed_terms = {
-            'word_classes': set(),
-            'properties': {}
-        }
-
-        # TODO: create logic for parsing properties correctly into map
+        parsed_properties = {}
 
         # flexibly store latest confirmed member of category:grammeme pairs
         # allowing category to lead, follow or be dropped from beside grammeme
-        current_category = None
-        current_grammeme = None
-
-        # TODO: optimize lookups or perhaps store class abbreviations separately
-        #   - OR remove support for abbreviations until better tested
-
-        # reduce word class and property details to abbreviation:name pairs for easy lookups
-        if use_abbreviations:
-            word_class_abbreviations = {}   # map of abbreviation:pos pairs
-            property_abbreviations = {}     # map of abbreviation:(category, grammeme) pairs
-            # store abbreviations for each word class that has them and point to full pos name
-            for word_class, word_class_details in self.word_classes.items():
-                abbreviation = word_class_details['abbreviation']
-                if abbreviation and abbreviation not in word_class_abbreviations:
-                    word_class_abbreviations[abbreviation] = word_class
-            # store the first of each abbreviation for a property and point to full property category:grammeme
-            for category in self.properties:
-                for grammeme, grammeme_details in self.properties[category]:
-                    abbreviation = grammeme_details['abbreviation']
-                    if abbreviation and abbreviation not in property_abbreviations:
-                        property_abbreviations[abbreviation] = (category, grammeme)
+        current_category = None     # explicit category to be associated with a grammeme
+        current_grammeme = None     # grammeme to be matched to implicit or explicit category
+        stranded_grammeme = None    # uncategorized previous grammeme holder when new grammeme found
 
         # TODO: once a known grammeme name is reached, identify its category and store in properties
         #   - consider cases where categories are not explicit
@@ -704,57 +667,45 @@ class Grammar:
 
         # search through word classes and properties for recognizable matches
         for term in unidentified_terms:
-            # check unidentified terms for pos matches
-            # subcheck for abbreviated word classes
-            if term in self.word_classes or (use_abbreviations and term in word_class_abbreviations):
-                # immediately store
-                parsed_terms['word_classes'].add(term)
-
             # check and store unidentified terms for properties
             # start by looking for a category
-            elif term in self.properties:
+            if term in self.properties:
                 # replace the identified category and await a grammeme match
                 # conflicting current categories mean stranded or unidentified grammeme
                 current_category = term
-
-            # hold non-pos non-category terms for consideration as grammemes
+            # assume non-category terms are to be considered as grammemes
+            # to reach this branch:
+            #   - the category is empty, the current term may be a grammeme
+            #   - the last term was a category, the current term may be a grammeme
+            #   - the last term was a grammeme, the current term may be a grammeme
             else:
-                # guess past grammeme unassociated with category
-                if current_grammeme:
-                    # find the property by its grammeme name only
-                    matching_properties = self.find_properties(grammeme=current_grammeme)
-                    # create an entry for the identified category and its grammeme
-                    if matching_properties:
-                        parsed_terms['properties'][matching_properties[0][0]] = parsed_terms['properties'].get(matching_properties[0][0], set()).add(matching_properties[0][1])
-                    # no match - instead try treating term as an abbreviation
-                    elif use_abbreviation and current_grammeme in property_abbreviations:
-                        # find the category grammeme pair for this abbreviation
-                        current_property = property_abbreviations[current_grammeme]
-                        # add grammeme under category set in properties
-                        parsed_terms['properties'][current_property[0]] = parsed_terms['properties'].get(current_property[0], set()).add(current_property[1])
-                    # reset the previously held over but now handled grammeme
-                    current_grammeme = None
-                # fill what should be an empty grammeme
+                # hold over uncategorized grammeme to find it an explicit category
+                if current_grammeme and not current_category:
+                    stranded_grammeme = current_grammeme
+                # reassign grammeme to whatever the current term is
                 current_grammeme = term
+
+            # guess previously identified grammeme left unassociated with any explicit category
+            if stranded_grammeme:
+                # find the property by its grammeme name only
+                matching_properties = self.find_properties(grammeme=stranded_grammeme)
+                # create an entry for the identified category and its grammeme
+                if matching_properties:
+                    current_category = parsed_properties[matching_properties[0][0]] = parsed_properties.get(matching_properties[0][0], set()).add(matching_properties[0][1])
+                # reset for the next uncategorized grammeme
+                stranded_grammeme = None
 
             # empty current category and grammeme into map if both are identified
             if current_category and current_grammeme:
                 # check that suspected but unverified grammeme is valid
                 # NOTE: check held off until here because grammeme term may be found before or after its parent category
                 if current_grammeme not in self.properties[current_category]:
-                    # subcheck for abbreviated rather than full name grammeme match
-                    if use_abbreviations and current_grammeme in property_abbreviations:
-                        current_category, current_grammeme = property_abbreviations[current_grammeme]
-                    # the term fits no recognized grammeme
-                    else:
-                        # toss the suspected grammeme and keep parsing
-                        print("Grammar parse_terms skipped parsed but unrecognized category:grammeme pair {0}:{1}".format(current_category, current_grammeme))
-                        current_grammeme = None
-                        continue
+                    # toss the suspected grammeme and keep parsing
+                    print("Grammar parse_properties skipped parsed but unrecognized property {0}:{1}".format(current_category, current_grammeme))
+                    current_grammeme = None
+                    continue
                 # create an entry for the category and grammeme in the parsed map
-                if current_category not in parsed_terms:
-                    parsed_terms['properties'][current_category] = set()
-                parsed_terms['properties'][current_category].add(current_grammeme)
+                parsed_properties[current_category] = parsed_properties.get(current_category, set()).add(current_grammeme)
                 # reset the category:grammeme for the next unidentified pairing
                 current_category = None
                 current_grammeme = None
@@ -783,7 +734,31 @@ class Grammar:
         #       - "if I am a category, the thing to my right or my left must be a grammeme"
         #       - "if I am a word class, I can be treated in isolation "
 
-        return parsed_terms
+        return parsed_properties
+
+    def parse_word_classes(self, word_classes):
+        """Turn a string of grammatical terms into a map of word classes"""
+        # check for a string to parse
+        if type(word_classes) is not str:
+            print("Grammar failed to parse word classes - expected a string not {0}".format(word_classes))
+            return
+
+        # split the string into a collection of terms to check
+        suspected_word_classes = re.split(r"\W+", word_classes)
+
+        # prepare collection for parsing and adding known parts of speech
+        parsed_word_classes = set()
+
+        # collect recognized word class names into the returned set
+        for term in suspected_word_classes:
+            if term in self.word_classes:
+                parsed_word_classes.add(term)
+            # skip unrecognized word classes
+            else:
+                print("Grammar parse_word_classes skipped unknown word class {0}".format(term))
+                continue
+
+        return parsed_word_classes
 
     def is_exponent(self, pre="", post=""):
         """Check if the given sounds are an exponent in this grammar"""
