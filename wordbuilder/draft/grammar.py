@@ -15,6 +15,13 @@ class Grammar:
         # map of exponent details, including pointing to an exponent's property ids
         self.exponents = {}
 
+        # TODO: resupport property and word class abbreviations
+        # - unambiguous abbreviation:full_term map
+        # - previous use of abbreviations: add/update (crud), parse_properties (identification - originally parse_terms)
+        # - distinguish property from word_class abbreviations
+        # - case: what about abbreviations for a category like tns?
+        self.abbreviations = {}
+
     # TODO: nest properties data
     # - expected: requested properties clearly match one or more exponents
     # - issue: flattening everything as grammemes creates inconsistent judgments when requested properties vs stored exponent properties sets are not well matched
@@ -24,7 +31,7 @@ class Grammar:
     #   - OR requested properties may be a list of grammemes ONLY
     #   - perhaps store a list of word_classes
     #   - perhaps store word_classes per exponent that are included/excluded
-    # - implementation:
+    # - implementation: ongoing
     #   - give properties a category and grammeme in add, update, remove and read
     #   - requested properties now expect {'category': 'grammeme', ...} pairs
     #   - excluded properties can be set of categories or grammemes
@@ -34,7 +41,7 @@ class Grammar:
     # - proposed solution B: limit ONLY to grammemes (expect everything to be low level)
     #   - each grammeme has a unique name
     #   - exponents explicitly lay out include/exclude properties, allowing vetting of broader terms in requested
-
+    # - implementation: none
 
     # Method group A: Functional map building and layering
 
@@ -90,7 +97,7 @@ class Grammar:
 
     # Method group B: Core CRUD for mapping properties, word classes and exponents
 
-    def add_word_class(self, word_class, abbreviation=None, description=None):
+    def add_word_class(self, word_class, description=None):
         """Add one word class or part of speech to the grammar"""
         if word_class in self.word_classes:
             print("Grammar add_word_class skipped {0} - word class already exists".format(word_class))
@@ -98,23 +105,28 @@ class Grammar:
         # create a new entry for the part of speech
         self.word_classes[word_class] = {
             'name': word_class,
-            'abbreviation': abbreviation,
             'description': description
         }
         # read the created part of speech
         return self.word_classes[word_class]
 
-    def update_word_class(self, word_class, abbreviation=None, description=None):
-        """Modify the details (but not the name) of a single word class"""
+    def update_word_class(self, word_class, name=None, description=None):
+        """Modify the details of a single word class"""
         if word_class not in self.word_classes:
             print("Grammar update_word_class failed - unknown word class {0}".format(word_class))
             return
         # create new word class entry updating only changed details
         word_class_details = self.merge_maps(self.word_classes[word_class], {
-            'abbreviation': abbreviation,
+            'name': name,
             'description': description
         }, value_check=lambda x: type(x) is str)
-        self.word_classes[word_class] = word_class_details
+        # rename the word class by removing the old entry and adding a new one
+        if name != word_class:
+            self.remove_word_class(word_class)
+            self.word_classes[name] = word_class_details
+        # replace the details for an existing entry
+        else:
+            self.word_classes[word_class] = word_class_details
         # read the modified part of speech
         return self.word_classes[word_class]
 
@@ -145,7 +157,7 @@ class Grammar:
 
     # TODO: allow updating category or modifying grammeme includes and excludes
 
-    def add_property(self, category=None, grammeme=None, abbreviation=None, description=None, include=[], exclude=[], create_category=True):
+    def add_property(self, category=None, grammeme=None, description=None, include=[], exclude=[]):
         """Add one grammatical value to an existing category in the grammar"""
         if not (category and grammeme and type(category) is str and type(grammeme) is str):
             print("Grammar add_property failed - expected category and grammeme to be non-empty strings")
@@ -162,25 +174,24 @@ class Grammar:
             if word_class in self.word_classes
         }
 
-        # check if property category or grammeme already exists
+        # add new category under properties
         if category not in self.properties:
-            if create_category:
-                self.properties[category] = {}
-            else:
-                print("Grammar add_property failed - unrecognized category {0}".format(category))
-                return
+            self.properties[category] = {}
+
+        # back out if property category:grammeme pair already exists
         if grammeme in self.properties[category]:
             print("Grammar add_property failed - category {0} already contains grammeme {1} - did you mean to run update_property?".format(category, grammeme))
             return
-        # create a new entry for the grammeme
+
+        # create a new entry under the category for the grammeme
         self.properties[category][grammeme] = {
             'category': category,
             'grammeme': grammeme,
-            'abbreviation': abbreviation if type(abbreviation) is str else None,
             'description': description if type(description) is str else None,
             'include': included_word_classes,
             'exclude': excluded_word_classes
         }
+
         # read the created entry
         return self.get_property(category, grammeme)
 
@@ -199,7 +210,6 @@ class Grammar:
         #           # required name (also doubles as its unique id)
         #           'grammeme': str,
         #           # optional attributes
-        #           'abbreviation': str,
         #           'description': str,
         #           'include': list,        # word classes the property applies to
         #           'exclude': list         # word classes the property does not apply to
@@ -232,7 +242,6 @@ class Grammar:
                     # create a bare entry with defaults to underlay missing details
                     default_details = {
                         'grammeme': grammeme,
-                        'abbreviation': None,
                         'description': None,
                         'include': [],
                         'exclude': []
@@ -248,7 +257,6 @@ class Grammar:
                     added_property = self.add_property(
                         category=property_details['category'],
                         grammeme=property_details['grammeme'],
-                        abbreviation=property_details['abbreviation'],
                         description=property_details['description'],
                         include=property_details['include'],
                         exclude=property_details['exclude']
@@ -259,14 +267,13 @@ class Grammar:
 
     # TODO: make method to update includes and excludes
 
-    def update_property(self, category, grammeme, abbreviation=None, description=None):
+    def update_property(self, category, grammeme, description=None):
         """Modify text details for one grammatical property"""
         if not self.get_property(category, grammeme):
             print("Grammar update_property failed - invalid category value {0}:{1}".format(category, grammeme))
             return
         # create new property entry with modified details
         grammeme_details = self.merge_maps(self.properties[category][grammeme], {
-            'abbreviation': abbreviation,
             'description': description
         }, value_check=lambda x: type(x) is str)
         self.properties[category][grammeme] = grammeme_details
@@ -504,11 +511,11 @@ class Grammar:
         self.exponents[exponent_id] = updated_exponent_details
         return exponent_id
 
-    # identify, describe or unabbreviate property - alternative to getting direct category:grammeme
-    def find_properties(self, grammeme=None, category=None, abbreviation=None, description=None, count=None):
+    # guess property from details - alternative to getting direct category:grammeme
+    def find_properties(self, grammeme=None, category=None, description=None, count=None):
         """List every property (or optionally the first only) with the matching details"""
         # check that at least one of the attributes is filled in
-        if not (type(grammeme) is str or type(category) is str or type(abbreviation) is str or type(description) is str):
+        if not (type(grammeme) is str or type(category) is str or type(description) is str):
             print("Grammar find_properties failed - expected at least one detail present")
             return
         # store category grammemes for propreties with matching details
@@ -523,7 +530,6 @@ class Grammar:
                 query_details = self.merge_maps(details, {
                     'grammeme': grammeme,
                     'category': category,
-                    'abbreviation': abbreviation,
                     'description': description
                 }, value_check = lambda x: x is not None)
                 # check for matches between comparison details and existing ones
@@ -567,11 +573,6 @@ class Grammar:
 
     # TODO: use new .properties structure of category:grammeme names
     # /!\ Everything below is actively under construction /!\
-
-    # TODO: rethink breaking down properties and abbreviations
-    # - consider removing abbreviations for now, readding later as abbreviation:property map bound to class instance
-    # - what about abbreviations for category?
-    # - is a participle a category or a grammeme?
 
     # Helper methods for comparing maps and identifying requested properties
 
@@ -635,22 +636,18 @@ class Grammar:
 
         return properties_map
 
-    # TODO: optimize lookups or perhaps store class abbreviations separately
-    #   - removed support for abbreviations until better tested
-    #   - previous use of abbreviations: add/update (crud), parse_properties (identification - originally parse_terms)
+    # TODO: overall parser that can manage handing out terms
+    # between parse_properties and parse_word_classes
 
-    # TODO: overall parser that can manage handing out terms between parse_properties and parse_word_classes
-
-    def parse_properties(self, properties, use_abbreviations=False):
-        """Turn a string of grammatical terms into a map of properties,
-        optionally checking for abbreviations as well"""
+    def parse_properties(self, properties_text):
+        """Turn a string of grammatical terms into a map of properties"""
         # check the properties data structure
-        if type(properties) is not str:
-            print("Grammar failed to parse properties - expected a string not {0}".format(properties))
+        if type(properties_text) is not str:
+            print("Grammar failed to parse properties - expected a string not {0}".format(properties_text))
             return
 
         # create an ordered collection of grammatical terms
-        unidentified_terms = re.split(r"\W+", properties)
+        unidentified_terms = re.split(r"\W+", properties_text)
 
         # set up a map of matching properties and classes to fill out and return
         parsed_properties = {}
@@ -971,37 +968,36 @@ grammar = Grammar()
 
 # expect grammar to add individually
 # TODO ignore caps
-grammar.add_property("verb", abbreviation="v", description="word class: for verbs")
-grammar.add_property("noun", abbreviation="n", description="word class: for nouns")
-grammar.add_property("adjective", abbreviation="adj", description="word class: for adjectives")
-grammar.add_property("adverb", abbreviation="adv", description="word class: for adverbs")
-added_property = grammar.add_property("particle", abbreviation="part", description="word class: for particles")
+grammar.add_property("verb", description="word class: for verbs")
+grammar.add_property("noun", description="word class: for nouns")
+grammar.add_property("adjective", description="word class: for adjectives")
+grammar.add_property("adverb", description="word class: for adverbs")
+added_property = grammar.add_property("particle", description="word class: for particles")
 print(added_property)
 
 # expect grammar to add all
 # TODO limit/filter which properties must be excluded or included with another?
 # - example: cases can include only nouns, adjectives
-# TODO allow multiple abbreviations, ? maybe strip of dot so nom. pl. -> nom pl
 added_properties = grammar.add_properties([
     {'name': "case", 'description': "category: nominal case"},
-    {'name': "nominative", 'abbreviation': "nom", 'description': "grammeme: case mainly for subjects"},
-    {'name': "accusative", 'abbreviation': "acc", 'description': "grammeme: case mainly for objects"},
-    {'name': "number", 'abbreviation': "num", 'description': "category: grammatical number"},
-    {'name': "singular", 'abbreviation': "s", 'description': "grammeme: singular number"},
-    {'name': "plural", 'abbreviation': "pl", 'description': "grammeme: plural number"},
+    {'name': "nominative", 'description': "grammeme: case mainly for subjects"},
+    {'name': "accusative", 'description': "grammeme: case mainly for objects"},
+    {'name': "number", 'description': "category: grammatical number"},
+    {'name': "singular", 'description': "grammeme: singular number"},
+    {'name': "plural", 'description': "grammeme: plural number"},
     {'name': "deixis", 'description': "category: distance indicators"},
-    {'name': "proximal", 'abbreviation': "prox", 'description': "grammeme: near distance"},
-    {'name': "distal", 'abbreviation': "dist", 'description': "grammeme: far distance"},
-    {'name': "aspect", 'abbreviation': "asp", 'description': "category: verbal aspect"},
+    {'name': "proximal", 'description': "grammeme: near distance"},
+    {'name': "distal", 'description': "grammeme: far distance"},
+    {'name': "aspect", 'description': "category: verbal aspect"},
     {'name': "perfective", 'description': "grammeme: perfective aspect"},
     {'name': "imperfective", 'description': "grammeme: imperfective aspect"},
-    {'name': "tense", 'abbreviation': "tns", 'description': "category: verbal tense"},
-    {'name': "present", 'abbreviation': "pres", 'description': "grammeme: present tense"},
-    {'name': "past", 'abbreviation': "past", 'description': "grammeme: past tense"},
+    {'name': "tense", 'description': "category: verbal tense"},
+    {'name': "present", 'description': "grammeme: present tense"},
+    {'name': "past", 'description': "grammeme: past tense"},
     {'name': "mood", 'description': "grammeme: verbal mood"},
-    {'name': "indicative", 'abbreviation': "ind", 'description': "grammeme: indicative mood"},
-    {'name': "voice", 'abbreviation': "vc", 'description': "category: voice"},
-    {'name': "active", 'abbreviation': "act", 'description': "grammeme: active voice"}
+    {'name': "indicative", 'description': "grammeme: indicative mood"},
+    {'name': "voice", 'description': "category: voice"},
+    {'name': "active", 'description': "grammeme: active voice"}
 ])
 print(added_properties)
 # expect grammar to detect issue, avoid adding and return None
@@ -1012,8 +1008,8 @@ grammar.add_properties([{'name': "xyz", 'favorites': 0}])
 grammar.add_properties([{'favorites': 0}])
 
 print(grammar.is_property(name="mood"))
-print(grammar.is_property(abbreviation="pl"))
-print(grammar.is_property(name="verb", abbreviation="v"))
+print(grammar.is_property(name="plural"))
+print(grammar.is_property(name="verb"))
 
 # 2 - build exponents
 grammar.add_exponent(post="tele", bound=False, properties=["noun", "deixis", "proximal"])
