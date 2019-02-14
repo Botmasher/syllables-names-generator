@@ -796,6 +796,33 @@ class Grammar:
     # - case 3: built word properties are less verbose but cover multiple exponents
     #   - example: word is ['verb', 'past', 'tense'] but affixes are ['verb', 'finite'] and ['past', 'tense']
     #
+    # - case 4: built word properties are empty
+    #
+    def vet_build_word_classes(self, word_classes):
+        """Attempt to collect a set copying valid, known word classes from flexible input"""
+        # collect word classes in a set
+        if type(word_classes) in (list, tuple, set):
+            return self.filter_word_classes_set(word_classes)  # NOTE: returns set or void
+        # break down the string and analyze classes into a set
+        if isinstance(word_classes, str):
+            return self.parse_word_classes(word_classes)       # NOTE: returns set or void
+        # unexpected word classes value supplied
+        return
+
+    def vet_build_word_properties(self, properties):
+        """Attempt to map a copy of valid, known category grammemes from flexible property input"""
+        # vet map for recognized categories and their grammemes
+        if isinstance(properties, dict):
+            return self.filter_properties_map(properties)
+        # parse string of terms to collect known properties
+        if isinstance(properties, str):
+            return self.parse_properties(properties)
+        # turn a list of grammemes into a map of guessed categories and grammemes
+        if type(properties) in (list, tuple, set):
+            return self.map_uncategorized_properties(properties)
+        # unexpected properties value given
+        return
+
     def build_word(self, root, properties=[], word_classes=[], avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical terms"""
         # verify that a root word is given
@@ -804,47 +831,33 @@ class Grammar:
             return
 
         # make usable word class set collecting valid and recognizable pos terms
-        parsed_word_classes = set()
-        # collect word classes in a set
-        if type(word_classes) in (list, tuple, set):
-            parsed_word_classes = self.filter_word_classes_set(word_classes)
-        # break down the string and analyze classes into a set
-        elif type(word_classes) is str:
-            parsed_word_classes = self.parse_word_classes(word_classes)
-        # unexpected word classes value supplied
-        else:
-            parsed_word_classes = word_classes
+        vetted_word_classes = self.vet_build_word_classes(word_classes)
 
         # dead end if did not turn up a set of known word classes (or empty set)
-        if word_classes == None or type(word_classes) is not set:
-            print("Grammar build_word failed for root {0} - invalid word classes {1}".format(root, parsed_word_classes))
+        if vetted_word_classes == None or not isinstance(word_classes, set):
+            print("Grammar build_word failed for root {0} - invalid word classes {1}".format(root, vetted_word_classes))
             return
 
         # make usable properties map collecting valid and recognizable category:grammemes
-        parsed_properties = {}
-        # vet map for recognized categories and their grammemes
-        if isinstance(properties, dict):
-            parsed_properties = self.filter_properties_map(properties)
-        # parse string of terms to collect known properties
-        elif isinstance(properties, str):
-            parsed_properties = self.parse_properties(properties)
-        # turn a list of grammemes into a map of guessed categories and grammemes
-        elif type(properties) in (list, tuple, set):
-            parsed_properties = self.map_uncategorized_properties(properties)
-        # unexpected properties value given
-        else:
-            parsed_properties = properties
+        vetted_properties = self.vet_build_word_properties(properties)
 
         # dead end when did not turn up a good map of properties
-        if not self.is_properties_map(parsed_properties):
-            print("Grammar build_word failed {0} - invalid properties {1}".format(root, parsed_properties))
+        if not self.is_properties_map(vetted_properties):
+            print("Grammar build_word failed {0} - invalid properties {1}".format(root, vetted_properties))
             return
 
-        # TODO: exponent using vetted parsed_properties and parsed_word_classes
+        # TODO: exponent using vetted_properties and vetted_word_classes
         #   - use properties to find an exponent with matching category:grammemes
         #   - use word_classes to filter in and out exponent include-excludes
         #
         # /!\ everything local below is from old best-match implementation /!\
+
+        # TODO: instead of traversing all exponents, grab them from stored grammemes
+        #   - NOTE: this means rethinking store-read-update data
+        #   - properties store associated exponents at the grammeme level
+        #   - every property requested will be checked for its exponent
+        #   - then just keep intersecting property exponent sets
+        #   - case: does this work? what if an exponent has more properties than requested? (past, ind, active when just past given)
 
         # collect relevant exponents
         matching_exponents = []
