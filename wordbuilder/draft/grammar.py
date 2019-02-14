@@ -155,8 +155,6 @@ class Grammar:
         except:
             return
 
-    # TODO: allow updating category or modifying grammeme includes and excludes
-
     def add_property(self, category=None, grammeme=None, description=None, include=[], exclude=[]):
         """Add one grammatical value to an existing category in the grammar"""
         if not (category and grammeme and type(category) is str and type(grammeme) is str):
@@ -264,8 +262,6 @@ class Grammar:
                 # collect successfully added properties
                 added_property and added_properties.append(property)
         return added_properties
-
-    # TODO: make method to update includes and excludes
 
     def update_property(self, category, grammeme, description=None):
         """Modify text details for one grammatical property"""
@@ -511,7 +507,9 @@ class Grammar:
         self.exponents[exponent_id] = updated_exponent_details
         return exponent_id
 
-    # guess property from details - alternative to getting direct category:grammeme
+
+    # Method group C: Search for properties and exponents with matching details
+
     def find_properties(self, grammeme=None, category=None, description=None, count=None):
         """List every property (or optionally the first only) with the matching details"""
         # check that at least one of the attributes is filled in
@@ -571,10 +569,8 @@ class Grammar:
         return found_exponents
 
 
-    # TODO: use new .properties structure of category:grammeme names
-    # /!\ Everything below is actively under construction /!\
-
-    # Helper methods for comparing maps and identifying requested properties
+    # Method group D: Helpers for comparing maps and identifying
+    # requested properties and parts of speech
 
     def is_properties_map(self, properties={}):
         """Verify a well-structured map containing known categories and grammemes"""
@@ -591,7 +587,7 @@ class Grammar:
         # no properties or structures fell through during checks
         return True
 
-    # TODO: instead find faster or abstract way of intersecting of maps
+    # TODO: instead consider new abstract way of intersecting of maps at top
     def filter_properties_map(self, properties={}):
         """Return a copy of a properties map filtered to hold only verified category:grammemes"""
         # verify that a map was provided
@@ -604,12 +600,25 @@ class Grammar:
             # collect only known grammemes under known categories
             category: {
                 grammeme for grammeme in properties[category]
-                if self.find_property(category, grammeme)
+                if grammeme in self.properties[category]
             }
             for category in properties if category in self.properties
         }
 
         return filtered_map
+
+    def filter_word_classes_set(self, word_classes=[]):
+        """Return a copy of a word classes collection filtered to hold only verified parts of speech"""
+        # check word classes structure
+        if type(word_classes) not in (list, set, tuple):
+            print("Grammar filter_word_classes_set failed - invalid word classes collection {0}".format(word_classes))
+            return
+
+        # build and return a set containing recognized word classes
+        return {
+            word_class for word_class in word_classes
+            if word_class in self.word_classes
+        }
 
     def map_uncategorized_properties(self, properties=[]):
         """Build a map of properties using a list of grammeme names"""
@@ -635,9 +644,6 @@ class Grammar:
             properties_map[category] = properties_map.get(category, set()).add(grammeme)
 
         return properties_map
-
-    # TODO: overall parser that can manage handing out terms
-    # between parse_properties and parse_word_classes
 
     def parse_properties(self, properties_text):
         """Turn a string of grammatical terms into a map of properties"""
@@ -775,6 +781,9 @@ class Grammar:
                 return True
         return False
 
+
+    # Method Group E: Build methods
+
     # TODO: use modified .properties and .exponents structure to handle
     # requested properties smaller or larger than what's in the grammar
     #
@@ -789,72 +798,53 @@ class Grammar:
     #
     def build_word(self, root, properties=[], word_classes=[], avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical terms"""
-        # basic type checks - properties checked in more detail below
+        # verify that a root word is given
         if type(root) is not str:
             print("Grammar build_word failed - invalid root word string {0}".format(root))
             return
-        if type(word_classes) not in (list, tuple, set):
-            print("Grammar build_word failed - invalid word classes list {0}".format(word_classes))
-            return
 
-        # Make a map of recognizable requested properties flexibly from different inputs
-        # in order to compare it with properties in exponents
-        # Completed map has flexible structure: {'category': {'grammeme', ...}, 'category': 'grammeme', ...}
-        requested_properties = {}
-        # break properties string into word class and category:grammeme map
-        if type(properties) is str:
-            # parse into nested category:grammeme map
-            requested_properties = self.parse_properties(properties)
-        # treat flat terms list as property leaf grammemes or word classes
-        elif type(properties) in (list, tuple, set):
-            # prepare a map with expected structure for comparing exponent properties and classes
-            for term in properties:
-                # store listed term as a category grammeme
-                matching_properties = self.find_properties(grammeme=term, count=1)
-                if matching_properties:
-                    category = matching_properties[0]['category']
-                    grammeme = matching_properties[0]['grammeme']
-                    terms_map['properties'][category] = terms_map['properties'].get(category, set())
-                    terms_map['properties'][category].add(grammeme)
-                # listed term matches no property
-                else:
-                    print("Grammar build_word failed - unknown requested property {0}".format(term))
-                    return
-        # method called with a map - check that map has the expected structure
-        elif type(properties) is dict:
-            # build up a map of categories and grammemes requested for this exponent
-            for suspected_category, suspected_grammemes in properties.items():
-                # dead end unknown categories to avoid choosing unexpected exponents
-                if suspected_category not in self.properties:
-                    print("Grammar build_word failed - unknown requested property category {0}".format(suspected_category))
-                    return
-                # only one grammeme requested for this category - store it
-                elif type(suspected_grammemes) is str and suspected_grammemes in self.properties[category]:
-                    requested_properties[category] = {suspected_grammemes}
-                # collection of grammemes requested - check them against grammar properties
-                elif type(suspected_grammemes) in (list, tuple, set):
-                    requested_properties[category] = {grammeme for grammeme in suspected_grammemes if grammeme in self.properties[category]}
-                    # dead end when not all grammemes are found in grammar properties
-                    if len(requested_properties[category]) != len(set(suspected_grammemes)):
-                        print("Grammar build_word failed - one or more unknown grammemes for category {0}: requested {1}, of which grammar only recognizes {1}".format(category, set(suspected_grammemes), requested_propertes[category]))
-                        return
-                # dead end when grammemes were not a valid collection or string
-                else:
-                    print("Grammar build_word failed - invalid category:grammemes {0}:{1}".format(suspected_category, suspected_grammemes))
-                    return
-        # requested properties do not meet expectations for parsing or collecting
+        # make usable word class set collecting valid and recognizable pos terms
+        parsed_word_classes = set()
+        # collect word classes in a set
+        if type(word_classes) in (list, tuple, set):
+            parsed_word_classes = self.filter_word_classes_set(word_classes)
+        # break down the string and analyze classes into a set
+        elif type(word_classes) is str:
+            parsed_word_classes = self.parse_word_classes(word_classes)
+        # unexpected word classes value supplied
         else:
-            print("Grammar build_word failed - expected collection or string of properties, not {0}".format(properties))
+            parsed_word_classes = word_classes
+
+        # dead end if did not turn up a set of known word classes (or empty set)
+        if word_classes == None or type(word_classes) is not set:
+            print("Grammar build_word failed for root {0} - invalid word classes {1}".format(root, parsed_word_classes))
             return
 
-        # also store recognized word classes for checking against exponent includes and excludes
-        requested_word_classes = self.parse_word_classes(word_classes)
-        # dead end when not all word classes were recognized
-        if len(requested_word_classes) != len(set(word_classes)):
-            print("Grammar build_word failed - one or more unknown word classes: requested {0}, only recognized {1}".format(word_classes, requested_word_classes))
+        # make usable properties map collecting valid and recognizable category:grammemes
+        parsed_properties = {}
+        # vet map for recognized categories and their grammemes
+        if isinstance(properties, dict):
+            parsed_properties = self.filter_properties_map(properties)
+        # parse string of terms to collect known properties
+        elif isinstance(properties, str):
+            parsed_properties = self.parse_properties(properties)
+        # turn a list of grammemes into a map of guessed categories and grammemes
+        elif type(properties) in (list, tuple, set):
+            parsed_properties = self.map_uncategorized_properties(properties)
+        # unexpected properties value given
+        else:
+            parsed_properties = properties
+
+        # dead end when did not turn up a good map of properties
+        if not self.is_properties_map(parsed_properties):
+            print("Grammar build_word failed {0} - invalid properties {1}".format(root, parsed_properties))
             return
 
-        # TODO: exponents compare vetted properties instead of searching for best matches
+        # TODO: exponent using vetted parsed_properties and parsed_word_classes
+        #   - use properties to find an exponent with matching category:grammemes
+        #   - use word_classes to filter in and out exponent include-excludes
+        #
+        # /!\ everything local below is from old best-match implementation /!\
 
         # collect relevant exponents
         matching_exponents = []

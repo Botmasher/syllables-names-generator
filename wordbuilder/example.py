@@ -120,3 +120,5 @@ print(word_entry)
 ## TEST - add affixes
 
 ## TEST - build word with affixes
+
+# TODO: compounding (plus or minus exponents)
