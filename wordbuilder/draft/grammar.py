@@ -852,12 +852,15 @@ class Grammar:
         #
         # /!\ everything local below is from old best-match implementation /!\
 
-        # TODO: instead of traversing all exponents, grab them from stored grammemes
-        #   - NOTE: this means rethinking store-read-update data
-        #   - properties store associated exponents at the grammeme level
-        #   - every property requested will be checked for its exponent
-        #   - then just keep intersecting property exponent sets
-        #   - case: does this work? what if an exponent has more properties than requested? (past, ind, active when just past given)
+        # TODO:
+        # - either read exponents_per_property with flat category:grammeme keys
+        # - or store exponent_id: {'category:grammeme', ...} sets
+        # - iterate over the flat sets looking for subsets each pass
+        # - if you find any, throw them out and replace them with this pass exponent
+        #   - for mutability you'll store the exponent_ids and pop from dict after traversal
+        # - you'll be left with a map of exponent_ids to add with the highest superset of terms
+        # - ISSUE: what if you want a past indicative marker and continuous one, but you also have past continuous, you'll get both pasts and not the more generic one
+        #   - allow bool flag for choosing whether to pursue this matching
 
         # collect relevant exponents
         matching_exponents = set()
@@ -875,26 +878,49 @@ class Grammar:
             # retrieve all property names for this exponent
             exponent_properties = exponent_details['properties']
 
-            for category in exponent_properties:
-                matched_category_grammemes = set()
-                for grammeme in exponent_properties[category]:
-                    category_grammeme = "{0}:{1}".format(category, grammeme)
-                    matched_category_grammemes.add(category_grammeme)
-                    # WAIT! isn't it if you add other category-grammemes you are a useful one?
-                    # - but you still need to delete the old one(s)
-                    # - say you have a "tense:past" exponent and a "mood:indicative" one, then a third with both comes along
+            exponent_category_grammemes = set()
 
-                    # note exponents that already have these properties
-                    if category_grammeme in reviewed_properties:
-                        collided_exponents.add(collided_exponent)
-                    # point to this exponent for future checks
-                    else:
+            # collect a flat set of category:grammeme keys for this exponent
+            exponent_category_grammemes = {
+                "{0}:{1}".format(category, grammeme)
+                for category in exponent_properties
+                for grammeme in exponent_properties[category]
+            }
+
+            # keep around category:grammemes that already passed/failed
+            # exponent subset checks
+            checked_category_grammemes = set()
+
+            # see if there is a more complete exponent match for the
+            # requested properties before adding this exponent match
+            for category_grammeme in exponent_category_grammemes:
+                # exponent property already passed or failed a collided check
+                if category_grammeme in checked_category_grammemes:
+                    continue
+                # check for all collided properties
+                if category_grammeme in collided_exponents:
+                    # grab the other exponent to compare
+                    compared_exponent_id = collided_exponents[category_grammeme]
+                    # collect a flat set of competing category:grammeme keys
+                    compared_properties = {
+                        property for property in collided_exponents
+                        if collided_exponents[property] == compared_exponent_id
+                    }
+                    # skip the exponent for this property if it is less complete
+                    if compared_properties.issuperset(exponent_category_grammemes):
+                        continue
+                # add the exponent as the selection for this property
+                collided_exponents[category_grammeme] = exponent_id
+
+                # point to this exponent for future checks
+            #        else:
                         # I think if you ever get here and you have collided exponents
                         # you are a superset of another
                         # WAIT! think about cases where properties are split between two exponents which may share a third
 
                         # new requested property beyond currently matched exponents
-                        reviewed_properties[category_grammeme] = exponent_id
+            #            reviewed_properties[category_grammeme] = exponent_id
+
                 # if there were any collided exponents, check for supersets
                 # - here look to see if all category:grammemes can be added to future checks or if exponent should be tossed
                 # - if the current exponent properties are a superset of one in grammemes, replace the old one (add all its category:grammemes)
