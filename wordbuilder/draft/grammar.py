@@ -1,6 +1,7 @@
 import uuid
 import re
 import random
+import math
 
 # NOTE the grammar relates grammatical exponents <> grammatical properties
 # - exponents are phones of affixes, adpositions, particles, pre or post a base
@@ -54,7 +55,7 @@ class Grammar:
             print("Grammar merge_maps failed - invalid base map or overlay map")
             return
         # expect a valid filter function to validate overlayed keys and values
-        if type(key_check).__name__ != 'function' or type(vale_check).__name__ != 'function':
+        if type(key_check).__name__ != 'function' or type(value_check).__name__ != 'function':
             print("Grammar merge_maps failed - invalid checker functions")
             return
         # unpack old and new maps filtering the new one for proper types
@@ -150,10 +151,7 @@ class Grammar:
 
     def get_property(self, category=None, grammeme=None):
         """Read one grammatical value from one category in the grammar"""
-        try:
-            return self.properties[category][grammeme]
-        except:
-            return
+        return self.properties.get(category, {}).get(grammeme, None)
 
     def add_property(self, category=None, grammeme=None, description=None, include=[], exclude=[]):
         """Add one grammatical value to an existing category in the grammar"""
@@ -175,6 +173,7 @@ class Grammar:
         # add new category under properties
         if category not in self.properties:
             self.properties[category] = {}
+            # NOTE: consider .setdefault()
 
         # back out if property category:grammeme pair already exists
         if grammeme in self.properties[category]:
@@ -185,13 +184,13 @@ class Grammar:
         self.properties[category][grammeme] = {
             'category': category,
             'grammeme': grammeme,
-            'description': description if type(description) is str else None,
+            'description': description,
             'include': included_word_classes,
             'exclude': excluded_word_classes
         }
 
         # read the created entry
-        return self.get_property(category, grammeme)
+        return self.properties[category][grammeme]
 
     def add_properties(self, properties_details):
         """Add a map of grammatical values within categories to the grammar"""
@@ -361,7 +360,7 @@ class Grammar:
         )
 
         # move updated details to the new category within properties
-        self.propertes[new_category] = self.properties.get(new_category, {})
+        self.properties[new_category] = self.properties.get(new_category, {})
         self.properties[new_category][grammeme] = grammeme_details
 
         # remove the old grammeme and its details
@@ -397,13 +396,22 @@ class Grammar:
     #   category: 'grammeme'           # a single string is also allowed
     #   ...
     # }
-    def add_exponent(self, pre="", post="", bound=True, properties={}):
+    def add_exponent(self, pre="", post="", bound=True, properties=None):
         """Add one grammatical exponent to the grammar"""
         if not ((pre or post) and (type(pre) is str and type(post) is str)):
             print("Grammar add_exponent failed - expected pre or post exponent string")
             return
 
+        if not isinstance(properties, dict):
+            print("Grammar add_exponent failed - expected properties dict")
+            return
+
         # structure the categories and values of included properties
+        
+        # TODO: use sets determining if category:grammemes in properties are subsets of self.properties
+        # set(properties.keys()).issubset(self.properties.keys())
+        # map-reduce the grammemes for shared categories
+
         exponent_properties = {}
         for category, grammemes in properties.items():
             # avoid non-existing categories
@@ -510,7 +518,7 @@ class Grammar:
 
     # Method group C: Search for properties and exponents with matching details
 
-    def find_properties(self, grammeme=None, category=None, description=None, count=None):
+    def find_properties(self, grammeme=None, category=None, description=None, count=math.inf):
         """List every property (or optionally the first only) with the matching details"""
         # check that at least one of the attributes is filled in
         if not (type(grammeme) is str or type(category) is str or type(description) is str):
@@ -518,10 +526,8 @@ class Grammar:
             return
         # store category grammemes for propreties with matching details
         found_properties = []
-        # current number of property matches for assessing if count is reached
-        matches_count = 0
         # search through properties where details match query details
-        for category in self.properties.items():
+        for category in self.properties:
             for grammeme in self.properties[category]:
                 details = self.properties[category][grammeme]
                 # create comparison details with overlayed non-blank queried attributes
@@ -535,20 +541,19 @@ class Grammar:
                     # store successful matches as category grammeme pairs
                     found_properties.append((category, grammeme))
                     # immediately stop searching at the requested number of matches
-                    count += 1
-                    if count and matches_count == count:
+                    count -= 1
+                    if count <= 0:
                         break
         return found_properties
 
-    def find_exponents(self, pre=None, post=None, bound=None, count=None):
+    # NOTE: consider attribues-per-exponent map for easy reverse lookups
+    def find_exponents(self, pre=None, post=None, bound=None, count=math.inf):
         """List exponent ids (all or up to a count limit) with the matching details"""
         if pre is None and post is None and bound is None:
             print("Grammar find_exponents failed - expected at least one detail")
             return
         # prepare to store exponents with matching details
         found_exponents = []
-        # tally matching exponents to return at count limit if defined
-        matches_count = 0
         # search for exponents where details match non-blank query details
         for exponent_id, exponent_details in self.exponents.items():
             # overlay a new details map switching in non-null query args
@@ -561,9 +566,9 @@ class Grammar:
             if query_details == exponent_details:
                 # collect ids of exponents matching the compared details
                 found_exponents.append(exponent_id)
-                # return the exponent immediately if only one is requested
-                count += 1
-                if count and count == matches_count:
+                # return requested exponents if count tally reached
+                count -= 1
+                if count == 0:
                     break
         # return a list of exponents with matching details
         return found_exponents
@@ -582,7 +587,7 @@ class Grammar:
             # verify paralleled structure of nested collections inside map
             for grammeme in category:
                 # check against properties stored in the grammar
-                if not self.is_property(category, grammeme):
+                if not self.find_properties(category, grammeme):
                     return False
         # no properties or structures fell through during checks
         return True
@@ -823,7 +828,32 @@ class Grammar:
         # unexpected properties value given
         return
 
-    def build_word(self, root, properties=[], word_classes=[], avoid_redundant_exponents=False):
+    # NOTE: subdict method used to determine whether exponent properties provide requested properties in build_word
+    def is_subproperties(self, compared_properties, base_properties):
+        """Check whether all category:grammemes in a compared properties map exist in another properties map"""
+        # verify two comparable maps have been passed
+        if not insinstance(compared_properties, dict) or not isinstance(base_properties, dict):
+            print("Grammar is_subproperties failed - expected a comparison map and base map, got {0} and {1}".format(compared_map, base_map))
+            return
+
+        # check every compared category and grammeme for inclusion in the base map
+        for category in compared_properties:
+            # expect all compared categories to exist in the base map
+            if category not in base_properties:
+                return False
+           
+            # expect iterable to turn into set of properties
+            compared_grammemes = {grammeme for grammeme in compared_properties[category]}
+            base_grammemes = {grammeme for grammeme in base_properties[category]}
+           
+            # expect all compared grammemes to exist in the base category
+            if not compared_grammemes.issubset(base_grammemes):
+                return False
+        
+        # no mismatch pitfalls - consider compared map as true subproperties
+        return True
+
+    def build_word(self, root, properties=[], word_classes=None, avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical terms"""
         # verify that a root word is given
         if type(root) is not str:
@@ -831,19 +861,20 @@ class Grammar:
             return
 
         # make usable word class set collecting valid and recognizable pos terms
-        vetted_word_classes = self.vet_build_word_classes(word_classes)
+        requested_word_classes = self.vet_build_word_classes(word_classes)
 
+        # NOTE: allow optional input for word classes - empty value checked before applying exponent includes/excludes
         # dead end if did not turn up a set of known word classes (or empty set)
-        if vetted_word_classes == None or not isinstance(word_classes, set):
-            print("Grammar build_word failed for root {0} - invalid word classes {1}".format(root, vetted_word_classes))
-            return
+        #if requested_word_classes == None:
+        #    print("Grammar build_word failed for root {0} - invalid word classes {1}".format(root, requested_word_classes))
+        #    return
 
         # make usable properties map collecting valid and recognizable category:grammemes
-        vetted_properties = self.vet_build_word_properties(properties)
+        requested_properties = self.vet_build_word_properties(properties)
 
-        # dead end when did not turn up a good map of properties
-        if not self.is_properties_map(vetted_properties):
-            print("Grammar build_word failed {0} - invalid properties {1}".format(root, vetted_properties))
+        # dead end when did not turn up a good map of vetted properties
+        if not self.is_properties_map(requested_properties):
+            print("Grammar build_word failed {0} - invalid properties {1}".format(root, requested_properties))
             return
 
         # TODO: exponent using vetted_properties and vetted_word_classes
@@ -863,10 +894,9 @@ class Grammar:
         #   - allow bool flag for choosing whether to pursue this matching
 
         # collect relevant exponents
-        matching_exponents = set()
+        matching_exponents = set()  # exponent ids for exponents that have on current pass
         # properties that apply to more than one exponent for finding the optimal exponents
-        reviewed_properties = {}    # 'category:grammeme' keys paired with exponent id sets
-        collided_exponents = set()  # exponent ids for exponents that have on current pass
+        #reviewed_properties = {}    # 'category:grammeme' keys paired with exponent id sets
 
         # find exponents that match one or more properties and word class includes/excludes
         for exponent_id, exponent_details in self.exponents.items():
@@ -878,41 +908,31 @@ class Grammar:
             # retrieve all property names for this exponent
             exponent_properties = exponent_details['properties']
 
-            exponent_category_grammemes = set()
-
+            # hold around "matching" exponents that have one or more of the requested properties
+            # and no properties that were not requested
+            if self.is_subproperties(exponent_properties, requested_properties):
+                # also check that the optional word class includes or excludes are met
+                # pass over word classes that should be excluded or should not be included for this exponent
+                if exponent_details['include'] and not requested_word_classes.issubset(exponent_details['include']):
+                    continue
+                if exponent_details['exclude'] and requested_word_classes.issubset(exponent_details['exclude']):
+                    continue
+                # consider this a candidate exponent
+                matching_exponents.add(exponent_id)
+        
+            # previously compared sets of category:grammeme strings
+            #
             # collect a flat set of category:grammeme keys for this exponent
-            exponent_category_grammemes = {
-                "{0}:{1}".format(category, grammeme)
-                for category in exponent_properties
-                for grammeme in exponent_properties[category]
-            }
-
-            # keep around category:grammemes that already passed/failed
-            # exponent subset checks
-            checked_category_grammemes = set()
+            # exponent_category_grammemes = {
+            #     "{0}:{1}".format(category, grammeme)
+            #     for category in exponent_properties
+            #     for grammeme in exponent_properties[category]
+            # }
 
             # see if there is a more complete exponent match for the
             # requested properties before adding this exponent match
-            for category_grammeme in exponent_category_grammemes:
-                # exponent property already passed or failed a collided check
-                if category_grammeme in checked_category_grammemes:
-                    continue
-                # check for all collided properties
-                if category_grammeme in collided_exponents:
-                    # grab the other exponent to compare
-                    compared_exponent_id = collided_exponents[category_grammeme]
-                    # collect a flat set of competing category:grammeme keys
-                    compared_properties = {
-                        property for property in collided_exponents
-                        if collided_exponents[property] == compared_exponent_id
-                    }
-                    # skip the exponent for this property if it is less complete
-                    if compared_properties.issuperset(exponent_category_grammemes):
-                        continue
-                # add the exponent as the selection for this property
-                collided_exponents[category_grammeme] = exponent_id
 
-                # point to this exponent for future checks
+             # point to this exponent for future checks
             #        else:
                         # I think if you ever get here and you have collided exponents
                         # you are a superset of another
@@ -926,17 +946,6 @@ class Grammar:
                 # - if the current exponent properties are a superset of one in grammemes, replace the old one (add all its category:grammemes)
                 # - if the current exponent properties are a subset, toss it
                 # - if the current exponent properties have no conflicts, add all its category:grammemes
-
-                if collided_exponents:
-                    for property_name in collided_exponents:
-                        continue
-                    # search through the collided exponent_id properties
-                    # compare the two to see if one is a superset of the other
-
-            # exponent: 'id', 'pre', 'post', 'bound', 'properties'
-
-            # TODO: note if two exponents collided on same property, then check them below
-            matching_exponents.add(exponent_id)
 
         print("matching exponents: ", matching_exponents)
 
@@ -997,65 +1006,63 @@ class Grammar:
 grammar = Grammar()
 
 # expect grammar to add individually
-# TODO ignore caps
-grammar.add_property("verb", description="word class: for verbs")
-grammar.add_property("noun", description="word class: for nouns")
-grammar.add_property("adjective", description="word class: for adjectives")
-grammar.add_property("adverb", description="word class: for adverbs")
-added_property = grammar.add_property("particle", description="word class: for particles")
-print(added_property)
+# TODO: ignore capitalization
+grammar.add_word_class("verb")
+grammar.add_property(category="tense", grammeme="past")
+grammar.add_property(category="tense", grammeme="present")
+# added_property = grammar.add_property("particle", description="word class: for particles")
+# print(added_property)
 
 # expect grammar to add all
 # TODO limit/filter which properties must be excluded or included with another?
 # - example: cases can include only nouns, adjectives
-added_properties = grammar.add_properties([
-    {'name': "case", 'description': "category: nominal case"},
-    {'name': "nominative", 'description': "grammeme: case mainly for subjects"},
-    {'name': "accusative", 'description': "grammeme: case mainly for objects"},
-    {'name': "number", 'description': "category: grammatical number"},
-    {'name': "singular", 'description': "grammeme: singular number"},
-    {'name': "plural", 'description': "grammeme: plural number"},
-    {'name': "deixis", 'description': "category: distance indicators"},
-    {'name': "proximal", 'description': "grammeme: near distance"},
-    {'name': "distal", 'description': "grammeme: far distance"},
-    {'name': "aspect", 'description': "category: verbal aspect"},
-    {'name': "perfective", 'description': "grammeme: perfective aspect"},
-    {'name': "imperfective", 'description': "grammeme: imperfective aspect"},
-    {'name': "tense", 'description': "category: verbal tense"},
-    {'name': "present", 'description': "grammeme: present tense"},
-    {'name': "past", 'description': "grammeme: past tense"},
-    {'name': "mood", 'description': "grammeme: verbal mood"},
-    {'name': "indicative", 'description': "grammeme: indicative mood"},
-    {'name': "voice", 'description': "category: voice"},
-    {'name': "active", 'description': "grammeme: active voice"}
-])
-print(added_properties)
-# expect grammar to detect issue, avoid adding and return None
-grammar.add_properties([])
-grammar.add_properties([{}])
-grammar.add_properties(['chocolate'])
-grammar.add_properties([{'name': "xyz", 'favorites': 0}])
-grammar.add_properties([{'favorites': 0}])
+# added_properties = grammar.add_properties([
+#     {'name': "case", 'description': "category: nominal case"},
+#     {'name': "nominative", 'description': "grammeme: case mainly for subjects"},
+#     {'name': "accusative", 'description': "grammeme: case mainly for objects"},
+#     {'name': "number", 'description': "category: grammatical number"},
+#     {'name': "singular", 'description': "grammeme: singular number"},
+#     {'name': "plural", 'description': "grammeme: plural number"},
+#     {'name': "deixis", 'description': "category: distance indicators"},
+#     {'name': "proximal", 'description': "grammeme: near distance"},
+#     {'name': "distal", 'description': "grammeme: far distance"},
+#     {'name': "aspect", 'description': "category: verbal aspect"},
+#     {'name': "perfective", 'description': "grammeme: perfective aspect"},
+#     {'name': "imperfective", 'description': "grammeme: imperfective aspect"},
+#     {'name': "tense", 'description': "category: verbal tense"},
+#     {'name': "present", 'description': "grammeme: present tense"},
+#     {'name': "past", 'description': "grammeme: past tense"},
+#     {'name': "mood", 'description': "grammeme: verbal mood"},
+#     {'name': "indicative", 'description': "grammeme: indicative mood"},
+#     {'name': "voice", 'description': "category: voice"},
+#     {'name': "active", 'description': "grammeme: active voice"}
+# ])
+# print(added_properties)
 
-print(grammar.is_property(name="mood"))
-print(grammar.is_property(name="plural"))
-print(grammar.is_property(name="verb"))
+# expect grammar to detect issue, avoid adding and return None
+#grammar.add_properties([])
+#grammar.add_properties([{}])
+#grammar.add_properties(['chocolate'])
+#grammar.add_properties([{'name': "xyz", 'favorites': 0}])
+#grammar.add_properties([{'favorites': 0}])
+
+print(grammar.find_properties(grammeme="past"))
+print(grammar.find_properties(grammeme="verb"))
 
 # 2 - build exponents
-grammar.add_exponent(post="tele", bound=False, properties=["noun", "deixis", "proximal"])
-added_exponent = grammar.add_exponent(post="talak", bound=False, properties=["noun", "deixis", "distal"])
-added_exponents = grammar.add_exponents([
-    {'post': "l", 'bound': True, 'properties': ["verb", "present", "tense", "perfective", "aspect", "indicative", "mood", "active", "voice"]},
-    {'post': "hapa", 'bound': True, 'properties': ["verb", "past", "tense", "perfective", "aspect", "indicative", "mood", "active", "voice"]}
-])
+#grammar.add_exponent(post="tele", bound=False, properties={'tense': 'present'})
+added_exponent = grammar.add_exponent(post="talak", bound=True, properties={'tense': 'past'})
+# added_exponents = grammar.add_exponents([
+#     {'post': "l", 'bound': True, 'properties': {}},
+#     {'post': "hapa", 'bound': True, 'properties': {}}
+# ])
 print(added_exponent)
-print(added_exponents)
-grammar.add_exponent(properties=["noun", "deixis", "proximal"])
-grammar.add_exponent(pre=[], post=[], properties=[])
-grammar.add_exponent(pre="", post="", properties=[])
+#grammar.add_exponent(properties=["noun", "deixis", "proximal"])
+#grammar.add_exponent(pre=[], post=[], properties=[])
+#grammar.add_exponent(pre="", post="", properties=[])
 
 # 3 - build demo words
-word_1 = grammar.build_word("poiuyt", properties=["verb", "past"])
+word_1 = grammar.build_word("poiuyt", properties={'tense': 'past'})
 print(word_1)
-word_2 = grammar.build_word("poiuyt", properties=["verb"])
-print(word_2)
+#word_2 = grammar.build_word("poiuyt", properties=["verb"])
+#print(word_2)

@@ -21,6 +21,7 @@ The code currently exists in two variants - a first take in C# for Unity and a m
 Once you verify it runs, you're probably eager to begin customizing your language. You can start by modifying the demo language in `example.py` or include modules in your own project.
 
 ## TODO
+
 Identified tasks for maintenance and improvement:
 - [ ] peel this list off and format it as its own doc
 - [ ] go through tasks in py files and organize them in the doc
