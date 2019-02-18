@@ -592,8 +592,8 @@ class Grammar:
         # no properties or structures fell through during checks
         return True
 
-    # TODO: instead consider new abstract way of intersecting of maps at top
-    def filter_properties_map(self, properties={}):
+    # NOTE: also see newer abstraction of intersecting maps at top
+    def filter_properties_map(self, properties=None):
         """Return a copy of a properties map filtered to hold only verified category:grammemes"""
         # verify that a map was provided
         if not isinstance(properties, dict):
@@ -604,9 +604,16 @@ class Grammar:
         filtered_map = {
             # collect only known grammemes under known categories
             category: {
-                grammeme for grammeme in properties[category]
+                # check bare strings to allow for single 'category': 'grammeme' input
+                properties[category] if type(properties[category]) is str
+                and properties[category] in self.properties[category]
+                
+                # check every grammeme in a category:grammemes container
+                else grammeme for grammeme in properties[category]
                 if grammeme in self.properties[category]
+
             }
+            # filter down to categories that exist in the grammar
             for category in properties if category in self.properties
         }
 
@@ -828,12 +835,12 @@ class Grammar:
         # unexpected properties value given
         return
 
-    # NOTE: subdict method used to determine whether exponent properties provide requested properties in build_word
+    # subdict method used to determine whether exponent properties provide requested properties in build_word
     def is_subproperties(self, compared_properties, base_properties):
         """Check whether all category:grammemes in a compared properties map exist in another properties map"""
         # verify two comparable maps have been passed
-        if not insinstance(compared_properties, dict) or not isinstance(base_properties, dict):
-            print("Grammar is_subproperties failed - expected a comparison map and base map, got {0} and {1}".format(compared_map, base_map))
+        if not isinstance(compared_properties, dict) or not isinstance(base_properties, dict):
+            print("Grammar is_subproperties failed - expected a comparison map and base map, got {0} and {1}".format(compared_properties, base_properties))
             return
 
         # check every compared category and grammeme for inclusion in the base map
@@ -853,6 +860,7 @@ class Grammar:
         # no mismatch pitfalls - consider compared map as true subproperties
         return True
 
+    # the main public method for making use of data stored in the grammar
     def build_word(self, root, properties=[], word_classes=None, avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical terms"""
         # verify that a root word is given
@@ -863,12 +871,6 @@ class Grammar:
         # make usable word class set collecting valid and recognizable pos terms
         requested_word_classes = self.vet_build_word_classes(word_classes)
 
-        # NOTE: allow optional input for word classes - empty value checked before applying exponent includes/excludes
-        # dead end if did not turn up a set of known word classes (or empty set)
-        #if requested_word_classes == None:
-        #    print("Grammar build_word failed for root {0} - invalid word classes {1}".format(root, requested_word_classes))
-        #    return
-
         # make usable properties map collecting valid and recognizable category:grammemes
         requested_properties = self.vet_build_word_properties(properties)
 
@@ -877,36 +879,24 @@ class Grammar:
             print("Grammar build_word failed {0} - invalid properties {1}".format(root, requested_properties))
             return
 
-        # TODO: exponent using vetted_properties and vetted_word_classes
-        #   - use properties to find an exponent with matching category:grammemes
-        #   - use word_classes to filter in and out exponent include-excludes
-        #
-        # /!\ everything local below is from old best-match implementation /!\
+        # NOTE: below map then reduce exponents using vetted_properties and vetted_word_classes
+        #   - map traversal:
+        #       - use properties to find an exponent with matching category:grammemes
+        #       - use word_classes to filter for exponent includes/excludes
+        #   - reduce traversal:
+        #       - use resulting match set to find exponents providing the most properties
+        #       - ditch subproperties
 
-        # TODO:
-        # - either read exponents_per_property with flat category:grammeme keys
-        # - or store exponent_id: {'category:grammeme', ...} sets
-        # - iterate over the flat sets looking for subsets each pass
-        # - if you find any, throw them out and replace them with this pass exponent
-        #   - for mutability you'll store the exponent_ids and pop from dict after traversal
-        # - you'll be left with a map of exponent_ids to add with the highest superset of terms
-        # - ISSUE: what if you want a past indicative marker and continuous one, but you also have past continuous, you'll get both pasts and not the more generic one
-        #   - allow bool flag for choosing whether to pursue this matching
-
-        # collect relevant exponents
-        matching_exponents = set()  # exponent ids for exponents that have on current pass
-        # properties that apply to more than one exponent for finding the optimal exponents
-        #reviewed_properties = {}    # 'category:grammeme' keys paired with exponent id sets
+        # collect exponents that provide at least one property
+        matching_exponents = set()      # exponent ids set for exponents that have matching properties
 
         # find exponents that match one or more properties and word class includes/excludes
         for exponent_id, exponent_details in self.exponents.items():
-            # - expect requested properties set to be smaller per requested exponent than the exponents
-            # - expect requested properties set to be larger per requested exponent if requesting multiple exponents
-            # - expect requested properties set not to duplicate properties possibly repeated in multiple exponents
-            # - expect exponent properties set to contain all relevant properties possibly requested
-
             # retrieve all property names for this exponent
             exponent_properties = exponent_details['properties']
+
+            print("this exponent is for: ", exponent_properties)
+            print("requested one for: ", requested_properties)
 
             # hold around "matching" exponents that have one or more of the requested properties
             # and no properties that were not requested
@@ -919,63 +909,63 @@ class Grammar:
                     continue
                 # consider this a candidate exponent
                 matching_exponents.add(exponent_id)
-        
-            # previously compared sets of category:grammeme strings
-            #
-            # collect a flat set of category:grammeme keys for this exponent
-            # exponent_category_grammemes = {
-            #     "{0}:{1}".format(category, grammeme)
-            #     for category in exponent_properties
-            #     for grammeme in exponent_properties[category]
-            # }
-
-            # see if there is a more complete exponent match for the
-            # requested properties before adding this exponent match
-
-             # point to this exponent for future checks
-            #        else:
-                        # I think if you ever get here and you have collided exponents
-                        # you are a superset of another
-                        # WAIT! think about cases where properties are split between two exponents which may share a third
-
-                        # new requested property beyond currently matched exponents
-            #            reviewed_properties[category_grammeme] = exponent_id
-
-                # if there were any collided exponents, check for supersets
-                # - here look to see if all category:grammemes can be added to future checks or if exponent should be tossed
-                # - if the current exponent properties are a superset of one in grammemes, replace the old one (add all its category:grammemes)
-                # - if the current exponent properties are a subset, toss it
-                # - if the current exponent properties have no conflicts, add all its category:grammemes
-
+     
         print("matching exponents: ", matching_exponents)
 
-        # PROBLEM: is {verb, tense, past, indicative, first, person, singular} a better match than {verb, tense, past}?
-
-        # TODO: find supersets/subsets of exponent matches
+        # reduce subsets among exponent matches
         #   - this happens when multiple exponents share properties
-        #   - answer: is one more vague than another? choose the more exact one for requested properties
-        #
-        # does the exponent's properties contain all the category:grammemes?
-        # if so, does it contain other grammemes?
-        # if so, does it contain other keys (category:grammemes)?
-        for matching_exponent in matching_exponents:
-            matching_exponent_details = self.exponents[matching_exponent]
-            best_exponent_match = None # track the id that matches the most properties (biggest superset)
+        #   - shrink list but still provide all requested properties
 
+        reduced_exponents = set()
+
+        # TODO: can this reduce be simplified?
+
+        # reduce to find supersets among exponent matches
+        # find the fewest exponents that provide the requested properties
+        for matching_exponent in matching_exponents:
+            # skip evaluating exponent if already among best matches
+            ## TODO: check cases to see if this works better than removing matching exponents
+            ## that aren't superproperties matches when adding the best exponent below
+            if matching_exponent in reduced_exponents:
+                continue
+
+            # exponent providing largest properties superset including these same properties
+            best_exponent_match = None  # track the id that matches the most properties
+            
+            # properties for the base (matched) exponent
+            exponent_properties = self.exponents[matching_exponent]['properties']
+            
+            # traverse all exponent matches and look for properties
             for compared_exponent in matching_exponents:
-                # comparing exponent to itself
+               
+                # skip comparing base exponent to itself
                 if compared_exponent == matching_exponent:
                     continue
-                compared_exponent_details = self.exponents[matching_exponent]
+                
+                # properties from other matched exponents
+                compared_exponent_properties = self.exponents[compared_exponent]['properties']
+                
+                # run the comparison looking for an exponent with superproperties
+                if self.is_subproperties(exponent_properties, compared_exponent_properties):
+                    best_exponent_match = compared_exponent
+            
+            # set the best match to the base matched exponent if no superproperties found
+            best_exponent_match = matching_exponent if not best_exponent_match else best_exponent_match
 
-        # list of either one exact exponent properties match or one or more guesses
-        print(matching_exponents)
+            # save the best match
+            reduced_exponents.add(best_exponent_match)
+
+        # collection of one or more exponent ids that have been mapped over then reduced
+        print("reduced exponents: ", reduced_exponents)
 
         # add exponents to build up the word
-        word = root
-        for exponent_id in matching_exponents:
-            word = self.attach_exponent(word, exponent_id=exponent_id)
-        return word
+        built_word = root
+        # attach the best matches from the mapped and reduced exponents
+        for exponent_id in reduced_exponents:
+           built_word = self.attach_exponent(built_word, exponent_id=exponent_id)
+        
+        # return the grammatically augmented word
+        return built_word
 
     def attach_exponent(self, stem, exponent_id=None):
         """Attach one grammatical exponent to a string of phones"""
