@@ -592,6 +592,21 @@ class Grammar:
         # no properties or structures fell through during checks
         return True
 
+    def filter_grammemes(self, category, grammemes):
+        """Structure a set of category grammemes allowing for flexible input"""
+        # handle a grammemes set or single string within a known category
+        if category in self.properties:
+            # return recognized grammeme collection members inside of a set
+            if type(grammemes) in (list, set, tuple):
+                return set(grammemes).intersection(self.properties.get(category, set()))
+            # recognized grammeme string inside of a set
+            if type(grammemes) is str and grammemes in self.properties.get(category, set()):
+                # only one grammeme string given
+                return {grammemes}
+        # unrecognized category name or grammeme type input
+        else:
+            return
+
     # NOTE: also see newer abstraction of intersecting maps at top
     def filter_properties_map(self, properties=None):
         """Return a copy of a properties map filtered to hold only verified category:grammemes"""
@@ -603,18 +618,9 @@ class Grammar:
         # map collections for all known categories
         filtered_map = {
             # collect only known grammemes under known categories
-            category: {
-                # check bare strings to allow for single 'category': 'grammeme' input
-                properties[category] if type(properties[category]) is str
-                and properties[category] in self.properties[category]
-                
-                # check every grammeme in a category:grammemes container
-                else grammeme for grammeme in properties[category]
-                if grammeme in self.properties[category]
-
-            }
-            # filter down to categories that exist in the grammar
-            for category in properties if category in self.properties
+            category: self.filter_grammemes(category, grammemes)
+            # iterate through categories - category existence handled in grammemes filter
+            for category, grammemes in properties.items()
         }
 
         return filtered_map
@@ -848,7 +854,7 @@ class Grammar:
             # expect all compared categories to exist in the base map
             if category not in base_properties:
                 return False
-           
+
             # expect iterable to turn into set of properties
             compared_grammemes = {grammeme for grammeme in compared_properties[category]}
             base_grammemes = {grammeme for grammeme in base_properties[category]}
@@ -898,16 +904,29 @@ class Grammar:
             print("this exponent is for: ", exponent_properties)
             print("requested one for: ", requested_properties)
 
-            # hold around "matching" exponents that have one or more of the requested properties
-            # and no properties that were not requested
-            if self.is_subproperties(exponent_properties, requested_properties):
-                # also check that the optional word class includes or excludes are met
-                # pass over word classes that should be excluded or should not be included for this exponent
-                if exponent_details['include'] and not requested_word_classes.issubset(exponent_details['include']):
-                    continue
-                if exponent_details['exclude'] and requested_word_classes.issubset(exponent_details['exclude']):
-                    continue
+            # also check that the optional property word class includes or excludes are met
+            mismatched_word_classes = False
+            # go through included and excluded word classes among grammemes in exponent properties
+            for grammemes in exponent_properties.values():
+                for grammeme in grammemes:
+                    grammeme_includes = properties.get(grammeme, {}).get('include')
+                    grammeme_excludes = properties.get(grammeme, {}).get('exclude')
+                    # pass over exponent based on word classes expected to be included
+                    if grammeme_includes and not (requested_word_classes and requested_word_classes.issubset(grammeme_includes)):
+                        mismatched_word_classes = True
+                        break
+                    # pass over exponent based on word classes expected to be excluded
+                    if grammeme_excludes and (not requested_word_classes or requested_word_classes.issubset(grammeme_excludes)):
+                        mismatched_word_classes = True
+                        break
+                # stop searching grammemes if word classes mismatch property includes/excludes
+                if mismatched_word_classes:
+                    break
+
+            # hold exponents that provide one or more requested properties and none not requested
+            if not mismatched_word_classes and self.is_subproperties(exponent_properties, requested_properties):
                 # consider this a candidate exponent
+                print("Adding exponent match ", exponent_id)
                 matching_exponents.add(exponent_id)
      
         print("matching exponents: ", matching_exponents)
