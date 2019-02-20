@@ -170,18 +170,13 @@ class Grammar:
             if word_class in self.word_classes
         }
 
-        # add new category under properties
-        if category not in self.properties:
-            self.properties[category] = {}
-            # NOTE: consider .setdefault()
-
         # back out if property category:grammeme pair already exists
-        if grammeme in self.properties[category]:
+        if grammeme in self.properties.get(category, []):
             print("Grammar add_property failed - category {0} already contains grammeme {1} - did you mean to run update_property?".format(category, grammeme))
             return
 
         # create a new entry under the category for the grammeme
-        self.properties[category][grammeme] = {
+        self.properties.setdefault(category, {})[grammeme] = {
             'category': category,
             'grammeme': grammeme,
             'description': description,
@@ -710,9 +705,11 @@ class Grammar:
             if stranded_grammeme:
                 # find the property by its grammeme name only
                 matching_properties = self.find_properties(grammeme=stranded_grammeme)
-                # create an entry for the identified category and its grammeme
+                # create an entry using the first identified category and its grammeme
                 if matching_properties:
-                    current_category = parsed_properties[matching_properties[0][0]] = parsed_properties.get(matching_properties[0][0], set()).add(matching_properties[0][1])
+                    # found properties hold paired category, grammeme tuples
+                    current_category = matching_properties[0][0]
+                    current_grammeme = matching_properties[0][1]
                 # reset for the next uncategorized grammeme
                 stranded_grammeme = None
 
@@ -724,12 +721,13 @@ class Grammar:
                     # toss the suspected grammeme and keep parsing
                     print("Grammar parse_properties skipped parsed but unrecognized property {0}:{1}".format(current_category, current_grammeme))
                     current_grammeme = None
-                    continue
-                # create an entry for the category and grammeme in the parsed map
-                parsed_properties[current_category] = parsed_properties.get(current_category, set()).add(current_grammeme)
-                # reset the category:grammeme for the next unidentified pairing
-                current_category = None
-                current_grammeme = None
+                # add grammeme under current category and consider it parsed
+                else:
+                    # add the identified grammeme to the category grammemes set in the parsed map
+                    parsed_properties.setdefault(current_category, set()).add(current_grammeme)
+                    # reset the category:grammeme for the next unidentified pairing
+                    current_category = None
+                    current_grammeme = None
 
         # NOTE: think about the incoming data and how well you will parse cases
         #
@@ -867,6 +865,7 @@ class Grammar:
         return True
 
     # the main public method for making use of data stored in the grammar
+    # TODO: consider cases where not all properties are provided by found exponents
     def build_word(self, root, properties=[], word_classes=None, avoid_redundant_exponents=False):
         """Build up relevant morphology using the given grammatical terms"""
         # verify that a root word is given
@@ -907,10 +906,10 @@ class Grammar:
             # also check that the optional property word class includes or excludes are met
             mismatched_word_classes = False
             # go through included and excluded word classes among grammemes in exponent properties
-            for grammemes in exponent_properties.values():
-                for grammeme in grammemes:
-                    grammeme_includes = properties.get(grammeme, {}).get('include')
-                    grammeme_excludes = properties.get(grammeme, {}).get('exclude')
+            for category in exponent_properties:
+                for grammeme in exponent_properties[category]:
+                    grammeme_includes = self.properties[category][grammeme]['include']
+                    grammeme_excludes = self.properties[category][grammeme]['exclude']
                     # pass over exponent based on word classes expected to be included
                     if grammeme_includes and not (requested_word_classes and requested_word_classes.issubset(grammeme_includes)):
                         mismatched_word_classes = True
@@ -978,38 +977,107 @@ class Grammar:
         print("reduced exponents: ", reduced_exponents)
 
         # add exponents to build up the word
-        built_word = root
+
         # attach the best matches from the mapped and reduced exponents
-        for exponent_id in reduced_exponents:
-           built_word = self.attach_exponent(built_word, exponent_id=exponent_id)
-        
+        #for exponent_id in reduced_exponents:
+        #  built_word = self.attach_exponent(root, built_word, exponent_id=exponent_id)
+        built_word = self.attach_exponents(root, reduced_exponents, as_string=True)
+
         # return the grammatically augmented word
         return built_word
 
-    def attach_exponent(self, stem, exponent_id=None):
+    # 
+    def attach_exponents(self, root, exponent_ids, as_string=False):
+        """Exponent a complex word to correctly position a root, prefixes, postfixes, prepositions, postpositions"""
+        # expect a collection of exponent ids and a word-building map
+        if type(exponent_ids) not in (list, set, tuple):
+            print("Grammar attach_exponent_map failed - invalid list of exponents {}".format(exponent_ids))
+            return
+
+        # keep word pieces accounting for possible positions and spacing
+        exponented_word_map = {
+            'root': root,
+            'prefix': [],
+            'postfix': [],
+            'preposition': [],
+            'postposition': [],
+        }
+
+        # go through exponents and map them as prescribed in the exponent
+        for exponent_id in exponent_ids:
+            exponent_details = self.exponents.get(exponent_id)
+            # check for valid exponent
+            if not exponent_details:
+                continue
+
+            # add material as the next-affixed to the stem
+            if exponent_details['bound']:
+                # add to left or right of affixes lists depending on position
+                if exponent_details['pre']:
+                    exponented_word_map['prefix'] = [exponent_details['pre']] + exponented_word_map['prefix']
+                if exponent_details['post']:
+                    exponented_word_map['postfix'] += [exponent_details['post']]
+            # add material as the next-nearest to the affixed word
+            else:
+                # add to left or right of adpositions lists depending on position
+                if exponent_details['pre']:
+                    exponented_word_map['preposition'] = [exponent_details['pre'], " "] + exponented_word_map['preposition']
+                if exponent_details['post']:
+                    exponented_word_map['postposition'] += [" ", exponent_details['post']]
+
+        # turn the exponenting map into a sequence
+        exponented_word = []
+
+        # TODO: check that prefixing and postfixing yield the right sequence
+        #   - here consider whether creating morphosyntax slotting of properties is necessary
+        #   - also use string joins
+        for preposition in exponented_word['preposition']:
+            exponented_word.append(preposition)
+        for prefix in exponented_word_map['prefix']:
+            exponented_word.append(prefix)
+        exponented_word.append(exponented_word_map['root'])
+        for suffix in exponented_word_map['suffix']:
+            exponented_word.append(suffix)
+        for postposition in exponented_word_map['postposition']:
+            exponented_word.append(postposition)
+
+        # return the sequence as a list or string
+        if as_string:
+            return "".join(exponented_word)
+        return exponented_word
+
+    def attach_exponent(self, base, exponent_id=None, as_string=False):
         """Attach one grammatical exponent to a string of phones"""
         # check for a good stem and an exponent to attach to it
-        if type(stem) is not str:
-            print("Grammar attach_exponent failed - invalid word stem {0}".format(stem))
+        if type(base) is not str:
+            print("Grammar attach_exponent failed - invalid word stem {0}".format(base))
             return
         if exponent_id not in self.exponents:
             print("Grammar attach_exponent failed - unknown exponent id {0}".format(exponent_id))
             return
 
         # prepare the base and attachment data
-        exponented_word = stem
+        exponented_word = [base]
         exponent = self.exponents[exponent_id]
 
         # add exponent as affix
         if exponent['bound']:
-            exponented_word = "{}{}{}".format(exponent['pre'], exponented_word, exponent['post'])
+            if exponent['pre']:
+                exponented_word = exponent['pre'] + exponented_word
+            if exponent['post']:
+                exponented_word += exponent['post']
         # add exponent as particle or adposition structure
         else:
             if exponent['pre']:
-                exponented_word = "{0} {1}".format(exponent['pre'], exponented_word)
+                exponented_word = [exponent['pre'], " "] + exponented_word
             if exponent['post']:
-                exponented_word = "{0} {1}".format(exponented_word, exponent['post'])
-        return exponented_word
+                exponented_word += [" ", exponent['post']]
+        
+        # return the word plus exponent either as string or list
+        if as_string:
+            return "".join(exponented_word)
+        else:
+            return exponented_word
 
 # 1 - build properties
 grammar = Grammar()
@@ -1056,14 +1124,13 @@ grammar.add_property(category="tense", grammeme="present")
 #grammar.add_properties([{'favorites': 0}])
 
 print(grammar.find_properties(grammeme="past"))
-print(grammar.find_properties(grammeme="verb"))
+print(grammar.find_properties(category="tense"))
 
 # 2 - build exponents
-#grammar.add_exponent(post="tele", bound=False, properties={'tense': 'present'})
 added_exponent = grammar.add_exponent(post="talak", bound=True, properties={'tense': 'past'})
+added_exponent = grammar.add_exponent(pre="e", post="tul", bound=False, properties={'tense': 'present'})
 # added_exponents = grammar.add_exponents([
-#     {'post': "l", 'bound': True, 'properties': {}},
-#     {'post': "hapa", 'bound': True, 'properties': {}}
+#     {'post': "l", 'bound': True, 'properties': {}}
 # ])
 print(added_exponent)
 #grammar.add_exponent(properties=["noun", "deixis", "proximal"])
@@ -1073,5 +1140,5 @@ print(added_exponent)
 # 3 - build demo words
 word_1 = grammar.build_word("poiuyt", properties={'tense': 'past'})
 print(word_1)
-#word_2 = grammar.build_word("poiuyt", properties=["verb"])
-#print(word_2)
+word_2 = grammar.build_word("poiuyt", properties='present tense past tense')
+print(word_2)
