@@ -1,7 +1,7 @@
-import uuid
-import re
-import random
-import math
+import uuid         # for indexing exponent keys
+import re           # for splitting strings and parsing them for properties
+import math         # for allowing finds to break at user-defined count or data limit
+from collections import deque   # for building pre- and post-exponented word pieces lists
 
 # NOTE the grammar relates grammatical exponents <> grammatical properties
 # - exponents are phones of affixes, adpositions, particles, pre or post a base
@@ -996,11 +996,11 @@ class Grammar:
 
         # keep word pieces accounting for possible positions and spacing
         exponented_word_map = {
-            'root': root,
-            'prefix': [],
-            'postfix': [],
-            'preposition': [],
-            'postposition': [],
+            'root': deque([root]),
+            'prefix': deque(),
+            'postfix': deque(),
+            'preposition': deque(),
+            'postposition': deque(),
         }
 
         # go through exponents and map them as prescribed in the exponent
@@ -1008,46 +1008,43 @@ class Grammar:
             exponent_details = self.exponents.get(exponent_id)
             # check for valid exponent
             if not exponent_details:
+                print("Grammar attach_exponents skipped invalid exponent {}".format(exponent_id))
                 continue
 
-            # add material as the next-affixed to the stem
-            if exponent_details['bound']:
-                # add to left or right of affixes lists depending on position
-                if exponent_details['pre']:
-                    exponented_word_map['prefix'] = [exponent_details['pre']] + exponented_word_map['prefix']
-                if exponent_details['post']:
-                    exponented_word_map['postfix'] += [exponent_details['post']]
-            # add material as the next-nearest to the affixed word
-            else:
-                # add to left or right of adpositions lists depending on position
-                if exponent_details['pre']:
-                    exponented_word_map['preposition'] = [exponent_details['pre'], " "] + exponented_word_map['preposition']
-                if exponent_details['post']:
-                    exponented_word_map['postposition'] += [" ", exponent_details['post']]
+            # decide to store exponent as affixal or positional
+            pre_key, post_key = ('prefix', 'postfix') if exponent_details['bound'] else ('preposition', 'postposition')
+            # leave space between non-affixes and base
+            spacing = "" if exponent_details['bound'] else " "
+            # reference to the actual material being added
+            pre = exponent_details['pre'] if exponent_details['pre'] else ""
+            post = exponent_details['post'] if exponent_details['post'] else ""
+
+            # add exponent as the next-affixed/apposed material
+            # add to left of prefixes or prepositions collection
+            pre and exponented_word_map[pre_key].appendleft(spacing)
+            pre and exponented_word_map[pre_key].appendleft(pre)
+            # add to right of suffixes or postpositions collection
+            post and exponented_word_map[post_key].append(spacing)
+            post and exponented_word_map[post_key].append(post)
 
         # turn the exponenting map into a sequence
         exponented_word = []
 
         # TODO: check that prefixing and postfixing yield the right sequence
         #   - here consider whether creating morphosyntax slotting of properties is necessary
-        #   - also use string joins
-        for preposition in exponented_word['preposition']:
-            exponented_word.append(preposition)
-        for prefix in exponented_word_map['prefix']:
-            exponented_word.append(prefix)
-        exponented_word.append(exponented_word_map['root'])
-        for suffix in exponented_word_map['suffix']:
-            exponented_word.append(suffix)
-        for postposition in exponented_word_map['postposition']:
-            exponented_word.append(postposition)
+        exponented_word = exponented_word_map['preposition'] +
+            exponented_word_map['prefix'] +
+            exponented_word_map['root'] +
+            exponented_word_map['postfix'] +
+            exponented_word_map['postposition']
 
         # return the sequence as a list or string
         if as_string:
             return "".join(exponented_word)
-        return exponented_word
+        return list(exponented_word)
 
     def attach_exponent(self, base, exponent_id=None, as_string=False):
-        """Attach one grammatical exponent to a string of phones"""
+        """Attach one grammatical exponent around a root word"""
         # check for a good stem and an exponent to attach to it
         if type(base) is not str:
             print("Grammar attach_exponent failed - invalid word stem {0}".format(base))
@@ -1057,21 +1054,15 @@ class Grammar:
             return
 
         # prepare the base and attachment data
-        exponented_word = [base]
         exponent = self.exponents[exponent_id]
+        pre = exponent['pre']
+        post = exponent['post']
 
-        # add exponent as affix
-        if exponent['bound']:
-            if exponent['pre']:
-                exponented_word = exponent['pre'] + exponented_word
-            if exponent['post']:
-                exponented_word += exponent['post']
-        # add exponent as particle or adposition structure
-        else:
-            if exponent['pre']:
-                exponented_word = [exponent['pre'], " "] + exponented_word
-            if exponent['post']:
-                exponented_word += [" ", exponent['post']]
+        # include spaces around the root for non-affixes
+        spacing = " " if not exponent['bound'] else ""
+
+        # sequentially collect exponented material around root including spacing
+        exponented_word = [pre, spacing, base, spacing, post]
         
         # return the word plus exponent either as string or list
         if as_string:
@@ -1079,44 +1070,33 @@ class Grammar:
         else:
             return exponented_word
 
+
+## Instantiation and testing
+
 # 1 - build properties
 grammar = Grammar()
 
 # expect grammar to add individually
 # TODO: ignore capitalization
+
 grammar.add_word_class("verb")
 grammar.add_property(category="tense", grammeme="past")
 grammar.add_property(category="tense", grammeme="present")
-# added_property = grammar.add_property("particle", description="word class: for particles")
-# print(added_property)
+grammar.add_property(category="mood", grammeme="indicative")
+added_property = grammar.add_property(category="mood", grammeme="interrogative")
+print(added_property)
 
 # expect grammar to add all
-# TODO limit/filter which properties must be excluded or included with another?
-# - example: cases can include only nouns, adjectives
-# added_properties = grammar.add_properties([
-#     {'name': "case", 'description': "category: nominal case"},
-#     {'name': "nominative", 'description': "grammeme: case mainly for subjects"},
-#     {'name': "accusative", 'description': "grammeme: case mainly for objects"},
-#     {'name': "number", 'description': "category: grammatical number"},
-#     {'name': "singular", 'description': "grammeme: singular number"},
-#     {'name': "plural", 'description': "grammeme: plural number"},
-#     {'name': "deixis", 'description': "category: distance indicators"},
-#     {'name': "proximal", 'description': "grammeme: near distance"},
-#     {'name': "distal", 'description': "grammeme: far distance"},
-#     {'name': "aspect", 'description': "category: verbal aspect"},
-#     {'name': "perfective", 'description': "grammeme: perfective aspect"},
-#     {'name': "imperfective", 'description': "grammeme: imperfective aspect"},
-#     {'name': "tense", 'description': "category: verbal tense"},
-#     {'name': "present", 'description': "grammeme: present tense"},
-#     {'name': "past", 'description': "grammeme: past tense"},
-#     {'name': "mood", 'description': "grammeme: verbal mood"},
-#     {'name': "indicative", 'description': "grammeme: indicative mood"},
-#     {'name': "voice", 'description': "category: voice"},
-#     {'name': "active", 'description': "grammeme: active voice"}
-# ])
-# print(added_properties)
 
-# expect grammar to detect issue, avoid adding and return None
+# grammar.add_property("voice", "active")
+# grammar.add_property("voice", "passive")
+added_properties = grammar.add_properties([
+    {'category': "voice", 'grammeme': "active"},
+    {'category': "voice", 'grammeme': "passive"}
+])
+print(added_properties)
+
+# negative tests - expect grammar to detect issue, avoid adding and return None
 #grammar.add_properties([])
 #grammar.add_properties([{}])
 #grammar.add_properties(['chocolate'])
@@ -1127,8 +1107,9 @@ print(grammar.find_properties(grammeme="past"))
 print(grammar.find_properties(category="tense"))
 
 # 2 - build exponents
-added_exponent = grammar.add_exponent(post="talak", bound=True, properties={'tense': 'past'})
-added_exponent = grammar.add_exponent(pre="e", post="tul", bound=False, properties={'tense': 'present'})
+added_exponent = grammar.add_exponent(post="past", bound=True, properties={'tense': 'past'})
+added_exponent = grammar.add_exponent(pre="pres", post="ent", bound=False, properties={'tense': 'present'})
+added_exponent = grammar.add_exponent(pre="indi", post="cative", bound=False, properties={'mood': 'indicative'})
 # added_exponents = grammar.add_exponents([
 #     {'post': "l", 'bound': True, 'properties': {}}
 # ])
@@ -1140,5 +1121,8 @@ print(added_exponent)
 # 3 - build demo words
 word_1 = grammar.build_word("poiuyt", properties={'tense': 'past'})
 print(word_1)
-word_2 = grammar.build_word("poiuyt", properties='present tense past tense')
+# TODO: fail build if not all properties provided (or flag) - case: no exponent exists for passive voice
+word_2 = grammar.build_word("poiuyt", properties='present tense past tense tense mood:indicative passive')
 print(word_2)
+word_3 = grammar.build_word("poiuyt", properties='past indicative')
+print(word_3)
