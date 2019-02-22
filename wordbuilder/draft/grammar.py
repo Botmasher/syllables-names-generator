@@ -866,8 +866,10 @@ class Grammar:
 
     # the main public method for making use of data stored in the grammar
     # TODO: consider cases where not all properties are provided by found exponents
-    def build_word(self, root, properties=[], word_classes=None, avoid_redundant_exponents=False):
+    def build_word(self, root, properties=[], word_classes=None, avoid_redundant_exponents=False, all_or_none=True):
         """Build up relevant morphology using the given grammatical terms"""
+        # TODO: better docstring particularly for this method
+
         # verify that a root word is given
         if type(root) is not str:
             print("Grammar build_word failed - invalid root word string {0}".format(root))
@@ -895,6 +897,16 @@ class Grammar:
         # collect exponents that provide at least one property
         matching_exponents = set()      # exponent ids set for exponents that have matching properties
 
+        # TODO: optimize tracking - consider what you can also check during requested_properties
+
+        # track found vs missing properties for failing if not all properties provided
+        # create a tracker map of all properties and how many times each provided
+        provided_properties = {
+            (category, grammeme) : 0
+            for category in requested_properties
+            for grammeme in requested_properties[category]
+        }
+
         # find exponents that match one or more properties and word class includes/excludes
         for exponent_id, exponent_details in self.exponents.items():
             # retrieve all property names for this exponent
@@ -918,6 +930,7 @@ class Grammar:
                     if grammeme_excludes and (not requested_word_classes or requested_word_classes.issubset(grammeme_excludes)):
                         mismatched_word_classes = True
                         break
+                    
                 # stop searching grammemes if word classes mismatch property includes/excludes
                 if mismatched_word_classes:
                     break
@@ -927,8 +940,21 @@ class Grammar:
                 # consider this a candidate exponent
                 print("Adding exponent match ", exponent_id)
                 matching_exponents.add(exponent_id)
+
+                # track the matched properties - check later if all requested properties matched
+                for category in requested_properties:
+                    for grammeme in requested_properties[category]:
+                        provided_properties[(category, grammeme)] += 1
      
         print("matching exponents: ", matching_exponents)
+
+        # check that all properties were matched before reducing to optimal exponents
+        if all_or_none:
+            for category_grammeme_pair in provided_properties:
+                property_count = provided_properties[category_grammeme_pair]
+                if not property_count:
+                    print("Grammar build_word failed - no exponent found for property {}:{}".format(category_grammeme_pair[0], category_grammeme_pair[1]))
+                    return
 
         # reduce subsets among exponent matches
         #   - this happens when multiple exponents share properties
@@ -986,7 +1012,6 @@ class Grammar:
         # return the grammatically augmented word
         return built_word
 
-    # 
     def attach_exponents(self, root, exponent_ids, as_string=False):
         """Exponent a complex word to correctly position a root, prefixes, postfixes, prepositions, postpositions"""
         # expect a collection of exponent ids and a word-building map
@@ -994,14 +1019,12 @@ class Grammar:
             print("Grammar attach_exponent_map failed - invalid list of exponents {}".format(exponent_ids))
             return
 
+        # exponent attachment types in in sequential order
+        attachment_sequence = ('preposition', 'prefix', 'root', 'postfix', 'postposition')
+
         # keep word pieces accounting for possible positions and spacing
-        exponented_word_map = {
-            'root': deque([root]),
-            'prefix': deque(),
-            'postfix': deque(),
-            'preposition': deque(),
-            'postposition': deque(),
-        }
+        exponented_word_map = {attachment: deque() for attachment in attachment_sequence}
+        exponented_word_map['root'].append(root)
 
         # go through exponents and map them as prescribed in the exponent
         for exponent_id in exponent_ids:
@@ -1026,17 +1049,13 @@ class Grammar:
             # add to right of suffixes or postpositions collection
             post and exponented_word_map[post_key].append(spacing)
             post and exponented_word_map[post_key].append(post)
-
-        # turn the exponenting map into a sequence
-        exponented_word = []
-
-        # TODO: check that prefixing and postfixing yield the right sequence
-        #   - here consider whether creating morphosyntax slotting of properties is necessary
-        exponented_word = exponented_word_map['preposition'] +
-            exponented_word_map['prefix'] +
-            exponented_word_map['root'] +
-            exponented_word_map['postfix'] +
-            exponented_word_map['postposition']
+        
+        # TODO: here consider whether creating morphosyntax slotting of properties is necessary
+        
+        # turn the exponenting map into a flat sequence
+        exponented_word = [
+            piece for attachment in attachment_sequence for piece in exponented_word_map[attachment]
+        ]
 
         # return the sequence as a list or string
         if as_string:
