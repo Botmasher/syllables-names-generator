@@ -105,7 +105,7 @@ class Language:
         """Add a grammatical category and value affix with one hyphen and phonetic symbols"""
         # check that affix is composed entirely of known ipa and hyphen
         for symbol in affix_string:
-            if not (symbol == "-" or self.phonemes.has(symbol):
+            if not (symbol == "-" or self.phonemes.has(symbol)):
                 print("Language add_affix failed - unrecognized symbols in affix string {0}".format(affix_string))
                 return
         # break affix string
