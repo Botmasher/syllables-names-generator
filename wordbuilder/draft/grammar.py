@@ -659,18 +659,22 @@ class Grammar:
 
         return properties_map
 
-    def parse_properties(self, properties_text):
+    def parse_properties(self, properties_text, return_unrecognized=False):
         """Turn a string of grammatical terms into a map of properties"""
         # check the properties data structure
-        if type(properties_text) is not str:
+        if not isinstance(properties_text, str):
             print("Grammar failed to parse properties - expected a string not {0}".format(properties_text))
             return
 
         # create an ordered collection of grammatical terms
         unidentified_terms = re.split(r"\W+", properties_text)
-
-        # set up a map of matching properties and classes to fill out and return
+        
+        # map of matching properties to fill out and return
         parsed_properties = {}
+        
+        # collection of unparsed/unrecognized terms for optional return
+        # when a term is not matched to an existing category or a grammeme
+        unrecognized_terms = set()
 
         # flexibly store latest confirmed member of category:grammeme pairs
         # allowing category to lead, follow or be dropped from beside grammeme
@@ -721,6 +725,9 @@ class Grammar:
                     stranded_grammeme = matching_properties[0][1]
                     print("Adding {}:{}".format(stranded_category, stranded_grammeme))
                     parsed_properties.setdefault(stranded_category, set()).add(stranded_grammeme)
+                # collect unmatched term for optional return
+                else:
+                    unrecognized_terms.add(stranded_grammeme)
                 # reset for the next uncategorized grammeme
                 stranded_grammeme = None
 
@@ -740,30 +747,10 @@ class Grammar:
                     current_category = None
                     current_grammeme = None
 
-        # NOTE: think about the incoming data and how well you will parse cases
-        #
-        # (1) Consider shapes of strings expected to be parsed above:
-        #   "present tense indicative mood verb"
-        #   "tense: present, mood: indicative, verb"
-        #   "tense:pres mood:ind v"
-        #   "pres ind v"
-        #   "present tense indicative verb"
-        #   "v, present, indicative"
-        #   "pres-ind-v"
-        #   ""
-        #   "vpres"
-        #
-        # (2) Now resolve conflicts arising from flexibility:
-        #   - dropped category name: perfective aspect past verb
-        #   - two grammemes in a row: aspect:perfective past tense
-        #   - a grammeme-category category-grammeme: present tense mood indicative
-        #   - are these accounted for by the following heuristics?
-        #       - "if I am a grammeme and the thing after me is a grammeme, I must have a category"
-        #           - "if a category is before me, that is my category"
-        #           - "if no category is before me, assume (find) my category"
-        #       - "if I am a category, the thing to my right or my left must be a grammeme"
-        #       - "if I am a word class, I can be treated in isolation "
-
+        # deliver parsed properties map and unparsed terms collection
+        # optional unparsed intends to avoid exponenting words when all-or-nothing properties requested
+        if return_unrecognized:
+            return (parsed_properties, list(unrecognized_terms))
         return parsed_properties
 
     def parse_word_classes(self, word_classes):
@@ -825,7 +812,7 @@ class Grammar:
     #
     # - case 4: built word properties are empty
     #
-    def vet_build_word_classes(self, word_classes):
+    def vet_build_word_classes(self, word_classes, return_unrecognized=False):
         """Attempt to collect a set copying valid, known word classes from flexible input"""
         # collect word classes in a set
         if type(word_classes) in (list, tuple, set):
@@ -836,17 +823,20 @@ class Grammar:
         # unexpected word classes value supplied
         return
 
-    def vet_build_word_properties(self, properties):
+    def vet_build_word_properties(self, properties, return_unrecognized=False):
         """Attempt to map a copy of valid, known category grammemes from flexible property input"""
+        
+        # TODO: build out returning unrecognized properties in other properties
+
         # vet map for recognized categories and their grammemes
         if isinstance(properties, dict):
-            return self.filter_properties_map(properties)
+            return self.filter_properties_map(properties, return_unrecognized=return_unrecognized)
         # parse string of terms to collect known properties
         if isinstance(properties, str):
-            return self.parse_properties(properties)
+            return self.parse_properties(properties, return_unrecognized=return_unrecognized)
         # turn a list of grammemes into a map of guessed categories and grammemes
         if type(properties) in (list, tuple, set):
-            return self.map_uncategorized_properties(properties)
+            return self.map_uncategorized_properties(properties, return_unrecognized=return_unrecognized)
         # unexpected properties value given
         return
 
@@ -890,7 +880,7 @@ class Grammar:
         requested_word_classes = self.vet_build_word_classes(word_classes)
 
         # make usable properties map collecting valid and recognizable category:grammemes
-        requested_properties = self.vet_build_word_properties(properties)
+        requested_properties = self.vet_build_word_properties(properties, return_unrecognized=True)
 
         # dead end when did not turn up a good map of vetted properties
         if not self.is_properties_map(requested_properties):
@@ -1151,6 +1141,18 @@ print(added_exponent)
 # 3 - build demo words
 #word_1 = grammar.build_word("poiuyt", properties={'tense': 'past'})
 #print(word_1)
+
+# TODO: Flexible Parsing
+# Consider shapes of strings expected to be parsed:
+#   "present tense indicative mood verb"
+#   "tense: present, mood: indicative, verb"
+#   "tense:pres mood:ind v"
+#   "pres ind v"
+#   "present tense indicative verb"
+#   "v, present, indicative"
+#   "pres-ind-v"
+#   ""
+#   "vpres"
 
 # UNPROVIDABLE PROPERTIES
 
