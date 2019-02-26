@@ -1,6 +1,4 @@
 import unittest
-import inspect
-
 from wordbuilder.draft.grammar import Grammar
 
 ## test discovery through CLI from this dir or above:
@@ -11,14 +9,6 @@ def setUpModule():
 
 def tearDownModule():
     print("Shutting down the entire test module")
-
-# class StackInspector():
-#     def inspect_stack(self):
-#         """Log the current position in the test stack"""
-#         path_to_method = self.id().split(".")
-#         test_name = path_to_method[-2]
-#         method_name = path_to_method[-1]
-#         print("test: {}, method: {}".format(test_name, method_name))
 
 class GrammarFixture(unittest.TestCase):
     @classmethod
@@ -34,11 +24,7 @@ class GrammarFixture(unittest.TestCase):
         print("Tearing down a Grammar instance")
         this_class.grammar = None
     
-class GrammarDefaultValues(GrammarFixture):
-    def test_default_properties(self):
-        # self.inspect_stack()
-        self.assertEqual(self.grammar.properties, {}, "incorrect starting properties map")
-    
+class GrammarDefaultValues(GrammarFixture):    
     def test_default_word_classes(self):
         # self.inspect_stack()
         self.assertEqual(self.grammar.word_classes, {}, "incorrect starting word_classes map")
@@ -46,16 +32,27 @@ class GrammarDefaultValues(GrammarFixture):
     def test_default_exponents(self):
         self.assertEqual(self.grammar.exponents, {}, "incorrect starting exponents map")
 
-class GrammarAddTerms(GrammarFixture):
+class GrammarTestProperties(GrammarFixture):
+    def test_default_properties(self):
+        self.assertEqual(self.grammar.properties, {}, "incorrect starting properties map")
+
     def test_add_property(self):
         self.assertIsNotNone(
-            self.grammar.add_property(category="test_category", grammeme="test_grammeme"),
+            self.grammar.add_property(category="category_1", grammeme="grammeme_1"),
             "failed to add property category-grammeme pair"
+        )
+    
+    def test_add_remove_property(self):
+        self.grammar.add_property("category_2", "grammeme_2")
+        self.grammar.remove_property("category_2", "grammeme_2")
+        self.assertIsNone(
+            self.grammar.get_property("category_2", "grammeme_2"),
+            "failed to add and remove a property"
         )
 
     def test_get_property_existing(self):
         self.assertIsNotNone(
-            self.grammar.get_property(category="test_category", grammeme="test_grammeme"),
+            self.grammar.get_property(category="category_1", grammeme="grammeme_1"),
             "failed to get existing property"
         )
 
@@ -65,24 +62,36 @@ class GrammarAddTerms(GrammarFixture):
             "failed to handle getting nonexisting property"
         )
 
-    def test_get_property_attribute_blank(self):
-        self.assertTrue(
-            hasattr(self.grammar.get_property(category="test_category", grammeme="test_grammeme"), 'description'),
+    def test_get_property_attribute(self):
+        self.assertIsNone(
+            self.grammar.properties.get("category_1", {}).get("grammeme_1", {}).get('description'),
             "added property lacked description attribute"
         )
     
-    def test_update_property(self):
+    def test_update_property_attribute(self):
         self.assertEqual(
-            self.grammar.update_property("test_category", "test_grammeme", "test description")['description'],
+            self.grammar.update_property("category_1", "grammeme_1", "test description").get('description'),
             "test description",
             "failed to update description attribute of existing property "
         )
-    
-    def test_get_property_attribute(self):
+
+    def test_rename_property(self):
+        self.grammar.change_property_grammeme("category_1", "grammeme_1", "grammeme_recategorized")
         self.assertIsNotNone(
-            self.grammar.get_property(category="test_category", grammeme="test_grammeme")['description'],
-            "existing property lacked description attribute"
+            self.grammar.get_property("category_1, grammeme_recategorized"),
+            "failed to change the property grammeme name"
         )
+        self.grammar.change_property_grammeme("category_1", "grammeme_recategorized", "grammeme_1")
+    
+    def test_recategorize_property(self):
+        self.grammar.change_property_category("category_1", "grammeme_1", "category_recategorized")
+        self.assertIsNotNone(
+            self.grammar.get_property("category_recategorized", "grammeme_1"),
+            "failed to change the property category name"
+        )
+        self.grammar.change_property_category("category_recategorized", "grammeme_1", "category_1")
+    
+    # TODO: test property word classes include, include, change_property_category
 
 # ## Cases from Grammar instantiation and testing
 
