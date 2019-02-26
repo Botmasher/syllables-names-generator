@@ -96,16 +96,6 @@ class GrammarProperties(GrammarFixture):
             "failed to change the property category name"
         )
 
-# TODO: word classes
-#   - add_word_class
-#   - update_word_class
-#   - remove_word_class
-#   - check for removed exponent ids in property includes/excludes (name is fine since it's by id)
-
-# TODO: add word classes to property includes and excludes
-# - through setupclass? or in word classes test itself?
-# - test property word classes include, include, change_property_category
-
 class GrammarExponents(GrammarFixture):
     @classmethod
     def setUpClass(this_class):
@@ -213,6 +203,7 @@ class GrammarExponents(GrammarFixture):
         self.grammar.add_property("categorized_category", "categorized_grammeme")
         exponent_id = self.grammar.add_exponent(post="test_post", properties={'categorized_category': 'categorized_grammeme'})
         self.grammar.change_property_category("categorized_category", "categorized_grammeme", "recategorized_category")
+        print(self.grammar.exponents[exponent_id])
         self.assertIn(
             "recategorized_category",
             self.grammar.exponents.get(exponent_id, {}).get("properties", {}),
@@ -228,6 +219,33 @@ class GrammarExponents(GrammarFixture):
             self.grammar.exponents.get(exponent_id, {}).get("properties", {}).get("named_category", []),
             "failed to update changed property grammeme name within exponent details"
         )
+
+
+class GrammarWordClasses(GrammarFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(GrammarExponents, this_class).setUpClass()
+        this_class.grammar.add_property("exponent_category", "exponent_grammeme")
+    
+    def test_add_exponent(self):
+        exponent_id = self.grammar.add_exponent(pre="test_pre", post="test_post", bound=True, properties={
+            'exponent_category': 'exponent_grammeme'
+        })
+        self.assertIn(
+            exponent_id,
+            self.grammar.exponents,
+            "could not add one new exponent"
+        )
+
+# TODO: word classes
+#   - add_word_class
+#   - update_word_class
+#   - remove_word_class
+#   - check for removed exponent ids in property includes/excludes (name is fine since it's by id)
+
+# TODO: add word classes to property includes and excludes
+# - through setupclass? or in word classes test itself?
+# - test property word classes include, include, change_property_category
 
 # ## Cases from Grammar instantiation and testing
 
