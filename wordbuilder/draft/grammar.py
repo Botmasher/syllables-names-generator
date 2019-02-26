@@ -106,15 +106,19 @@ class Grammar:
             'name': name,
             'description': description
         }, value_check=lambda x: type(x) is str)
+        
         # rename the word class by removing the old entry and adding a new one
         if name != word_class:
             self.remove_word_class(word_class)
             self.word_classes[name] = word_class_details
+            # return the renamed word class details
+            return self.word_classes[name]
+        
         # replace the details for an existing entry
         else:
             self.word_classes[word_class] = word_class_details
-        # read the modified part of speech
-        return self.word_classes[word_class]
+            # read the modified part of speech
+            return self.word_classes[word_class]
 
     def remove_word_class(self, word_class):
         """Delete one word class from word classes map and exponents that reference it"""
@@ -123,7 +127,7 @@ class Grammar:
             return
         # delete part of speech from the word classes map
         removed_word_class = self.word_classes[word_class]
-        self.word_classes[word_class].pop(word_class)
+        self.word_classes.pop(word_class)
         # remove part of speech from all property grammeme entries that reference it
         for category in self.properties:
             for grammeme, grammeme_details in self.properties[category].items():
@@ -263,7 +267,7 @@ class Grammar:
         if not self.get_property(category, grammeme):
             print("Grammar add_property_word_class failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
             return
-        if not (include or exclude) or not (type(include) is str or type(exclude) is str):
+        if not (include or exclude) or not (isinstance(include, str) or isinstance(exclude, str)):
             print("Grammar add_property_word_class failed - expected at least one include or exclude string")
             return
 

@@ -80,14 +80,24 @@ class GrammarProperties(GrammarFixture):
             "did not find added category and grammeme using grammar find_properties"
         )
 
-    def test_rename_property(self):
-        self.grammar.add_property("name_category", "name_grammeme")
-        self.grammar.change_property_grammeme("name_category", "name_grammeme", "rename_grammeme")
+    def test_rename_property_grammeme(self):
+        self.grammar.add_property("rename_grammeme_category", "rename_grammeme_grammeme")
+        self.grammar.change_property_grammeme("rename_grammeme_category", "rename_grammeme_grammeme", "renamed_grammeme")
         self.assertIsNotNone(
-            self.grammar.get_property("name_category", "rename_grammeme"),
+            self.grammar.get_property("rename_grammeme_category", "renamed_grammeme"),
             "failed to change the property grammeme name"
         )
     
+    # TODO: create uuids to test created and updated names
+    def test_rename_property_category(self):
+        self.grammar.add_property("rename_category_category", "rename_category_grammeme")
+        self.grammar.change_property_grammeme("rename_category_category", "renamed_category")
+        self.assertEqual(
+            self.grammar.properties.get("renamed_category", {}).get("rename_category_grammeme", {}).get('category'),
+            "renamed_category",
+            "failed to change the name of a category"
+        )
+
     def test_recategorize_property(self):
         self.grammar.add_property("categorize_category", "categorize_grammeme")
         self.grammar.change_property_category("categorize_category", "categorize_grammeme", "recategorize_category")
@@ -203,14 +213,13 @@ class GrammarExponents(GrammarFixture):
         self.grammar.add_property("categorized_category", "categorized_grammeme")
         exponent_id = self.grammar.add_exponent(post="test_post", properties={'categorized_category': 'categorized_grammeme'})
         self.grammar.change_property_category("categorized_category", "categorized_grammeme", "recategorized_category")
-        print(self.grammar.exponents[exponent_id])
         self.assertIn(
             "recategorized_category",
             self.grammar.exponents.get(exponent_id, {}).get("properties", {}),
             "failed to update changed property category name within exponent details"
         )
 
-    def test_change_exponent_property_category(self):
+    def test_change_exponent_property_grammeme(self):
         self.grammar.add_property("named_category", "named_grammeme")
         exponent_id = self.grammar.add_exponent(post="test_post", properties={'named_category': 'named_grammeme'})
         self.grammar.change_property_grammeme("named_category", "named_grammeme", "renamed_grammeme")
@@ -224,28 +233,61 @@ class GrammarExponents(GrammarFixture):
 class GrammarWordClasses(GrammarFixture):
     @classmethod
     def setUpClass(this_class):
-        super(GrammarExponents, this_class).setUpClass()
+        super(GrammarWordClasses, this_class).setUpClass()
         this_class.grammar.add_property("exponent_category", "exponent_grammeme")
     
-    def test_add_exponent(self):
-        exponent_id = self.grammar.add_exponent(pre="test_pre", post="test_post", bound=True, properties={
-            'exponent_category': 'exponent_grammeme'
-        })
+    def test_add_word_class(self):
+        self.grammar.add_word_class("added_word_class")
         self.assertIn(
-            exponent_id,
-            self.grammar.exponents,
-            "could not add one new exponent"
+            "added_word_class",
+            self.grammar.word_classes,
+            "failed to add one new word class"
+        )
+    
+    def test_update_word_class(self):
+        self.grammar.add_word_class("updated_word_class")
+        self.grammar.update_word_class("updated_word_class", name="renamed_word_class")
+        self.assertIn(
+            "renamed_word_class",
+            self.grammar.word_classes,
+            "failed to update the name of an added word class"
         )
 
-# TODO: word classes
-#   - add_word_class
-#   - update_word_class
-#   - remove_word_class
-#   - check for removed exponent ids in property includes/excludes (name is fine since it's by id)
+    def test_remove_word_class(self):
+        self.grammar.add_word_class("removed_word_class")
+        self.assertIsNotNone(
+            self.grammar.remove_word_class("removed_word_class"),
+            "failed to remove added word class"
+        )
 
-# TODO: add word classes to property includes and excludes
-# - through setupclass? or in word classes test itself?
-# - test property word classes include, include, change_property_category
+    def test_add_word_class_to_property(self):
+        self.grammar.add_word_class("included_word_class")
+        self.grammar.add_property("added_pos_category", "added_pos_grammeme")
+        self.grammar.add_property_word_class(
+            "added_pos_category",
+            "added_pos_grammeme",
+            include="included_word_class"
+        )
+        self.assertIn(
+            "included_word_class",
+            self.grammar.properties['added_pos_category']['added_pos_grammeme']['include'],
+            "failed to add word class to a property's includes/excludes"
+        )
+    
+    def test_remove_word_class_from_property(self):
+        self.grammar.add_word_class("excluded_word_class")
+        self.grammar.add_property("removed_pos_category", "removed_pos_grammeme")
+        self.grammar.add_property_word_class(
+            "removed_pos_category",
+            "removed_pos_grammeme",
+            exclude="excluded_word_class"
+        )
+        self.assertNotIn(
+            "excluded_word_class",
+            self.grammar.properties['removed_pos_category']['removed_pos_grammeme']['exclude'],
+            "failed to delete removed word class from a property's includes/excludes"
+        )
+
 
 # ## Cases from Grammar instantiation and testing
 
