@@ -402,7 +402,7 @@ class Grammar:
     # }
     def add_exponent(self, pre="", post="", bound=True, properties=None):
         """Add one grammatical exponent to the grammar"""
-        if not ((pre or post) and (type(pre) is str and type(post) is str)):
+        if not ((pre or post) and (isinstance(pre, str) and isinstance(post, str))):
             print("Grammar add_exponent failed - expected pre or post exponent string")
             return
 
@@ -422,9 +422,8 @@ class Grammar:
             if category not in self.properties:
                 print("Grammar add_exponent failed - invalid grammatical category {0}".format(category))
                 return
-            exponent_properties[category] = set()
             # format a set for a single grammeme in one category, like past tense
-            if type(grammemes) is str:
+            if isinstance(grammemes, str):
                 if not self.get_property(category, grammemes):
                     print("Grammar add_exponent failed - invalid grammatical value {0}".format(grammemes))
                     return
@@ -435,7 +434,7 @@ class Grammar:
                 if not self.get_property(category, grammeme):
                     print("Grammar add_exponent failed - invalid grammatical value {0} in category {1}".format(grammeme, category))
                     return
-                exponent_properties[category].add(grammeme)
+                exponent_properties.setdefault(category, set()).add(grammeme)
 
         # store exponent details
         exponent_id = "grammatical-exponent-{0}".format(uuid.uuid4())
@@ -450,7 +449,7 @@ class Grammar:
 
     def add_exponents(self, exponents_details):
         """Add a list of grammatical exponents with properties"""
-        if type(exponents_details) is not list:
+        if not isinstance(exponents_details, list):
             print("Grammar add_exponents failed - invalid list of exponents {0}".format(exponents_details))
             return
         # prepare to store ids of created exponents
