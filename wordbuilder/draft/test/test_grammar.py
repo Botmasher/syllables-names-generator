@@ -5,10 +5,10 @@ from wordbuilder.draft.grammar import Grammar
 ## `python3 -m unittest discover -v -p "test_*"`
 
 def setUpModule():
-    print("Setting up the entire test module")
+    print("Setting up the Grammar test module")
 
 def tearDownModule():
-    print("Shutting down the entire test module")
+    print("Shutting down the Grammar test module")
 
 class GrammarFixture(unittest.TestCase):
     @classmethod
@@ -39,6 +39,28 @@ class GrammarProperties(GrammarFixture):
         self.assertIsNotNone(
             self.grammar.add_property(category="added_category", grammeme="added_grammeme"),
             "failed to add property category-grammeme pair"
+        )
+    
+    # TODO: add property various ways (dict, defaultdict, list)
+    def test_add_property_none(self):
+        self.assertIsNone(
+            self.grammar.add_property(category="added_category", grammeme=None),
+            "incorrect handling of adding new property with missing grammeme"
+        )
+
+    def test_add_properties(self):
+        added_properties = self.grammar.add_properties({
+            'added_categories': 'added_grammemes_0',
+            'added_categories': ('added_grammemes_1', 'added_grammemes_2')
+        })
+        added_properties = list(filter(
+            lambda x: isinstance(x, dict) and 'grammeme' in x,
+            added_properties
+        ))
+        self.assertEqual(
+            len(added_properties),
+            3,
+            "could not add multiple properties"
         )
     
     def test_add_remove_property(self):
@@ -229,7 +251,6 @@ class GrammarExponents(GrammarFixture):
             "failed to update changed property grammeme name within exponent details"
         )
 
-
 class GrammarWordClasses(GrammarFixture):
     @classmethod
     def setUpClass(this_class):
@@ -288,60 +309,142 @@ class GrammarWordClasses(GrammarFixture):
             "failed to delete removed word class from a property's includes/excludes"
         )
 
+#TODO: test add_property and add_property_word_class to see if include-exclude sets can be added to/updated (word class name updated)/removed from
+class GrammarBuildWords(GrammarFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(GrammarBuildWords, this_class).setUpClass()
+        # add a word class
+        this_class.grammar.add_word_class("noun")
+        # add basic properties
+        this_class.grammar.add_property("category", "grammeme")
+        this_class.grammar.add_property("category", "grammeme_noun", include="noun")
+        this_class.grammar.add_property("category", "grammeme_verb", exclude="noun")
+        this_class.grammar.add_property("category", "nonexponented_grammeme")
+        # add basic exponents
+        this_class.grammar.add_exponent(post="-verb", properties={'category': 'grammeme_verb'}, bound=True)
+        this_class.grammar.add_exponent(pre="noun-", properties={'category': 'grammeme_noun'}, bound=True)
+        this_class.grammar.add_exponent(pre="nounish", properties={'category': ['grammeme', 'grammeme_noun']}, bound=False)
+        this_class.grammar.add_exponent(pre="circum-", post="-fix", properties={'category': 'grammeme'}, bound=True)
+
+    def test_build_unit(self):
+        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme_verb'})
+        self.assertEqual(
+            unit,
+            "baseword-verb",
+            "failed to build grammatical unit using a simple exponent providing one property"
+        )
+
+    def test_build_unit_parsed(self):
+        unit = self.grammar.build_unit("baseword", properties='category grammeme_verb')
+        self.assertEqual(
+            unit,
+            "baseword-verb",
+            "failed to build grammatical unit using a simple parsed properties string"
+        )
+    
+    def test_build_unit_parsed_uncategorized(self):
+        unit = self.grammar.build_unit("baseword", properties="grammeme grammeme_noun", word_classes="noun")
+        self.assertEqual(
+            unit,
+            "nounish baseword",
+            "failed to build grammatical unit using a parsed properties string with missing category but valid grammemes"
+        )
+    
+    def test_build_unit_parsed_postcategorized(self):
+        unit = self.grammar.build_unit("baseword", properties='grammeme_noun category grammeme category', word_classes="noun")
+        self.assertEqual(
+            unit,
+            "nounish baseword",
+            "failed to build grammatical unit using a parsed properties string where the category follows the grammeme"
+        )
+
+    def test_build_unit_parsed_messy(self):
+        unit = self.grammar.build_unit("baseword", properties='   ἄβγδ  grammeme :  grammeme_noun , category   , something  else too     ', word_classes="noun")
+        self.assertEqual(
+            unit,
+            "nounish baseword",
+            "failed to build grammatical unit using a messy parsed properties string with extra content, whitespace and special characters"
+        )
+
+    def test_build_unit_excluded_word_class(self):
+        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme_verb'}, word_classes="noun")
+        self.assertEqual(
+            unit,
+            "baseword",
+            "failed to handle building a grammatical unit requesting a property and a word class excluded by the provided property"
+        )
+
+    def test_build_unit_multiproperty_exponent(self):
+        unit = self.grammar.build_unit("baseword", properties={'category': ['grammeme', 'grammeme_noun']}, word_classes="noun")
+        self.assertEqual(
+            unit,
+            "nounish baseword",
+            "failed to build grammatical unit using a single exponent providing multiple properties"
+        )
+
+    def test_build_unit_circumfix(self):
+        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme'})
+        self.assertEqual(
+            unit,
+            "circum-baseword-fix",
+            "could not build grammatical unit with material both before and after the base"
+        )
+
+    def test_build_unit_existing_property_nonexisting_exponent(self):
+        unit = self.grammar.build_unit("baseword", properties={'category': 'nonexponented_grammeme'})
+        self.assertEqual(
+            unit,
+            "baseword",
+            "did not handle building grammatical unit using existing property associated with no existing exponent"
+        )
+
+    def test_build_unit_nonexisting_property(self):
+        unit = self.grammar.build_unit("baseword", properties={'noncategory': 'nongrammeme'})
+        self.assertIsNone(
+            unit,
+            "did not handle avoiding building grammatical unit using nonexistent property"
+        )
+
+    
+    # TODO: test with included/excluded word classes
+
+    # # NOTE: fourth case, where existing exponent provides nonexisting property, covered in exponent and build word filters
+    # # - test this though!
+
+    # # build word with nonexisting property, which is not provided by any exponent
+    # # - skip unrecognized properties (previously expected to )
+    # # - CASE: no property exists for antipassive voice
+    # #word_2a = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative antipassive')
+    # word_2a = grammar.build_word("poiuyt", properties={
+    #     'tense': ['present', 'past'],
+    #     'mood': 'indicative'
+    # })
+    # print(word_2a)
+
+    # # build word with existing property but no exponent providing that property
+    # # - fail to build if not all properties provided (when all_or_none is True)
+    # # - CASE: no exponent exists for passive voice
+    # word_2b = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative passive')
+    # print(word_2b)
+    # word_2c = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative passive', all_or_none=True)
+    # print(word_2c)
+
+    # # build word with unprovidable property removed
+    # # - CASE: exponents exist to provide all requested properties
+    # word_2d = grammar.build_word("poiuyt", properties='present tense past tense indicative mood')
+    # print(word_2d)
+
+    # #word_4 = grammar.build_word("kuxuf", properties='mood:indicative past indicative')
+    # #print(word_4)
+
 
 # ## Cases from Grammar instantiation and testing
 
-# # 1 - build properties
-# grammar = Grammar()
-
-# # expect grammar to add individually
 # # TODO: ignore capitalization
 
-# grammar.add_word_class("verb")
-# grammar.add_property(category="tense", grammeme="past")
-# grammar.add_property(category="tense", grammeme="present")
-# grammar.add_property(category="mood", grammeme="indicative")
-# added_property = grammar.add_property(category="mood", grammeme="interrogative")
-# print(added_property)
-
-# # expect grammar to add all
-
-# # grammar.add_property("voice", "active")
-# # grammar.add_property("voice", "passive")
-# added_properties = grammar.add_properties({
-#     'voice': ["active", "passive"]
-# })
-# print(added_properties)
-
-# # negative tests - expect grammar to detect issue, avoid adding and return None
-# #grammar.add_properties([])
-# #grammar.add_properties([{}])
-# #grammar.add_properties(['chocolate'])
-# #grammar.add_properties([{'name': "xyz", 'favorites': 0}])
-# #grammar.add_properties([{'favorites': 0}])
-
-# print("Found property with grammeme 'past': ", grammar.find_properties(grammeme="past"))
-# print("Found property with category 'tense': ", grammar.find_properties(category="tense"))
-# print("Found property with category 'voice': ", grammar.find_properties(category="voice"))
-# print("Found property with category 'emotion': ", grammar.find_properties(category="emotion"))
 # # TODO: implement more robust search incl description and included/excluded classes
 # #   - also use those include/excludes to test building words with requested recognized/unrecognized/mixed word classes
-
-# # 2 - build exponents
-# added_exponent = grammar.add_exponent(post="past", bound=True, properties={'tense': 'past'})
-# added_exponent = grammar.add_exponent(pre="pres", post="ent", bound=False, properties={'tense': 'present'})
-# added_exponent = grammar.add_exponent(pre="indi", post="cative", bound=False, properties={'mood': 'indicative'})
-# # added_exponents = grammar.add_exponents([
-# #     {'post': "l", 'bound': True, 'properties': {}}
-# # ])
-# print("Added exponent: ", added_exponent)
-# #grammar.add_exponent(properties=["noun", "deixis", "proximal"])
-# #grammar.add_exponent(pre=[], post=[], properties=[])
-# #grammar.add_exponent(pre="", post="", properties=[])
-
-# # 3 - build demo words
-# #word_1 = grammar.build_word("poiuyt", properties={'tense': 'past'})
-# #print(word_1)
 
 # # TODO: Flexible Parsing
 # # Consider shapes of strings expected to be parsed:
@@ -370,35 +473,3 @@ class GrammarWordClasses(GrammarFixture):
 # #   - example: word is ['verb', 'past', 'tense'] but affixes are ['verb', 'finite'] and ['past', 'tense']
 # #
 # # - case 4: built word properties are empty
-
-
-# # UNPROVIDABLE PROPERTIES
-# #
-# # NOTE: fourth case, where existing exponent provides nonexisting property, covered in exponent and build word filters
-# # - test this though!
-
-# # build word with nonexisting property, which is not provided by any exponent
-# # - skip unrecognized properties (previously expected to )
-# # - CASE: no property exists for antipassive voice
-# #word_2a = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative antipassive')
-# word_2a = grammar.build_word("poiuyt", properties={
-#     'tense': ['present', 'past'],
-#     'mood': 'indicative'
-# })
-# print(word_2a)
-
-# # build word with existing property but no exponent providing that property
-# # - fail to build if not all properties provided (when all_or_none is True)
-# # - CASE: no exponent exists for passive voice
-# word_2b = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative passive')
-# print(word_2b)
-# word_2c = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative passive', all_or_none=True)
-# print(word_2c)
-
-# # build word with unprovidable property removed
-# # - CASE: exponents exist to provide all requested properties
-# word_2d = grammar.build_word("poiuyt", properties='present tense past tense indicative mood')
-# print(word_2d)
-
-# #word_4 = grammar.build_word("kuxuf", properties='mood:indicative past indicative')
-# #print(word_4)

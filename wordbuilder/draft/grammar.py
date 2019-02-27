@@ -138,26 +138,31 @@ class Grammar:
         # return deleted details
         return removed_word_class
 
+    def filter_word_classes_set(self, word_classes):
+        """Create a set of valid word classes from a single string or collection of strings"""
+        # no word classes or empty collection passed
+        if not word_classes:
+            return set()
+        # wrap a single string in a list for filtering set
+        if isinstance(word_classes, str):
+            word_classes = [word_classes]
+        # create recognized set of word classes from collection
+        return set(filter(lambda x: x in self.word_classes, word_classes))
+
     def get_property(self, category=None, grammeme=None):
         """Read one grammatical value from one category in the grammar"""
         return self.properties.get(category, {}).get(grammeme, None)
 
-    def add_property(self, category=None, grammeme=None, description=None, include=[], exclude=[]):
+    def add_property(self, category=None, grammeme=None, description=None, include=None, exclude=None):
         """Add one grammatical value to an existing category in the grammar"""
-        if not (category and grammeme and type(category) is str and type(grammeme) is str):
+        if not (category and grammeme and isinstance(category, str) and isinstance(grammeme, str)):
             print("Grammar add_property failed - expected category and grammeme to be non-empty strings")
             return
 
         # collect valid word classes to include or exclude when property is applied
         # TODO: also allow including or excluding other categories or grammemes
-        included_word_classes = {
-            word_class for word_class in exclude
-            if word_class in self.word_classes
-        }
-        excluded_word_classes = {
-            word_class for word_class in include
-            if word_class in self.word_classes
-        }
+        included_word_classes = self.filter_word_classes_set(include)
+        excluded_word_classes = self.filter_word_classes_set(exclude)
 
         # back out if property category:grammeme pair already exists
         if grammeme in self.properties.get(category, []):
@@ -178,7 +183,7 @@ class Grammar:
 
     def add_properties(self, properties_details):
         """Add a map of grammatical values within categories to the grammar"""
-        if type(properties_details) is not dict:
+        if not isinstance(properties_details, dict):
             print("Grammar add_properties failed - invalid properties map {0}".format(properties_details))
             return
         # store each new grammatical value added to the grammar
@@ -215,7 +220,7 @@ class Grammar:
                 if type(grammeme) is str:
                     added_property = self.add_property(category=category, grammeme=grammeme)
                 # expect any non-strings to be maps of grammeme details
-                elif type(grammeme) is not dict or 'grammeme' not in grammeme:
+                elif not isinstance(grammeme, dict) or 'grammeme' not in grammeme:
                     print("Grammar add_properties skipped {0}:{1} - expected a map with a 'grammeme' key".format(category, grammeme))
                     continue
                 # create a fuller grammeme entry from a map with supplied attributes
@@ -590,7 +595,10 @@ class Grammar:
         
         # vet every single grammeme within every property category
         for category in properties:
-            # verify paralleled structure of nested collections inside map
+            # verify category exists in the grammatical properties
+            if category not in self.properties:
+                return False
+            # verify paralleled structure of nested grammemes under category
             for grammeme in self.properties[category]:
                 # check against properties stored in the grammar
                 if not self.get_property(category, grammeme):
@@ -632,11 +640,11 @@ class Grammar:
 
         return filtered_map
 
-    def filter_word_classes_set(self, word_classes=[]):
+    def vet_word_classes(self, word_classes):
         """Return a copy of a word classes collection filtered to hold only verified parts of speech"""
         # check word classes structure
-        if type(word_classes) not in (list, set, tuple):
-            print("Grammar filter_word_classes_set failed - invalid word classes collection {0}".format(word_classes))
+        if not isinstance(word_classes, (list, set, tuple)):
+            print("Grammar vet_word_classes failed - invalid word classes collection {0}".format(word_classes))
             return
 
         # build and return a set containing recognized word classes
@@ -791,13 +799,13 @@ class Grammar:
     # Method Group E: Build methods
 
     def vet_build_word_classes(self, word_classes, return_unrecognized=False):
-        """Attempt to collect a set copying valid, known word classes from flexible input"""
+        """Attempt to collect a set copying known word classes from a collection or a parsable string"""
         # collect word classes in a set
-        if type(word_classes) in (list, tuple, set):
-            return self.filter_word_classes_set(word_classes)  # NOTE: returns set or void
+        if isinstance(word_classes, (list, tuple, set)):
+            return self.vet_word_classes(word_classes)      # NOTE: expect returned set
         # break down the string and analyze classes into a set
         if isinstance(word_classes, str):
-            return self.parse_word_classes(word_classes)       # NOTE: returns set or void
+            return self.parse_word_classes(word_classes)    # NOTE: expect set or None
         # unexpected word classes value supplied
         return
 
@@ -841,8 +849,8 @@ class Grammar:
         return True
 
     # the main public method for making use of data stored in the grammar
-    def build_word(self, root, properties=[], word_classes=None, all_or_none=False):
-        """Build up relevant morphology using the given grammatical terms"""
+    def build_unit(self, root, properties=[], word_classes=None, all_or_none=False):
+        """Build up relevant morphosyntax around a base using the given grammatical terms"""
         # TODO: better docstring particularly for this method
 
         # verify that a root word is given
