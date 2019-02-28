@@ -849,7 +849,7 @@ class Grammar:
         return True
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, root, properties=[], word_classes=None, all_or_none=False):
+    def build_unit(self, root, properties=None, word_classes=None, all_or_none=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms"""
         # TODO: better docstring particularly for this method
 
@@ -909,7 +909,7 @@ class Grammar:
                         mismatched_word_classes = True
                         break
                     # pass over exponent based on word classes expected to be excluded
-                    if grammeme_excludes and (not requested_word_classes or requested_word_classes.issubset(grammeme_excludes)):
+                    if grammeme_excludes and requested_word_classes and requested_word_classes.issubset(grammeme_excludes):
                         mismatched_word_classes = True
                         break
 
@@ -1062,3 +1062,30 @@ class Grammar:
             return "".join(exponented_word)
         else:
             return exponented_word
+
+
+# DEMO - see spec tests
+grammar = Grammar()
+grammar.add_word_class("noun")
+# add basic properties
+grammar.add_property("category", "grammeme")
+grammar.add_property("category", "grammeme_noun", include="noun")
+grammar.add_property("category", "grammeme_verb", exclude="noun")
+grammar.add_property("category", "nonexponented_grammeme")
+# add basic exponents
+grammar.add_exponent(post="-verb", properties={'category': 'grammeme_verb'}, bound=True)
+grammar.add_exponent(pre="noun-", properties={'category': 'grammeme_noun'}, bound=True)
+grammar.add_exponent(pre="nounish", properties={'category': ['grammeme', 'grammeme_noun']}, bound=False)
+grammar.add_exponent(pre="circum-", post="-fix", properties={'category': 'grammeme'}, bound=True)
+
+unit_basic = grammar.build_unit("baseword", properties={'category': 'grammeme_verb'})
+print(unit_basic)
+
+unit_circumfix = grammar.build_unit("baseword", properties={'category': 'grammeme'})
+print(unit_circumfix)
+
+unit_include = grammar.build_unit("baseword", properties={'category': 'grammeme_noun'}, word_classes="noun")
+print(unit_include)
+
+unit_multiple = grammar.build_unit("baseword", properties={'category': ['grammeme_noun', 'grammeme']}, word_classes="noun")
+print(unit_multiple)

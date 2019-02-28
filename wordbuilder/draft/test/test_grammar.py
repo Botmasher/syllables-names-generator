@@ -303,6 +303,7 @@ class GrammarWordClasses(GrammarFixture):
             "removed_pos_grammeme",
             exclude="excluded_word_class"
         )
+        self.grammar.remove_word_class("excluded_word_class")
         self.assertNotIn(
             "excluded_word_class",
             self.grammar.properties['removed_pos_category']['removed_pos_grammeme']['exclude'],
