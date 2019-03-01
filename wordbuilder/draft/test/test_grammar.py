@@ -100,31 +100,33 @@ class GrammarProperties(GrammarFixture):
             ("find_category", "find_grammeme"),
             "did not find added category and grammeme using grammar find_properties"
         )
-
-    def test_rename_property_grammeme(self):
-        self.grammar.add_property("rename_grammeme_category", "rename_grammeme_grammeme")
-        self.grammar.change_property_grammeme("rename_grammeme_category", "rename_grammeme_grammeme", "renamed_grammeme")
-        self.assertIsNotNone(
-            self.grammar.get_property("rename_grammeme_category", "renamed_grammeme"),
-            "failed to change the property grammeme name"
-        )
     
     # TODO: create uuids to test created and updated names
+    #   - avoid potential conflicts from using such similar manual names across properties tests
+    #   - test properties within exponents
     def test_rename_property_category(self):
         self.grammar.add_property("rename_category_category", "rename_category_grammeme")
-        self.grammar.change_property_grammeme("rename_category_category", "renamed_category")
+        self.grammar.rename_property_category("rename_category_category", "renamed_category")
         self.assertEqual(
             self.grammar.properties.get("renamed_category", {}).get("rename_category_grammeme", {}).get('category'),
             "renamed_category",
             "failed to change the name of a category"
         )
-
-    def test_recategorize_property(self):
+    
+    def test_rename_property_grammeme(self):
+        self.grammar.add_property("rename_grammeme_category", "rename_grammeme_grammeme")
+        self.grammar.rename_property_grammeme("rename_grammeme_category", "rename_grammeme_grammeme", "renamed_grammeme")
+        self.assertIsNotNone(
+            self.grammar.get_property("rename_grammeme_category", "renamed_grammeme"),
+            "failed to change the property grammeme name"
+        )
+    
+    def test_recategorize_property_grammeme(self):
         self.grammar.add_property("categorize_category", "categorize_grammeme")
-        self.grammar.change_property_category("categorize_category", "categorize_grammeme", "recategorize_category")
+        self.grammar.change_property_grammeme_category("categorize_category", "categorize_grammeme", "recategorize_category")
         self.assertIsNotNone(
             self.grammar.get_property("recategorize_category", "categorize_grammeme"),
-            "failed to change the property category name"
+            "failed to change the property grammeme's parent category"
         )
 
 class GrammarExponents(GrammarFixture):
@@ -233,7 +235,7 @@ class GrammarExponents(GrammarFixture):
     def test_change_exponent_property_category(self):
         self.grammar.add_property("categorized_category", "categorized_grammeme")
         exponent_id = self.grammar.add_exponent(post="test_post", properties={'categorized_category': 'categorized_grammeme'})
-        self.grammar.change_property_category("categorized_category", "categorized_grammeme", "recategorized_category")
+        self.grammar.change_property_grammeme_category("categorized_category", "categorized_grammeme", "recategorized_category")
         self.assertIn(
             "recategorized_category",
             self.grammar.exponents.get(exponent_id, {}).get("properties", {}),
@@ -243,7 +245,7 @@ class GrammarExponents(GrammarFixture):
     def test_change_exponent_property_grammeme(self):
         self.grammar.add_property("named_category", "named_grammeme")
         exponent_id = self.grammar.add_exponent(post="test_post", properties={'named_category': 'named_grammeme'})
-        self.grammar.change_property_grammeme("named_category", "named_grammeme", "renamed_grammeme")
+        self.grammar.rename_property_grammeme("named_category", "named_grammeme", "renamed_grammeme")
         self.assertIn(
             "renamed_grammeme",
             self.grammar.exponents.get(exponent_id, {}).get("properties", {}).get("named_category", []),
