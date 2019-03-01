@@ -711,21 +711,22 @@ class Grammar:
             #   - the last term was a category, the current term may be a grammeme
             #   - the last term was a grammeme, the current term may be a grammeme
             else:
+                print(current_category, i, len(unidentified_terms)-1)
                 # hold over uncategorized grammeme to find it an explicit category
                 # if two as-yet uncategorized grammemes collide
                 if not current_category and current_grammeme:
-                    stranded_grammeme = current_grammeme
-                # hold over a final uncategorized term to 
-                elif not current_category and i >= len(unidentified_terms) - 1:
-                    stranded_grammeme = term
+                    # hold over an uncategorized grammeme in the middle
+                    stranded_grammeme = current_grammeme 
                 # reassign grammeme to whatever the current term is
                 current_grammeme = term
 
             # guess previously identified grammeme left unassociated with any explicit category
             if stranded_grammeme:
+                print("Found stranded grammeme {}".format(stranded_grammeme))
                 # find the property by its grammeme name only
                 matching_properties = self.find_properties(grammeme=stranded_grammeme)
                 # create an entry using the first identified category and its grammeme
+                print ("Matching property for {0}".format(stranded_grammeme))
                 if matching_properties:
                     # found properties hold paired category, grammeme tuples
                     stranded_category = matching_properties[0][0]
@@ -735,7 +736,16 @@ class Grammar:
                 stranded_grammeme = None
 
             # empty current category and grammeme into map if both are identified
-            if current_category and current_grammeme:
+            # or if final term in list is an uncategorized grammeme
+            if current_grammeme and (current_category or i >= len(unidentified_terms) - 1):
+                # catch final uncategorized term - handled here instead of as a stranded grammeme
+                # case: penultimate and final terms are both uncategorized grammemes
+                if not current_category:
+                    matching_properties = self.find_properties(grammeme=current_grammeme)
+                    if not matching_properties:
+                        break
+                    current_category = matching_properties[0][0]
+
                 # check that suspected but unverified grammeme is valid
                 # NOTE: check held off until here because grammeme term may be found before or after its parent category
                 if current_grammeme not in self.properties[current_category]:
@@ -1089,3 +1099,6 @@ print(unit_include)
 
 unit_multiple = grammar.build_unit("baseword", properties={'category': ['grammeme_noun', 'grammeme']}, word_classes="noun")
 print(unit_multiple)
+
+unit_parsed_uncategorized = grammar.build_unit("baseword", properties="grammeme grammeme_noun", word_classes="noun")
+print(unit_parsed_uncategorized)

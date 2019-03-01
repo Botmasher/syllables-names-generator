@@ -50,7 +50,6 @@ class GrammarProperties(GrammarFixture):
 
     def test_add_properties(self):
         added_properties = self.grammar.add_properties({
-            'added_categories': 'added_grammemes_0',
             'added_categories': ('added_grammemes_1', 'added_grammemes_2')
         })
         added_properties = list(filter(
@@ -59,7 +58,7 @@ class GrammarProperties(GrammarFixture):
         ))
         self.assertEqual(
             len(added_properties),
-            3,
+            2,
             "could not add multiple properties"
         )
     
