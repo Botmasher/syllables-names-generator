@@ -86,7 +86,7 @@ class Grammar:
     def add_word_class(self, word_class, description=None):
         """Add one word class or part of speech to the grammar"""
         if word_class in self.word_classes:
-            print("Grammar add_word_class skipped {0} - word class already exists".format(word_class))
+            print("Grammar add_word_class skipped already existing word class {}".format(word_class))
             return
         # create a new entry for the part of speech
         self.word_classes[word_class] = {
@@ -95,6 +95,17 @@ class Grammar:
         }
         # read the created part of speech
         return self.word_classes[word_class]
+
+    def add_word_classes(self, word_classes):
+        """Add multiple parts of speech to the grammar"""
+        # check for a collection of word classes
+        if not isinstance (word_classes, (list, tuple, set)):
+            print("Grammar add_word_classes failed - expected collection not {}".format(word_classes))
+            return
+        # comprehensively create parts of speech and return successful entries
+        results = [self.add_word_class(word_class) for word_class in word_classes]
+        added_word_classes = list(filter(lambda x: x, results))
+        return added_word_classes
 
     def update_word_class(self, word_class, name=None, description=None):
         """Modify the details of a single word class"""
@@ -194,6 +205,7 @@ class Grammar:
         #       # pass a map full of the new property's attributes
         #       {
         #           # required name (also doubles as its unique id)
+        #           'category': str,
         #           'grammeme': str,
         #           # optional attributes
         #           'description': str,
@@ -210,9 +222,15 @@ class Grammar:
         for category, grammemes in properties_details.items():
             # NOTE: do not skip unknown category or grammeme - both can be added
             # expect each category to contain a collection of entries
-            if type(grammemes) not in (list, tuple, set):
+            if not isinstance(grammemes, (str, list, tuple, dict, set)):
                 print("Grammar add_properties skipped category {0} - invalid grammemes collection {1}".format(category, grammemes))
                 continue
+            
+            # TODO: flexible input including string - outline how to handle this and other types (incl dict)
+            if isinstance(grammemes, str):
+                self.add_property(category, grammemes)
+                continue
+            
             # go through category:grammemes and add each valid pair
             for grammeme in grammemes:
                 # create a new grammeme passing along only its category name and grammeme name
@@ -227,10 +245,11 @@ class Grammar:
                 else:
                     # create a bare entry with defaults to underlay missing details
                     default_details = {
+                        'category': category,
                         'grammeme': grammeme,
                         'description': None,
-                        'include': [],
-                        'exclude': []
+                        'include': set(),
+                        'exclude': set()
                     }
                     # pass grammeme to create along with optional attributes
                     # filter grammeme keys to restrict them to known properties attributes
@@ -760,11 +779,9 @@ class Grammar:
 
             # guess previously identified grammeme left unassociated with any explicit category
             if stranded_grammeme:
-                print("Found stranded grammeme {}".format(stranded_grammeme))
                 # find the property by its grammeme name only
                 matching_properties = self.find_properties(grammeme=stranded_grammeme)
                 # create an entry using the first identified category and its grammeme
-                print ("Matching property for {0}".format(stranded_grammeme))
                 if matching_properties:
                     # found properties hold paired category, grammeme tuples
                     stranded_category = matching_properties[0][0]
@@ -1112,31 +1129,25 @@ class Grammar:
             return exponented_word
 
 
-# DEMO - see spec tests
+# DEMO - intuitive buildout of words
 grammar = Grammar()
-grammar.add_word_class("noun")
+grammar.add_word_class("noun", "verb")
 # add basic properties
-grammar.add_property("category", "grammeme")
-grammar.add_property("category", "grammeme_noun", include="noun")
-grammar.add_property("category", "grammeme_verb", exclude="noun")
-grammar.add_property("category", "nonexponented_grammeme")
+grammar.add_properties({
+    'tense': ["present", "past", "future"],
+    'aspect': ["perfective", "imperfective"],
+    'number': ["singular", "plural"],
+    'case': ["nominative", "oblique"]
+})
+grammar.add_property_word_class("tense", "present", include="verb")
+grammar.add_property_word_class("number", "singular")
+# TODO: should word classing actually be handled by exponent (switch back)?
+# - make the property available for multiple; it's the exponent that gets attached
+# - case: EN -s for pl n, -s for 3p sing v
+
 # add basic exponents
-grammar.add_exponent(post="-verb", properties={'category': 'grammeme_verb'}, bound=True)
-grammar.add_exponent(pre="noun-", properties={'category': 'grammeme_noun'}, bound=True)
-grammar.add_exponent(pre="nounish", properties={'category': ['grammeme', 'grammeme_noun']}, bound=False)
-grammar.add_exponent(pre="circum-", post="-fix", properties={'category': 'grammeme'}, bound=True)
+grammar.add_exponent(post="s", properties={"case": "nominative", "number": "plural"}, bound=True)
 
-unit_basic = grammar.build_unit("baseword", properties={'category': 'grammeme_verb'})
-print(unit_basic)
-
-unit_circumfix = grammar.build_unit("baseword", properties={'category': 'grammeme'})
-print(unit_circumfix)
-
-unit_include = grammar.build_unit("baseword", properties={'category': 'grammeme_noun'}, word_classes="noun")
-print(unit_include)
-
-unit_multiple = grammar.build_unit("baseword", properties={'category': ['grammeme_noun', 'grammeme']}, word_classes="noun")
-print(unit_multiple)
-
-unit_parsed_uncategorized = grammar.build_unit("baseword", properties="grammeme grammeme_noun", word_classes="noun")
-print(unit_parsed_uncategorized)
+singular_noun = grammar.build_unit("house", properties="nominative singular")
+plural_noun = grammar.build_unit("house", properties="nominative plural")
+print(singular_noun, plural_noun)

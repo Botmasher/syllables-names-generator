@@ -103,7 +103,6 @@ class GrammarProperties(GrammarFixture):
     
     # TODO: create uuids to test created and updated names
     #   - avoid potential conflicts from using such similar manual names across properties tests
-    #   - test properties within exponents
     def test_rename_property_category(self):
         self.grammar.add_property("rename_category_category", "rename_category_grammeme")
         self.grammar.rename_property_category("rename_category_category", "renamed_category")
