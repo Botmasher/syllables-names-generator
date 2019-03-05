@@ -4,6 +4,9 @@ import math         # for allowing finds to break at user-defined count or data 
 from collections import deque           # for building pre- and post-exponented word pieces lists
 from functional_maps import merge_maps  # for finding uncategorized grammemes
 
+# TODO: break out components from original draft Grammar
+from word_classes import WordClasses
+
 # NOTE: Grammar relates grammatical exponents <> grammatical properties
 # - exponents are phones of affixes, adpositions, particles, pre or post a base
 # - properties are categories, grammemes
@@ -26,8 +29,8 @@ from functional_maps import merge_maps  # for finding uncategorized grammemes
 
 class Grammar:
     def __init__(self):
-        # word classes used to include or exclude words for exponents
-        self.word_classes = set()
+        # word classes provide exponent parts of speech
+        self.word_classes = WordClasses()
         # map of category, grammatical value pairs with details for each value
         # store properties map containing {category: {grammemes: details}}
         self.properties = {}
@@ -42,67 +45,6 @@ class Grammar:
         self.abbreviations = {}
     
     # Method group A: Core CRUD for mapping properties, word classes and exponents
-
-    def add_word_class(self, word_class):
-        """Add one word class or part of speech to the grammar"""
-        if word_class in self.word_classes:
-            print("Grammar add_word_class skipped already existing word class {}".format(word_class))
-            return
-        # create a new entry for the part of speech
-        self.word_classes.add(word_class)
-        # read the created part of speech
-        return self.word_classes
-
-    def add_word_classes(self, word_classes):
-        """Add multiple parts of speech to the grammar"""
-        # check for a collection of word classes
-        if not isinstance (word_classes, (list, tuple, set)):
-            print("Grammar add_word_classes failed - expected collection not {}".format(word_classes))
-            return
-        # comprehensively create parts of speech and return successful entries
-        results = [self.add_word_class(word_class) for word_class in word_classes]
-        added_word_classes = list(filter(lambda x: x, results))
-        return added_word_classes
-
-    def update_word_class(self, word_class, name=None):
-        """Modify the details of a single word class"""
-        if word_class not in self.word_classes:
-            print("Grammar update_word_class failed - unknown word class {0}".format(word_class))
-            return
-        # rename the word class by removing the old entry and adding a new one
-        self.word_classes.remove(word_class)
-        self.word_classes.add(name)
-        # return the renamed word class details
-        return self.word_classes
-        
-    def remove_word_class(self, word_class):
-        """Delete one word class from word classes map and exponents that reference it"""
-        if word_class not in self.word_classes:
-            print("Grammar remove_word_class failed - unrecognized word class {0}".format(word_class))
-            return
-        
-        # delete part of speech from the word classes map
-        self.word_classes.remove(word_class)
-
-        # remove part of speech from all exponents that reference it
-        for exponent_details in self.exponents.values():
-            word_class in exponent_details['pos'] and exponent_details['pos'].remove(word_class)
-        
-        # return deleted part of speech
-        return word_class
-
-    def filter_word_classes_set(self, word_classes):
-        """Create a set of valid word classes from a single string or collection of strings"""
-        # no word classes or empty collection passed
-        if not word_classes:
-            return set()
-        
-        # wrap a single string in a set for filtering
-        if isinstance(word_classes, str):
-            word_classes = set(word_classes)
-        
-        # create set of recognized parts of speech
-        return word_classes & self.word_classes
 
     def get_property(self, category=None, grammeme=None):
         """Read one grammatical value from one category in the grammar"""
@@ -348,7 +290,7 @@ class Grammar:
         # 
         # collect valid word classes to include or exclude when property is applied
         # TODO: also allow including or excluding other categories or grammemes
-        recognized_word_classes = self.filter_word_classes_set(pos)
+        recognized_word_classes = self.word_classes.filter(pos)
 
         # structure the categories and values of included properties
 
@@ -428,7 +370,7 @@ class Grammar:
             return
         
         # store existing parts of speech for this exponent
-        recognized_word_classes = self.filter_word_classes_set(pos)
+        recognized_word_classes = self.word_classes.filter(pos)
 
         # filter requested category, values sets through the existing properties
         # TODO: abstract this and use for checking updated properties maps elsewhere in the grammar
@@ -462,7 +404,7 @@ class Grammar:
         if exponent_id not in self.exponents:
             print("Grammar add_exponent_pos failed - unknown exponent {}".format(exponent_id))
             return
-        if not isinstance(pos, str) or pos not in self.word_classes:
+        if not isinstance(pos, str) or not self.word_classes.get(pos):
             print("Grammar add_exponent_pos failed - expected an existing word class string")
             return
 
@@ -496,7 +438,7 @@ class Grammar:
             return
 
         # collect only recognized parts of speech
-        recognized_word_classes = self.filter_word_classes_set(pos)
+        recognized_word_classes = self.word_classes.filter(pos)
 
         # store word classes
         merge_maps(
@@ -558,7 +500,7 @@ class Grammar:
             return
         
         # vet parts of speech for existing word classes
-        filtered_pos = self.filter_word_classes_set(pos)
+        filtered_pos = self.word_classes.filter(pos)
 
         # prepare to store exponents with matching details
         found_exponents = []
@@ -639,20 +581,6 @@ class Grammar:
         }
 
         return filtered_map
-
-    # TODO: compare to filter_word_classes_set
-    def vet_word_classes(self, word_classes):
-        """Return a copy of a word classes collection filtered to hold only verified parts of speech"""
-        # check word classes structure
-        if not isinstance(word_classes, (list, set, tuple)):
-            print("Grammar vet_word_classes failed - invalid word classes collection {0}".format(word_classes))
-            return
-
-        # build and return a set containing recognized word classes
-        return {
-            word_class for word_class in word_classes
-            if word_class in self.word_classes
-        }
 
     def map_uncategorized_properties(self, properties=[]):
         """Build a map of properties using a list of grammeme names"""
@@ -776,7 +704,7 @@ class Grammar:
 
         # collect recognized word class names into the returned set
         for term in suspected_word_classes:
-            if term in self.word_classes:
+            if self.word_classes.get(term):
                 parsed_word_classes.add(term)
             # skip unrecognized word classes
             else:
@@ -810,7 +738,7 @@ class Grammar:
         """Attempt to collect a set copying known word classes from a collection or a parsable string"""
         # collect word classes in a set
         if isinstance(word_classes, (list, tuple, set)):
-            return self.vet_word_classes(word_classes)      # NOTE: expect returned set
+            return self.word_classes.filter(word_classes)   # NOTE: expect returned set
         # break down the string and analyze classes into a set
         if isinstance(word_classes, str):
             return self.parse_word_classes(word_classes)    # NOTE: expect set or None
@@ -1061,7 +989,7 @@ class Grammar:
 grammar = Grammar()
 
 # add grammemes and pos
-grammar.add_word_classes(["noun", "verb"])
+grammar.word_classes.add(["noun", "verb"])
 grammar.add_properties({
     'tense': ["present", "past", "future"],
     'aspect': ["perfective", "imperfective"],
@@ -1077,11 +1005,12 @@ plural_noun_exponent = grammar.add_exponent(
 )
 grammar.add_exponent_pos(plural_noun_exponent, "noun")
 
+# build words
+
 singular_noun = grammar.build_unit("house", properties="nominative singular")
 plural_noun = grammar.build_unit("house", properties="nominative plural")
 print(singular_noun, plural_noun)
 
-# TODO: handle internal exponents
-singular_noun = grammar.build_unit("mouse", properties="nominative singular")
-plural_noun = grammar.build_unit("mouse", properties="nominative plural")
+singular_noun = grammar.build_unit("mouse", properties="nominative singular", word_classes="noun")
+plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_classes="noun")
 print(singular_noun, plural_noun)

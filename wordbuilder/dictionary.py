@@ -82,7 +82,7 @@ class Dictionary():
     def lookup(self, headword, entry_index=None):
         """Read all entries (default) or one indexed entry for a spelled word"""
         if not self.is_word(headword):
-            print ("Dictionary lookup failed - invalid headword {0}".format(headword, entry_index))
+            print ("Dictionary lookup failed - invalid headword {0}".format(headword))
             return
         if not entry_index:
             return self.dictionary[headword]
