@@ -1,4 +1,4 @@
-from functional_maps import merge_maps
+from tools.functional_maps import merge_maps
 
 class Properties:
     def __init__(self, grammar):

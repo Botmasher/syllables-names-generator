@@ -5,9 +5,9 @@ from collections import deque   # for building pre- and post-exponented word pie
 # - word classes represent broad parts of speech
 # - properties represent specific grammatical categories and values
 # - exponents provide properties and are optionally restricted to word classes
-from word_classes import WordClasses
-from exponents import Exponents
-from properties import Properties
+from .word_classes import WordClasses
+from .exponents import Exponents
+from .properties import Properties
 
 # NOTE: Grammar relates grammatical exponents <> properties, word_classes
 # - exponents are phones of affixes, adpositions, particles, pre or post a base

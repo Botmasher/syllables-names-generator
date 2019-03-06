@@ -1,6 +1,6 @@
 from uuid import uuid4      # for indexing exponent keys
 import math                 # for allowing finds to break at user-defined count or data limit
-from functional_maps import merge_maps
+from tools.functional_maps import merge_maps
 
 class Exponents:
     def __init__(self, grammar):
