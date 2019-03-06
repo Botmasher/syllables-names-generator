@@ -72,7 +72,7 @@ class Exponents:
         exponent_properties = {}
         for category, grammemes in properties.items():
             # avoid non-existing categories
-            if category not in self.grammar.properties:
+            if not self.grammar.properties.get(category):
                 print("Exponents.add failed - invalid grammatical category {0}".format(category))
                 return
             # format a set for a single grammeme in one category, like past tense

@@ -16,12 +16,10 @@ from properties import Properties
 
 # TODO: handle non-pre/post kinds of exponents like apophony
 
-# TODO: update word classes handling
-# - from dict to set
-#   - turn word_classes into set()
-# - from properties to exponents
-#   - store word classes in exponent not properties
-#   - "plural" can be provided by many exponents but you may want a pl noun exponent
+# TODO: default or citation form properties for a word class
+#   - example: just request "noun" and grammar gives you nominative singular
+
+# TODO: update word classes parsing
 # - from parse properties vs word classes to parsing both in one string
 #   - consider, though increases ambiguity allows parsing "plural noun"
 # - parse entire string for adding an exponent
@@ -181,31 +179,6 @@ class Grammar:
         # unexpected properties value given
         return
 
-    # subdict method used to determine whether exponent properties provide requested properties in build_word
-    def is_subproperties(self, compared_properties, base_properties):
-        """Check whether all category:grammemes in a compared properties map exist in another properties map"""
-        # verify two comparable maps have been passed
-        if not isinstance(compared_properties, dict) or not isinstance(base_properties, dict):
-            print("Grammar is_subproperties failed - expected a comparison map and base map, got {0} and {1}".format(compared_properties, base_properties))
-            return
-
-        # check every compared category and grammeme for inclusion in the base map
-        for category in compared_properties:
-            # expect all compared categories to exist in the base map
-            if category not in base_properties:
-                return False
-
-            # expect iterable to turn into set of properties
-            compared_grammemes = {grammeme for grammeme in compared_properties[category]}
-            base_grammemes = {grammeme for grammeme in base_properties[category]}
-
-            # expect all compared grammemes to exist in the base category
-            if not compared_grammemes.issubset(base_grammemes):
-                return False
-
-        # no mismatch pitfalls - consider compared map as true subproperties
-        return True
-
     # the main public method for making use of data stored in the grammar
     def build_unit(self, root, properties=None, word_classes=None, all_or_none=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms"""
@@ -254,14 +227,14 @@ class Grammar:
         for exponent_id, exponent_details in self.exponents.get_items():
             # pass over exponent based on word classes expected to be matched
             # check that the exponent provides requested parts of speech
-            if exponent_details['pos'] and requested_word_classes == exponent_details['pos']:
+            if exponent_details['pos'] and requested_word_classes != exponent_details['pos']:
                 continue
 
             # retrieve all property names for this exponent
             exponent_properties = exponent_details['properties']
 
             # hold exponents that provide one or more requested properties and none not requested
-            if self.is_subproperties(exponent_properties, requested_properties):
+            if self.properties.is_subproperties(exponent_properties, requested_properties):
                 # consider this a candidate exponent
                 matching_exponents.add(exponent_id)
 
@@ -311,7 +284,7 @@ class Grammar:
                 compared_exponent_properties = self.exponents.get(compared_exponent)['properties']
 
                 # run the comparison looking for an exponent with superproperties
-                if self.is_subproperties(exponent_properties, compared_exponent_properties):
+                if self.properties.is_subproperties(exponent_properties, compared_exponent_properties):
                     best_exponent_match = compared_exponent
 
             # set the best match to the base matched exponent if no superproperties found
@@ -412,7 +385,7 @@ grammar = Grammar()
 
 # add grammemes and pos
 grammar.word_classes.add(["noun", "verb"])
-grammar.add_properties({
+grammar.properties.add_many({
     'tense': ["present", "past", "future"],
     'aspect': ["perfective", "imperfective"],
     'number': ["singular", "plural"],
@@ -420,19 +393,19 @@ grammar.add_properties({
 })
 
 # add basic exponents
-plural_noun_exponent = grammar.add_exponent(
+plural_noun_exponent = grammar.exponents.add(
     post="s",
     properties={"case": "nominative", "number": "plural"},
     bound=True
 )
-grammar.add_exponent_pos(plural_noun_exponent, "noun")
+grammar.exponents.add_pos(plural_noun_exponent, "noun")
 
 # build words
 
-singular_noun = grammar.build_unit("house", properties="nominative singular")
-plural_noun = grammar.build_unit("house", properties="nominative plural")
+singular_noun = grammar.build_unit("house", properties="nominative singular", word_classes=('noun'))
+plural_noun = grammar.build_unit("house", properties="nominative plural", word_classes={'noun'})
 print(singular_noun, plural_noun)
 
-singular_noun = grammar.build_unit("mouse", properties="nominative singular", word_classes="noun")
+singular_noun = grammar.build_unit("mouse", properties="nominative singular", word_classes=["noun"])
 plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_classes="noun")
 print(singular_noun, plural_noun)

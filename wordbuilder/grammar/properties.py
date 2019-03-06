@@ -344,3 +344,32 @@ class Properties:
             properties_map[category] = properties_map.get(category, set()).add(grammeme)
 
         return properties_map
+
+    # subdict method used to determine whether requested properties
+    def is_subproperties(self, compared_properties, base_properties=None):
+        """Check whether all category:grammemes in a compared properties map exist in the base properties map"""
+        # verify two comparable maps have been passed
+        if not isinstance(compared_properties, dict) or not isinstance(base_properties, dict):
+            print("Grammar is_subproperties failed - expected a comparison map and base map, got {0} and {1}".format(compared_properties, base_properties))
+            return
+
+        # default to entire properties tree
+        if base_properties is None:
+            base_properties = self.properties
+
+        # check every compared category and grammeme for inclusion in the base map
+        for category in compared_properties:
+            # expect all compared categories to exist in the base map
+            if category not in base_properties:
+                return False
+
+            # expect iterable to turn into set of properties
+            compared_grammemes = {grammeme for grammeme in compared_properties[category]}
+            base_grammemes = {grammeme for grammeme in base_properties[category]}
+
+            # expect all compared grammemes to exist in the base category
+            if not compared_grammemes.issubset(base_grammemes):
+                return False
+
+        # no mismatch pitfalls - consider compared map as true subproperties
+        return True
