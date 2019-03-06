@@ -1,14 +1,23 @@
 # store and manage word classes for a grammar
 class WordClasses:
-    def __init__(self):
+    def __init__(self, grammar):
+        # store reference to reach out to exponents pos
+        # when removing or updating word classes
+        self.grammar = grammar
         # set for collecting word class names
         self.word_classes = set()
     
-    def get(self, word_class):
-        """Read a single word class from the collection"""
-        if word_class in self.word_classes:
+    def get(self, word_class=None):
+        """Return an existing word class (or all if none specified) from the collection"""
+        # called without any word class - return all
+        if not word_class:
+            return self.word_classes
+        # existing word class
+        elif word_class in self.word_classes:
             return word_class
-        return
+        # unrecognized word class
+        else:
+            return
 
     def add(self, word_class):
         """Add one word class or part of speech"""
@@ -45,12 +54,21 @@ class WordClasses:
 
     def rename(self, word_class, new_word_class):
         """Modify the details of a single word class"""
+        # verify existing word class name
         if word_class not in self.word_classes:
             print("WordClass.update failed - unknown word class {0}".format(word_class))
             return
+        
         # rename the word class by removing the old entry and adding a new one
         self.word_classes.remove(word_class)
         self.word_classes.add(new_word_class)
+        
+        # switch pos name in all exponents that reference the old name
+        for exponent_details in self.grammar.exponentes.values():
+            if word_class in exponent_details['pos']:
+                exponent_details['pos'].remove(word_class)
+                exponent_details['pos'].add(new_word_class)
+
         # return the renamed word class details
         return self.word_classes
         
@@ -63,11 +81,8 @@ class WordClasses:
         # delete part of speech from the word classes map
         self.word_classes.remove(word_class)
 
-        # TODO: deal with exponents storing references to pos
-        #   - two options: here or when exponents accessed
-        #
         # remove part of speech from all exponents that reference it
-        for exponent_details in self.exponents.values():
+        for exponent_details in self.grammar.exponents.values():
             word_class in exponent_details['pos'] and exponent_details['pos'].remove(word_class)
         
         # return deleted part of speech

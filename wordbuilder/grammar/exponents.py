@@ -10,8 +10,10 @@ class Exponents:
         # exponents collection managed throughout this class
         self.exponents = {}
 
-    def get(self, exponent_id):
-        """Read exponent details for one entry in the exponents map"""
+    def get(self, exponent_id=None):
+        """Read exponent details for one entry (or all if none specified) in the exponents map"""
+        if not exponent_id:
+            return self.exponents
         return self.exponents.get(exponent_id)
 
     def get_keys(self):

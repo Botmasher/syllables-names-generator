@@ -1,15 +1,17 @@
-import re           # for splitting strings and parsing them for properties
-from collections import deque           # for building pre- and post-exponented word pieces lists
-from functional_maps import merge_maps  # for finding uncategorized grammemes
+import re                       # for splitting strings and parsing them for properties
+from collections import deque   # for building pre- and post-exponented word pieces lists
 
-# TODO: break out components from original draft Grammar
+# breakout components managing Grammar collections
+# - word classes represent broad parts of speech
+# - properties represent specific grammatical categories and values
+# - exponents provide properties and are optionally restricted to word classes
 from word_classes import WordClasses
 from exponents import Exponents
 from properties import Properties
 
-# NOTE: Grammar relates grammatical exponents <> grammatical properties
+# NOTE: Grammar relates grammatical exponents <> properties, word_classes
 # - exponents are phones of affixes, adpositions, particles, pre or post a base
-# - properties are categories, grammemes
+# - properties are category:grammemes pairs
 # - word classes help filter or limit the application of exponents to built words
 
 # TODO: modularize grammar.exponents, grammar.properties, grammar.word_classes
@@ -25,10 +27,15 @@ from properties import Properties
 # - parse entire string for adding an exponent
 #   - example: add_exponent(post="s", properties="plural noun")
 
+# TODO: consider creating morphosyntax slotting of properties
+#   - example: aspect suffix precedes number suffix
+#   - build out a Syntax for these?
+#   - makes Grammar a bigger container for putting together any morphosyntax
+
 class Grammar:
     def __init__(self):
         # object for providing and checking exponent parts of speech
-        self.word_classes = WordClasses()
+        self.word_classes = WordClasses(self)
         
         # object handling map of category:grammemes
         # including updating exponent properties on changes
@@ -193,8 +200,10 @@ class Grammar:
         requested_word_classes = self.vet_build_word_classes(word_classes)
 
         # make usable properties map collecting valid and recognizable category:grammemes
+        # TODO: include 'pos' within self.properties - no major gains from separating
+        # or enhance method to search for pos? - (properties, word_classes != None)
         requested_properties = self.vet_build_word_properties(properties)
-
+        
         # dead end when did not turn up a good map of vetted properties
         if not self.properties.is_properties_map(requested_properties):
             print("Grammar build_word failed for {0} - invalid properties {1}".format(root, requested_properties))
@@ -340,11 +349,10 @@ class Grammar:
             post and exponented_word_map[post_key].append(spacing)
             post and exponented_word_map[post_key].append(post)
 
-        # TODO: here consider whether creating morphosyntax slotting of properties is necessary
-
         # turn the exponenting map into a flat sequence
         exponented_word = [
-            piece for attachment in attachment_sequence for piece in exponented_word_map[attachment]
+            piece for attachment in attachment_sequence
+            for piece in exponented_word_map[attachment]
         ]
 
         # return the sequence as a list or string

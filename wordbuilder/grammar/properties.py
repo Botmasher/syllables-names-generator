@@ -12,10 +12,16 @@ class Properties:
     # Methods for properties CRUD
 
     def get(self, category=None, grammeme=None):
-        """Read one category or one category:grammeme from the properties map"""
-        if grammeme is not None:
+        """Read category:grammemes from the properties map"""
+        # fetch all categories and grammemes
+        if not category and not grammeme:
+            return self.properties
+        # fetch all grammemes in a single category
+        elif not grammeme:
+            return self.properties.get(category)
+        # fetch a single grammeme
+        else:
             return self.properties.get(category, {}).get(grammeme, None)
-        return self.properties.get(category)
     
     def is_category(self, category):
         """Check if the category exists in the properties map"""
