@@ -192,9 +192,11 @@ class GrammarExponents(GrammarFixture):
 
     def test_update_exponent(self):
         test_pre = "test_pre"
-        exponent_id = self.grammar.exponents.add(pre="updated_pre", post="updated_post", properties={
-            'exponent_category': 'exponent_grammeme'
-        })
+        exponent_id = self.grammar.exponents.add(
+            pre="updated_pre",
+            post="updated_post",
+            properties={'exponent_category': 'exponent_grammeme'}
+        )
         self.grammar.exponents.update(exponent_id, pre=test_pre)
         self.assertEqual(
             self.grammar.exponents.get(exponent_id).get('pre'),
@@ -240,7 +242,7 @@ class GrammarExponents(GrammarFixture):
         self.grammar.properties.recategorize("categorized_category", "categorized_grammeme", "recategorized_category")
         self.assertIn(
             "recategorized_category",
-            self.grammar.exponents.get(exponent_id, {}).get("properties", {}),
+            self.grammar.exponents.get(exponent_id).get("properties", {}),
             "failed to update changed property category name within exponent details"
         )
 
@@ -315,7 +317,6 @@ class GrammarWordClasses(GrammarFixture):
             "failed to delete a removed word class from an exponent's pos collection"
         )
 
-#TODO: test add_property and add_property_word_class to see if include-exclude sets can be added to/updated (word class name updated)/removed from
 class GrammarBuildWords(GrammarFixture):
     @classmethod
     def setUpClass(this_class):
@@ -374,7 +375,7 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_excluded_word_class(self):
-        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme_verb'}, word_classes="noun")
+        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme_verb'}, word_classes="noun", exact_pos=True)
         self.assertEqual(
             unit,
             "baseword",
@@ -412,70 +413,5 @@ class GrammarBuildWords(GrammarFixture):
             "did not handle avoiding building grammatical unit using nonexistent property"
         )
 
-    
-    # TODO: test with included/excluded word classes
-
-    # # NOTE: fourth case, where existing exponent provides nonexisting property, covered in exponent and build word filters
-    # # - test this though!
-
-    # # build word with nonexisting property, which is not provided by any exponent
-    # # - skip unrecognized properties (previously expected to )
-    # # - CASE: no property exists for antipassive voice
-    # #word_2a = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative antipassive')
-    # word_2a = grammar.build_word("poiuyt", properties={
-    #     'tense': ['present', 'past'],
-    #     'mood': 'indicative'
-    # })
-    # print(word_2a)
-
-    # # build word with existing property but no exponent providing that property
-    # # - fail to build if not all properties provided (when all_or_none is True)
-    # # - CASE: no exponent exists for passive voice
-    # word_2b = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative passive')
-    # print(word_2b)
-    # word_2c = grammar.build_word("poiuyt", properties='present tense past tense mood:indicative passive', all_or_none=True)
-    # print(word_2c)
-
-    # # build word with unprovidable property removed
-    # # - CASE: exponents exist to provide all requested properties
-    # word_2d = grammar.build_word("poiuyt", properties='present tense past tense indicative mood')
-    # print(word_2d)
-
-    # #word_4 = grammar.build_word("kuxuf", properties='mood:indicative past indicative')
-    # #print(word_4)
-
-
-# ## Cases from Grammar instantiation and testing
-
-# # TODO: ignore capitalization
-
-# # TODO: implement more robust search incl description and included/excluded classes
-# #   - also use those include/excludes to test building words with requested recognized/unrecognized/mixed word classes
-
-# # TODO: Flexible Parsing
-# # Consider shapes of strings expected to be parsed:
-# #   "present tense indicative mood verb"
-# #   "tense: present, mood: indicative, verb"
-# #   "tense:pres mood:ind v"
-# #   "pres ind v"
-# #   "present tense indicative verb"
-# #   "v, present, indicative"
-# #   "pres-ind-v"
-# #   ""
-# #   "vpres"
-
-# # LIMITS OF REQUESTED PROPERTIES
-# #
-# # NOTE: use modified .properties and .exponents structure to handle
-# # requested properties smaller or larger than what's in the grammar
-# #
-# # - case 1: built word properties are less verbose than stored exponent properties
-# #   - example: word is ['verb', 'past'] but past affix is ['verb', 'past', 'tense']
-# #
-# # - case 2: built word properties are more verbose than exponent
-# #   - example: word is ['verb', 'past', 'tense'] but past affix is ['past']
-# #
-# # - case 3: built word properties are less verbose but cover multiple exponents
-# #   - example: word is ['verb', 'past', 'tense'] but affixes are ['verb', 'finite'] and ['past', 'tense']
-# #
-# # - case 4: built word properties are empty
+# TODO: testing intuitive cases including building nouns, verbs
+# TODO: more robust testing of parse strings

@@ -65,32 +65,14 @@ class Exponents:
         # collect valid word classes to include or exclude when property is applied
         recognized_word_classes = self.grammar.word_classes.filter(pos)
 
-        # structure the categories and values of included properties
-
-        # TODO: determine if category:grammemes in properties are subsets of grammar.properties
-        # set(properties.keys()).issubset(self.properties.keys())
-        # map-reduce the grammemes for shared categories
-
-        exponent_properties = {}
-        for category, grammemes in properties.items():
-            # avoid non-existing categories
-            if not self.grammar.properties.get(category):
-                print("Exponents.add failed - invalid grammatical category {0}".format(category))
-                return
-            # format a set for a single grammeme in one category, like past tense
-            if isinstance(grammemes, str):
-                if not self.grammar.properties.get(category, grammemes):
-                    print("Exponents.add failed - invalid grammatical value {0}".format(grammemes))
-                    return
-                grammemes = {grammemes}
-            # add one or more grammemes in one category, like past and present tense
-            for grammeme in grammemes:
-                # check that property exists then build it into this exponent
-                if not self.grammar.properties.get(category, grammeme):
-                    print("Exponents.add failed - invalid grammatical value {0} in category {1}".format(grammeme, category))
-                    return
-                exponent_properties.setdefault(category, set()).add(grammeme)
-
+        # vet the categories and values of provided properties
+        recognized_properties = self.grammar.properties.filter(properties)
+        
+        # back out of add if no recognized properties provided by exponent
+        if not recognized_properties:
+            print("Exponents.add failed - invalid grammatical category {0}".format(category))
+            return
+        
         # store exponent details
         exponent_id = "grammatical-exponent-{0}".format(uuid4())
         self.exponents[exponent_id] = {
@@ -98,7 +80,7 @@ class Exponents:
             'pre': pre,
             'post': post,
             'bound': bound,
-            'properties': exponent_properties,
+            'properties': recognized_properties,
             'pos': recognized_word_classes
         }
         return exponent_id
@@ -113,16 +95,16 @@ class Exponents:
         # shape and store details
         for exponent in exponents_details:
             # verify expected details for an exponent
-            if isinstance(exponent, dict) or 'properties' not in exponent or not ('pre' in exponent or 'post' in exponent):
+            if not isinstance(exponent, dict) or 'properties' not in exponent or not ('pre' in exponent or 'post' in exponent):
                 print("Exponents.add_many skipped invalid element - expected dict with 'properties' and 'pre' or 'post', got {0}".format(exponent))
                 continue
             # shape new details layering default values over missing details
-            new_exponent_details = merge_maps(exponent, {
+            new_exponent_details = merge_maps({
                 'pre': "",
                 'post': "",
                 'bound': True,
                 'pos': set()
-            }, key_check=lambda x: x not in exponent)
+            }, exponent)
             # create an exponent entry using the new details
             exponent_id = self.add(
                 pre=new_exponent_details['pre'],
@@ -146,13 +128,8 @@ class Exponents:
         recognized_word_classes = self.grammar.word_classes.filter(pos)
 
         # filter requested category, values sets through the existing properties
-        # TODO: abstract this and use for checking updated properties maps elsewhere in the grammar
-        updated_properties = {
-            category: set(values) for category, values in properties.items()
-            if category in self.grammar.properties
-            and type(values) in (set, list, tuple)
-            and [value for value in values if value in self.grammar.properties[category]]
-        }
+        recognized_properties = self.grammar.properties.filter(properties) if properties else None
+
         # create new entry with non-empty details overlayed onto existing ones
         updated_exponent_details = merge_maps(
             self.exponents[exponent_id],
@@ -160,10 +137,9 @@ class Exponents:
                 'pre': pre if pre and isinstance(pre, str) else None,
                 'post': post if post and isinstance(post, str) else None,
                 'bound': bound if isinstance(bound, bool) else None,
-                'properties': updated_properties if updated_properties else None,
+                'properties': recognized_properties,
                 'pos': recognized_word_classes
-            },
-            value_check=lambda x: x is not None
+            }
         )
         # assign the existing exponent to point to the new details
         self.exponents[exponent_id] = updated_exponent_details

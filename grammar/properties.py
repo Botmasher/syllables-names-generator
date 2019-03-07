@@ -144,12 +144,12 @@ class Properties:
         # delete property key and details
         self.properties[category].pop(grammeme)
         # delete property from exponent properties category sets that have it
-        for exponent_id, exponent_details in self.grammar.exponents.items():
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
             if category in exponent_details['properties'] and grammeme in exponent_details['properties'][category]:
-                self.grammar.exponents[exponent_id]['properties'][category].remove(grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
             # also delete the category from properties if it is left empty
-            if self.grammar.exponents[exponent_id]['properties'][category] == set():
-                self.grammar.exponents[exponent_id]['properties'].pop(category)
+            if self.grammar.exponents.get(exponent_id)['properties'][category] == set():
+                self.grammar.exponents.get(exponent_id)['properties'].pop(category)
         # return the deleted details
         return removed_property
     
@@ -177,9 +177,9 @@ class Properties:
         self.properties[new_category] = grammemes
 
         # update the property category reference in exponents that point to it
-        for exponent_id, exponent_details in self.grammar.exponents.items():
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
             if category in exponent_details['properties']:
-                self.grammar.exponents[exponent_id]['properties'][new_category] = self.grammar.exponents[exponent_id]['properties'].pop(category)
+                self.grammar.exponents.get(exponent_id)['properties'][new_category] = self.grammar.exponents.get(exponent_id)['properties'].pop(category)
 
         # retrieve the new target category
         return self.properties[new_category]
@@ -208,14 +208,14 @@ class Properties:
         self.properties.setdefault(target_category, {})[grammeme] = grammeme_details
 
         # swap the grammeme's category within exponent properties that reference it
-        for exponent_id, exponent_details in self.grammar.exponents.items():
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
             if grammeme in exponent_details['properties'].get(source_category, {}):
                 # remove grammeme from exponent properties
-                self.grammar.exponents[exponent_id]['properties'][source_category].remove(grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'][source_category].remove(grammeme)
                 # remove empty category from exponent properties
-                not exponent_details['properties'][source_category] and self.grammar.exponents[exponent_id]['properties'].pop(source_category)
+                not exponent_details['properties'][source_category] and self.grammar.exponents.get(exponent_id)['properties'].pop(source_category)
                 # add grammeme to destination category under exponent properties
-                self.grammar.exponents[exponent_id]['properties'].setdefault(target_category, set()).add(grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'].setdefault(target_category, set()).add(grammeme)
 
         # retrieve and send back the new grammeme details
         return self.properties[target_category][grammeme]
@@ -237,10 +237,10 @@ class Properties:
         self.properties[category][new_grammeme] = grammeme_details
 
         # swap out grammeme name within all exponents that reference the property
-        for exponent_id, exponent_details in self.grammar.exponents.items():
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
             if grammeme in exponent_details['properties'].get(category, {}):
-                self.grammar.exponents[exponent_id]['properties'][category].remove(grammeme)
-                self.grammar.exponents[exponent_id]['properties'][category].add(new_grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'][category].add(new_grammeme)
 
         # return updated property details
         return self.properties[category][new_grammeme]
@@ -300,9 +300,9 @@ class Properties:
         if category in self.properties:
             # return recognized grammeme collection members inside of a set
             if isinstance(grammemes, (list, set, tuple)):
-                return set(grammemes).intersection(self.get(category, set()))
+                return set(grammemes).intersection(self.properties.get(category, set()))
             # recognized grammeme string inside of a set
-            if isinstance(grammemes, str) and grammemes in self.get(category, set()):
+            if isinstance(grammemes, str) and grammemes in self.properties.get(category, set()):
                 # only one grammeme string given
                 return {grammemes}
         # unrecognized category name or grammeme type input
@@ -310,7 +310,7 @@ class Properties:
             return
 
     def filter(self, properties=None):
-        """Return a copy of a properties map filtered to hold only verified category:grammemes"""
+        """Return a filtered properties copy containing only verified category keys and grammemes sets"""
         # verify that a map was provided
         if not isinstance(properties, dict):
             print("Properties.filter failed - expected properties dict not {0}".format(properties))

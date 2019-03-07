@@ -9,6 +9,41 @@ from .word_classes import WordClasses
 from .exponents import Exponents
 from .properties import Properties
 
+# ## Cases from Grammar instantiation and testing
+
+# # TODO: ignore capitalization
+
+# # TODO: implement more robust search incl description and pos
+# #   - also use word classes to test building words with requested recognized/unrecognized/mixed word classes
+
+# # TODO: Flexible Parsing
+# # Consider shapes of strings expected to be parsed:
+# #   "present tense indicative mood verb"
+# #   "tense: present, mood: indicative, verb"
+# #   "tense:pres mood:ind v"
+# #   "pres ind v"
+# #   "present tense indicative verb"
+# #   "v, present, indicative"
+# #   "pres-ind-v"
+# #   ""
+# #   "vpres"
+
+# # LIMITS OF REQUESTED PROPERTIES
+# #
+# # NOTE: use modified .properties and .exponents structure to handle
+# # requested properties smaller or larger than what's in the grammar
+# #
+# # - case 1: built word properties are less verbose than stored exponent properties
+# #   - example: word is ['verb', 'past'] but past affix is ['verb', 'past', 'tense']
+# #
+# # - case 2: built word properties are more verbose than exponent
+# #   - example: word is ['verb', 'past', 'tense'] but past affix is ['past']
+# #
+# # - case 3: built word properties are less verbose but cover multiple exponents
+# #   - example: word is ['verb', 'past', 'tense'] but affixes are ['verb', 'finite'] and ['past', 'tense']
+# #
+# # - case 4: built word properties are empty
+
 # NOTE: Grammar relates grammatical exponents <> properties, word_classes
 # - exponents are phones of affixes, adpositions, particles, pre or post a base
 # - properties are category:grammemes pairs
@@ -187,7 +222,7 @@ class Grammar:
         return
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, root, properties=None, word_classes=None, all_or_none=False):
+    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, all_or_none=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms"""
         # TODO: better docstring particularly for this method
 
@@ -234,9 +269,15 @@ class Grammar:
 
         # find exponents that match one or more properties and word class includes/excludes
         for exponent_id, exponent_details in self.exponents.get_items():
+            
+            # TODO: should requested_word_classes be provided in whole or part?
+            #   - consider in conjunction with exact_pos added to force exponent to provide word_classes
+            #   - whole (current): exponent must provide {noun, adjective}
+            #   - part: one exponent provides {noun}, another provides {adjective}
+            #
             # pass over exponent based on word classes expected to be matched
             # check that the exponent provides requested parts of speech
-            if exponent_details['pos'] and requested_word_classes != exponent_details['pos']:
+            if (exponent_details['pos'] or exact_pos) and requested_word_classes != exponent_details['pos']:
                 continue
 
             # retrieve all property names for this exponent

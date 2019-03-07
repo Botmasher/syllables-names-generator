@@ -64,7 +64,7 @@ class WordClasses:
         self.word_classes.add(new_word_class)
         
         # switch pos name in all exponents that reference the old name
-        for exponent_details in self.grammar.exponentes.values():
+        for exponent_details in self.grammar.exponents.get_values():
             if word_class in exponent_details['pos']:
                 exponent_details['pos'].remove(word_class)
                 exponent_details['pos'].add(new_word_class)
@@ -82,7 +82,7 @@ class WordClasses:
         self.word_classes.remove(word_class)
 
         # remove part of speech from all exponents that reference it
-        for exponent_details in self.grammar.exponents.values():
+        for exponent_details in self.grammar.exponents.get_values():
             word_class in exponent_details['pos'] and exponent_details['pos'].remove(word_class)
         
         # return deleted part of speech
