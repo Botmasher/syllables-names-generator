@@ -35,7 +35,7 @@ class Dictionary():
                 # simple match - look for single string within definition
                 if type(keywords) is str:
                     if keywords in definition:
-                        keyword_score = 1
+                        keywords_score = 1
                         scored_matches.append((headword, entry_index, keywords_score))
                     continue
                 # list match - determine how close the match is
@@ -147,7 +147,7 @@ class Dictionary():
             spelling=new_spelling,
             sound=old_entry['sound'],
             definition=old_entry['definition'],
-            change=old_entry['change']
+            sound_change=old_entry['change']
         )
         return self.lookup(new_spelling)
 

@@ -1,7 +1,6 @@
+from grammar.grammar import Grammar
 from phonology.phoneme import Phoneme
 from phonology.syllable import Syllable
-from phonology.affix import Affix
-from phonology.affixes import Affixes
 from phonology.environment import Environment
 from phonology.rule import Rule
 from phonology.ruletracker import RuleTracker
@@ -37,9 +36,7 @@ class Language:
         self.syllables = SetCollector(accepted_types=['Syllable'])
         self.rules = Collector(accepted_types=['Rule'])
         self.dictionary = Dictionary()  # words with ipa, morphology, definition
-
-        # TODO instantiate below from generic Collector
-        self.affixes = Affixes()
+        self.grammar = Grammar()
 
     # inventory now managed through Phonemes (letters <> ipa) and Features (features <> ipa) instead of previous Inventory class
     def inventory(self):
@@ -100,39 +97,7 @@ class Language:
         syllable = Syllable(new_syllable_structure)
         self.syllables.add(syllable)
         return
-
-    def add_affix(self, affix_string, category="", grammeme=""):
-        """Add a grammatical category and value affix with one hyphen and phonetic symbols"""
-        # check that affix is composed entirely of known ipa and hyphen
-        for symbol in affix_string:
-            if not (symbol == "-" or self.phonemes.has(symbol)):
-                print("Language add_affix failed - unrecognized symbols in affix string {0}".format(affix_string))
-                return
-        # break affix string
-        split_affix = affix_string.split("-")
-        # treat the affix string as a circumfix
-        if len(split_affix) > 1:
-            # check for hyphen overcount
-            if len(split_affix) != 2:
-                print("Language add_affix failed - expected only one hyphen in affix {0}".format(affix_string))
-                return
-            prefix, suffix = split_affix
-        # treat the affix string as either a prefix or a suffix
-        else:
-            prefix = split_affix[0] if affix_string[0] == "-" else ""
-            suffix = split_affix[0] if affix_string[len(affix_string)-1] == "-" else ""
-        # create new affix
-        affix = Affix(prefix=prefix, suffix=suffix, category=category, grammeme=grammeme)
-
-        # TODO redo collection class and methods for Affixes
-        #   - filter affixes using Affix dict attrs
-        #   - search for specific affixes
-        #   - structure for affixes object?
-        #   - add affixes to affixes instance
-
-        #self.affixes.add(category, grammar, affix)
-        #return self.affixes.get(affix)
-
+    
     # Rules
     def add_rule(self, source, target, environment_structure):
         """Add one rule to the language's rules dictionary"""
@@ -149,7 +114,7 @@ class Language:
 
     def get_rule(self, rule_id, pretty_print=False):
         """Look up one rule in the language's rules dictionary"""
-        rule = self.rules.get(rule_id=rule_id)
+        rule = self.rules.get(rule_id)
         pretty_print and rule.get_pretty()
         not rule and print("Language get_rule failed - unknown rule {0}".format(rule_id))
         return rule
@@ -196,41 +161,6 @@ class Language:
             added_sound = self.add_sound(ipa, letters=letters)
             sounds.update(added_sound)
         return sounds
-
-    # build a full word c affixes
-    # NOTE: do entirely in phon and make sure Affix(es) class coheres
-    #   - consider lang creator might use "-" as symbol
-    # TODO: think again about affixation
-    #   - include word class for categorizing like ['noun']['class']['animate']?
-    #   - what about compounding?
-    #   - what about analytic syntax like say "dnen bmahuwa" for cat-ANIM?
-    def apply_affixes(self, root_ipa, grammatical_features={}, boundaries=True):
-        """Add affixes to a phonetic symbol string representing a built word root"""
-        morphology = root_ipa
-        affixes = self.affixes.get()
-        for grammatical_category in grammatical_features:
-            grammar = grammatical_features[grammatical_category]
-            try:
-                affix = affixes[grammatical_category][grammar]
-                if 'suffix' in affix:
-                    suffix = random.sample(affix['suffix'])
-                    morphology.append(suffix)
-                elif 'prefix' in affix:
-                    prefix = random.sample(affix['prefix'])
-                    morphology.insert(prefix)
-            except:
-                continue
-        built_word = ""
-        if not boundaries:
-            # for feeding to sound change rules
-            built_word = "".join(morphology)
-        else:
-            # for displaying hyphenated morphology
-            built_word = "-".join(morphology)
-        return {
-            'ipa': built_word,
-            'shape': morphology
-        }
 
     # use rule to turn symbol from source into target
     def change_symbol(self, source_features, target_features, ipa_symbol):
@@ -308,10 +238,6 @@ class Language:
         }
         # gather index, symbol replacement pairs to update final string
         changed_symbols = []    # list of (string index, new symbol)
-
-        # NOTE: not used below - double check and delete
-        # prepare to track any rule matches (self.tracker track_ids)
-        full_matches = []   # list of track_ids that completed each pass
 
         # store local rules map to search for rule matches
         rules = self.rules.get()
