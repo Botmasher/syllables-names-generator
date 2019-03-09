@@ -15,7 +15,27 @@ class Morphosyntax:
         # relative "external" part of speech ordering for multi-unit phrases or sentences
         self.word_class_order = {}
 
-        # fixed left-to-right order of word classes and exponents in various types of sentences
+        # fixed left-to-right order of elements within a unit
+        # structure of unit:sequence pairs:
+        # {
+        #   'unit_name': [
+        #       {'exponent_id_1', 'exponent_id_2', ...},    # options
+        #       {'word_class_1},
+        #       ...
+        #   ]
+        # }
+        self.unit_order = {}
+
+        # fixed left-to-right order of units in various types of sentences
+        # each unit is findable in unit_order or is a word classes
+        # structure of sentence:sequence pairs:
+        # {
+        #   'sentence_name': [
+        #       {'unit_name', 'word_class', ...},   # options
+        #       {'unit_name_2'},
+        #       {'word_class_2', word_class_3}
+        #   ]
+        # }
         self.sentence_order = {}
 
     # TODO: conditional ordering
@@ -39,6 +59,84 @@ class Morphosyntax:
             exponent for exponent in exponents_collection
             if self.grammar.exponents.get(exponent)
         }
+
+    # TODO: abstract relativepre/post add method
+
+    def check_unit_piece(self, piece):
+        """Check whether a unit piece is a property, a word class or an exponent"""
+        # unit piece is a property category,grammeme two-member list
+        if isinstance(piece, (tuple, list)):
+            # category:grammeme found in grammar
+            if self.grammar.properties.get(piece[0], {}).get(piece[1]):
+                return "properties"
+            # unfound property
+            return
+        # unit piece is an exponent id
+        elif piece in self.grammar.exponents:
+            return "exponents"
+        # unit piece is a word class name
+        elif piece in self.grammar.word_classes:
+            return "word_classes"
+        # unrecognized unit piece
+        else:
+            return
+
+    def add_unit(self, unit_name, unit_sequence, overwrite=False):
+        """Store a new fixed order for a unit (sequence of exponents or word classes)"""
+        # avoid updating an existing unit
+        if not overwrite and unit_name in self.unit_order:
+            print("Morphosyntax failed to add new unit order - unit name already exists {}".format(unit_name))
+            return
+
+        # store left-to-right sequence of unit pieces
+        # each piece many contain properties, word classes, exponents
+        filtered_unit = []
+
+        # go through unit linearly veting and assigning options for each spot
+        for unit_piece in unit_sequence:
+            # build set of options for current position in the unit
+            unit_piece_options = set()
+            # add a single property, word class or exponent at this spot
+            if isinstance(unit_piece, str) and self.check_unit_piece(unit_piece):
+                unit_piece_options.add(unit_piece)
+            # add recognized properties, word classes or exponents to this spot
+            elif isinstance(unit_piece, (tuple, set, list)):
+                [unit_piece_options.add(piece) for piece in unit_piece if self.check_unit_piece(piece)]
+            # unrecognized unit info in the current piece
+            else:
+                continue
+            # build up sequence of properties, word classes, exponents
+            filtered_unit.append(unit_piece_options)
+        
+        # add the named unit sequence to the units map
+        self.unit_order[unit_name] = filtered_unit
+
+        return self.unit_order[unit_name]
+
+    def update_unit(self, unit_name, unit_sequence):
+        """Update an order for a named unit sequence"""
+        if unit_name not in self.unit_order:
+            print("Morphosyntax failed to update unrecognized unit name {}".format(unit_name))
+            return
+        return self.add_unit(unit_name, unit_sequence, overwrite=True)
+
+    def remove_unit(self, unit_name):
+        """Delete and return one unit sequence from the unit order map"""
+        removed_unit = self.unit_order.pop(unit_name)
+        return removed_unit
+    
+    def add_sentence(self, sentence_name, sentence_sequence):
+        """Add a named sentence type with a unit sequence order"""
+        return
+
+    def update_sentence(self, sentence_name, sentence_sequence):
+        """Modify the unit sequence of a single named sentence type"""
+        return
+    
+    def remove_sentence(self, sentence_name):
+        """Delete and return one sentence sequence from the sentence order map"""
+        removed_sentence = self.sentence_order.pop(sentence_name)
+        return removed_sentence
 
     def add_relative_exponent_order(self, exponent_id, pre=None, post=None):
         """Store the position of other exponents before or after an exponent
@@ -138,3 +236,4 @@ class Morphosyntax:
         # one pos/exponent tag per token
         assert len(sentence) == len(sentence_tags)
         return
+

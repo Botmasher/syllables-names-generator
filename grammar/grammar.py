@@ -8,6 +8,7 @@ from collections import deque   # for building pre- and post-exponented word pie
 from .word_classes import WordClasses
 from .exponents import Exponents
 from .properties import Properties
+from .morphosyntax import Morphosyntax
 
 # ## Cases from Grammar instantiation and testing
 
@@ -79,6 +80,9 @@ class Grammar:
         # object handling map of exponent details
         # including pointing to an exponent properties and word classes
         self.exponents = Exponents(self)
+
+        # object ordering word pieces and words
+        self.morphosyntax = Morphosyntax(self)
 
         # TODO: resupport property and word class abbreviations
         # - unambiguous abbreviation:full_term map
@@ -458,3 +462,6 @@ print(singular_noun, plural_noun)
 singular_noun = grammar.build_unit("mouse", properties="nominative singular", word_classes=["noun"])
 plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_classes="noun")
 print(singular_noun, plural_noun)
+
+# TODO: test arrange morphosyntax order
+grammar.morphosyntax.add_relative_exponent_order(plural_noun_exponent, pre=[], post=[])
