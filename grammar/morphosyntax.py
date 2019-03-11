@@ -6,28 +6,30 @@ class Morphosyntax:
         # used to read and verify that ordered exponents exist
         self.grammar = grammar
         
-        # relative "internal" exponent ordering word or phrase units
+        # relative exponent ordering word or phrase units
         self.exponent_order = defaultdict(lambda: {
             'pre': set(),
             'post': set()
         })
         
-        # relative "external" part of speech ordering for multi-unit phrases or sentences
-        self.word_class_order = {}
-
-        # fixed left-to-right order of elements within a unit
+        # fixed left-to-right order of elements within a unit]
+        #   - unit can be ordered by a mix of word classes and properties
+        #   - built to be used within a named fixed sentence order
+        #
         # structure of unit:sequence pairs:
         # {
         #   'unit_name': [
-        #       {'exponent_id_1', 'exponent_id_2', ...},    # options
-        #       {'word_class_1},
+        #       {'property_1', 'property_2'...},    # possible properties in this piece
+        #       {'word_class_1},                    # word class in this piece
         #       ...
         #   ]
         # }
         self.units = {}
 
         # fixed left-to-right order of units in various types of sentences
-        # each unit is findable in units or is a word classes
+        #   - each discrete part is a unit or a word classes
+        #   - see arrange method for the reordering process
+        #
         # structure of sentence:sequence pairs:
         # {
         #   'sentence_name': [
@@ -137,21 +139,18 @@ class Morphosyntax:
             print("Failed to add sentence to morphosyntax - expected valid sentence name and sequence")
             return
         
-        # store only known units
-        filtered_units_sequence = []
-        for unit in sentence_sequence:
-            # add recognized unit
-            if unit in self.units:
-                filtered_units_sequence.append(unit)
-            # back out if any non-units given
-            elif all_or_none:
-                return
-            # unrecognized unit skipped
-            else:
-                continue
+        # collect only known units
+        filtered_units = [
+            unit for unit in sentence_sequence
+            if unit in self.units
+        ]
+
+        # back out if any non-units given
+        if all_or_none and len(filtered_units) != len(sentence_sequence):
+            return
 
         # add units sequence to sentences
-        self.sentences[sentence_name] = filtered_units_sequence
+        self.sentences[sentence_name] = filtered_units
 
         return self.sentences[sentence_name]
 
@@ -265,17 +264,101 @@ class Morphosyntax:
 
 
     ## Use stored morphosyntax to arrange words in a given unit or sentence
-    #
-    # TODO: use stored data to reorder passed-in lists of word classes
-
+    
+    # TODO: rewrite it as taking a contiguous list (pre-exponents or post-exponents)
+    #   - stick exponents on the end if they're "post"/after the last
+    #   - otherwise back until finding one they're "pre"/before
+    #   - intended to keep exponents ordered vs each other, not to completely reorder all exponents
+    # 
+    # NOTE: what about circumfixes? They are more or less inner, but pre/post?
     def arrange_exponents(self, exponent_ids):
-        """Take a list of exponents and return a reordered copy applying relative exponent ordering"""
-        return
+        """Take a list of exponents and return a reordered copy after applying
+        relative exponent ordering. Exponents that were not added to the
+        relative exponents map are not returned within the reordered sequence.
+        Exponents that are not classified relative to each other are placed after
+        each other. Breaks in relative chain may result in unpredictable order
+        of single exponents or groups of chain-ordered exponents.
+        """
+
+        # filter down to a collection of exponents explicitly ordered
+        ordered_exponents = list(filter(
+            lambda x: x in self.exponent_order,
+            exponent_ids
+        ))
+
+        # reorder exponents using bubble sort swap based on pre/post keys
+        for sort_position in range(len(ordered_exponents)-1, 0, -1):
+            # compare elements up to the already-sorted limit
+            for compared_position in range(sort_position):
+                # swap exponents if the second is "pre" the first
+                # or the first is "post" the second
+                exponent_1 = ordered_exponents[compared_position]
+                exponent_2 = ordered_exponents[compared_position + 1]
+                if exponent_1 in self.exponent_order[exponent_2]['pre'] or exponent_2 in self.exponent_order[exponent_1]['post']:
+                    ordered_exponents[compared_position], ordered_exponents[compared_position + 1] = exponent_2, exponent_1
+
+        return ordered_exponents
 
     def arrange_sentence(self, sentence, sentence_tags, sentence_type):
-        """Take a collection of sentence items and return a reordered copy applying sentence type ordering"""
-        # sentence type exists in collection
-        assert sentence_type in self.sentences
-        # one pos/exponent tag per token
-        assert len(sentence) == len(sentence_tags)
-        return
+        """Take a collection of sentence items and return a reordered copy
+        reordering units using on the named sentence type."""
+
+        # check if sentence type exists in collection
+        if sentence_type not in self.sentences:
+            print(f"Morphosyntax failed to arrange unidentified sentence type {sentence_type}")
+            return
+        # expect all sentence elements to be tagged 
+        if len(sentence) != len(sentence_tags):
+            print(f"Morphosyntax failed to arrange sentence - tokens and tags counts do not match")
+            return
+
+        # TODO: arrange sentence units and each individual unit
+        #   - expect one-to-one mapping of sentence elements and tags
+        #   - expect tags to be properties or word classes (per-unit info)
+        #   - expect groups of units
+        #   - linearly identify which raw pieces belong to which units
+        #   - assume properties in multiple units are nearer to their units
+
+        # set up a sequence for catching all unit pieces in order
+        sentence_units = [
+            {
+                'unit_piece': unit_piece,
+                # data for elements from the passed-in sentence
+                'token': None,
+                'tag': None
+            }
+            for unit in self.sentences[sentence_type]
+            for unit_piece in self.units[unit]
+        ]
+
+        # which indexes have already settled in order
+        used_indexes = set()
+
+        # fill in units
+        for unit_piece in sentence_units:
+            # find the next unused element fiting into this piece of this unit
+            for i in range(len(sentence_tags)):
+                if sentence_tags[i] in unit_piece and i not in used_indexes:
+                    # remember the token/tag as used
+                    used_indexes.add(i)
+                    # store info for the token/tag
+                    sentence_units[unit_piece]['token'] = sentence[i]
+                    sentence_units[unit_piece]['tag'] = sentence_tags[i]
+                    break
+            continue
+        
+        # use the settled tokens to collect reordered sentence elements
+        ordered_sentence = [sentence_units[unit]['token'] for unit in sentence_units]
+
+        return ordered_sentence
+
+    # NOTE: demo to test modified sort - REMOVE
+    def _demo_arrange_sort(self, unsorted_elements, prepost):
+        sorted_elements = list(unsorted_elements)
+        for sort_limit in range(len(sorted_elements)-1, 0, -1):
+            for i in range(sort_limit):
+                item_a = sorted_elements[i]
+                item_b = sorted_elements[i + 1]
+                if item_a in prepost[item_b]['before'] or item_b in prepost[item_a]['after']:
+                    sorted_elements[i], sorted_elements[i + 1] = item_b, item_a
+        return sorted_elements
