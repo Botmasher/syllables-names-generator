@@ -186,28 +186,28 @@ class Morphosyntax:
             if self.grammar.exponents.get(exponent)
         }
     
-    def add_relative_exponent_order(self, exponent_id, pre=None, post=None):
-        """Store the position of other exponents before or after an exponent
-        Take axis exponent id the other exponents will be relative to, then
-        pass collections of exponent ids occuring before (pre) or after (post)
-        the axis exponent
+    def add_relative_exponent_order(self, exponent_id, inner=None, outer=None):
+        """Store the position of other exponents compared to an exponent
+        Take exponent id the other exponents will be relative to, then
+        pass collections of exponent ids occuring closer to the base (inner)
+        or away from it (outer) compared to the given exponent
         """
-        # back out if axis or relatives
-        if not self.grammar.exponents.get(exponent_id) or not (pre or post):
+        # back out if no main exponent or relatives
+        if not self.grammar.exponents.get(exponent_id) or not (inner or outer):
             print("Grammar morphosyntax expected one existing exponent and at least one pre or post collection")
             return
         
         # initialize positional exponent collections
         # read: from args
         requested_exponents = {
-            'pre': pre,
-            'post': post
+            'inner': inner,
+            'outer': outer
         }
         # write: vet and collect
         filtered_exponents = {}
 
         # filter requested exponents allowing for single string or collection input
-        # store recognized ones and their position around the axis exponent
+        # store recognized ones and their position compared to the main exponent
         for position, exponents in requested_exponents.items():
             # exponents collection is a single string - create a one-item set
             if isinstance(exponents, str) and self.grammar.exponents.get(exponents):
@@ -231,22 +231,22 @@ class Morphosyntax:
             self.exponent_order.setdefault(exponent_id, {})[position] = updated_exponents
 
             # TODO: optimize searching and updating relative entries
-            # reverse update relative entries with correct position of axis
-            opposite_position = "pre" if position == "post" else "post"
+            # reverse update relative entries with correct position of main exponent
+            opposite_position = "inner" if position == "outer" else "inner"
             for added_exponent in added_exponents:
-                # relative exponent pre and post sets
+                # relative exponent inner and outer sets
                 added_exponent_details = self.exponent_order[added_exponent]
-                # add axis exponent to the opposite position in its relative
-                # (if they are pre or post, add axis to their post or pre)
-                # example: -affix1-affix2 with affix2 relative post affix1 should add affix1 to the set in the 'pre' key of affix2
+                # add main exponent to the opposite position in its relative
+                # (if they are inner or outer, add main outer/inner)
+                # example: -affix1-affix2 with affix2 relative inner affix1 should add affix1 to the set in the 'pre' key of affix2
                 added_exponent_details[opposite_position].add(exponent_id) 
                 # self.exponent_order                         \
                 #     .setdefault(added_exponent, {})         \
                 #     .setdefault(opposite_position, set())   \
                 #     .add(exponent_id)
 
-                # delete axis from the non-opposite position in its relative
-                # (if axis is in relative's pre/post and they're post/pre, remove axis)
+                # delete main from the non-opposite position in its relative
+                # (if main in relative's inner/outer and they're outer/inner, remove main)
                 # example: -affix1-affix2 with affix2 relative post affix1 should not store affix1 in the 'post' key of affix2
                 added_exponent_details[position].discard(exponent_id)
                 # self.exponent_order                         \
@@ -254,7 +254,7 @@ class Morphosyntax:
                 #     .setdefault(position, set())            \
                 #     .discard(exponent_id)
         
-        # TODO: ? enforce individual relatives must be either pre xor post axis
+        # TODO: ? enforce individual relatives must be either inner xor outer compared to main
 
         return self.exponent_order.get(exponent_id)
 
@@ -266,39 +266,73 @@ class Morphosyntax:
     ## Use stored morphosyntax to arrange words in a given unit or sentence
     
     # TODO: rewrite it as taking a contiguous list (pre-exponents or post-exponents)
-    #   - stick exponents on the end if they're "post"/after the last
-    #   - otherwise back until finding one they're "pre"/before
+    #   - stick exponents on the end if they're "inner"/nearer-to-base than the main
+    #   - otherwise back until finding one they're "outer" compared to the main
     #   - intended to keep exponents ordered vs each other, not to completely reorder all exponents
     # 
     # NOTE: what about circumfixes? They are more or less inner, but pre/post?
     def arrange_exponents(self, exponent_ids):
-        """Take a list of exponents and return a reordered copy after applying
-        relative exponent ordering. Exponents that were not added to the
-        relative exponents map are not returned within the reordered sequence.
-        Exponents that are not classified relative to each other are placed after
-        each other. Breaks in relative chain may result in unpredictable order
-        of single exponents or groups of chain-ordered exponents.
+        """Take a list of exponents to surround a base, then return a reordered
+        list after applying relative exponent ordering. Exponents that were
+        not added to the relative exponents map are not returned within the
+        reordered sequence. Breaks in relative exponent chain may result in
+        unpredictable order of single exponents or groups of ordered exponents.
         """
 
         # filter down to a collection of exponents explicitly ordered
-        ordered_exponents = list(filter(
+        filtered_exponents = list(filter(
             lambda x: x in self.exponent_order,
             exponent_ids
         ))
 
-        # reorder exponents using bubble sort swap based on pre/post keys
-        for sort_position in range(len(ordered_exponents)-1, 0, -1):
-            # compare elements up to the already-sorted limit
-            for compared_position in range(sort_position):
-                # swap exponents if the second is "pre" the first
-                # or the first is "post" the second
-                exponent_1 = ordered_exponents[compared_position]
-                exponent_2 = ordered_exponents[compared_position + 1]
-                if exponent_1 in self.exponent_order[exponent_2]['pre'] or exponent_2 in self.exponent_order[exponent_1]['post']:
-                    ordered_exponents[compared_position], ordered_exponents[compared_position + 1] = exponent_2, exponent_1
+        # back out if no valid exponents found
+        if not filtered_exponents:
+            print("Morphosyntax failed to arrange exponents - no valid exponent ids given")
+            return
 
+        # initialize sorted list of exponents with the first exponent to compare
+        ordered_exponents = [filtered_exponents[0]]
+
+        # compare and sort recognized exponents by inner/outerness
+        # with inner terms closer to the base and outer further from it
+        # 
+        # NOTE: orders 'pre' and 'post' exponents, including circumfixes
+        #   - 'pre' appear earlier in list when they're less "inner" (more "pre") than another
+        #   - 'post' appear earlier in list when they're more "inner" (less "post") than another
+        for exponent_id in filtered_exponents[1:]:
+            # get reference to this exponent's details
+            current_exponent = self.grammar.exponents[exponent_id]
+
+            # whether or not an already-sorted exponent follows this one
+            after_found = False
+
+            # go through and see if exponent fits earlier than anywhere in list
+            for i in range(len(filtered_exponents)):
+                # the compared exponent details
+                compared_exponent = self.grammar.exponents[filtered_exponents[i]]
+                
+                # check if this exponent fits earlier than current list element
+                if current_exponent['pre'] and compared_exponent['pre']:
+                    if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('inner', []):
+                        after_found = True
+                if current_exponent['post'] and compared_exponent['post']:
+                    if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('outer', []):
+                        after_found = True
+                
+                # insert exponent into the list before its later compared exponent
+                if after_found:
+                    ordered_exponents = ordered_exponents[:i] + [exponent_id] + ordered_exponents[i:]
+                    break
+
+            # no exponents sort after this one - add it to the end
+            if not after_found:
+                ordered_exponents.append(exponent_id)
+
+        # send back the sorted exponents list
         return ordered_exponents
 
+    # TODO: rework Syntax side to manage sentences and sentence units well
+    #
     def arrange_sentence(self, sentence, sentence_tags, sentence_type):
         """Take a collection of sentence items and return a reordered copy
         reordering units using on the named sentence type."""
@@ -351,14 +385,3 @@ class Morphosyntax:
         ordered_sentence = [sentence_units[unit]['token'] for unit in sentence_units]
 
         return ordered_sentence
-
-    # NOTE: demo to test modified sort - REMOVE
-    def _demo_arrange_sort(self, unsorted_elements, prepost):
-        sorted_elements = list(unsorted_elements)
-        for sort_limit in range(len(sorted_elements)-1, 0, -1):
-            for i in range(sort_limit):
-                item_a = sorted_elements[i]
-                item_b = sorted_elements[i + 1]
-                if item_a in prepost[item_b]['before'] or item_b in prepost[item_a]['after']:
-                    sorted_elements[i], sorted_elements[i + 1] = item_b, item_a
-        return sorted_elements
