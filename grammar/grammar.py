@@ -356,7 +356,7 @@ class Grammar:
         # return the grammatically augmented word
         return built_word
 
-    def attach_exponents(self, root, exponent_ids, as_string=False):
+    def attach_exponents(self, root, exponent_ids, as_string=False, reorder=True):
         """Exponent a complex word to correctly position a root, prefixes, postfixes, prepositions, postpositions"""
         # expect a collection of exponent ids and a word-building map
         if not isinstance(exponent_ids, (list, set, tuple)):
@@ -370,8 +370,14 @@ class Grammar:
         exponented_word_map = {attachment: deque() for attachment in attachment_sequence}
         exponented_word_map['root'].append(root)
 
+        # rearrange exponents using morphosyntax ordering
+        if reorder:
+            ordered_exponents = self.morphosyntax.arrange_exponents(exponent_ids)
+        else:
+            ordered_exponents = exponent_ids
+
         # go through exponents and map them as prescribed in the exponent
-        for exponent_id in exponent_ids:
+        for exponent_id in ordered_exponents:
             exponent_details = self.exponents.get(exponent_id)
             # check for valid exponent
             if not exponent_details:
@@ -463,5 +469,18 @@ singular_noun = grammar.build_unit("mouse", properties="nominative singular", wo
 plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_classes="noun")
 print(singular_noun, plural_noun)
 
-# TODO: test arrange morphosyntax order
-grammar.morphosyntax.add_relative_exponent_order(plural_noun_exponent, pre=[], post=[])
+
+
+# test arrange morphosyntax order
+inner_affix = grammar.exponents.add(pre="inn", post="ner", properties={
+    'tense': "present"
+})
+outer_affix = grammar.exponents.add(pre="out", post="ter", properties={
+    'aspect': "perfective"
+})
+
+grammar.morphosyntax.add_exponent_order(outer_affix, inner=[
+    inner_affix
+], outer=[])
+
+

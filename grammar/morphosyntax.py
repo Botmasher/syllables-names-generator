@@ -185,8 +185,19 @@ class Morphosyntax:
             exponent for exponent in exponents_collection
             if self.grammar.exponents.get(exponent)
         }
+
+    def make_relative_set(self, ordering_map, order_id, added_collection, order_item_key):
+        """Add to and return a copy of a relative  set"""
+        return ordering_map.get(
+            order_id, {}
+        ).get(
+            order_item_key, set()
+        ) | {
+            item for item in added_collection
+            if ordering_map.get(item)
+        }
     
-    def add_relative_exponent_order(self, exponent_id, inner=None, outer=None):
+    def add_exponent_order(self, exponent_id, inner=None, outer=None):
         """Store the position of other exponents compared to an exponent
         Take exponent id the other exponents will be relative to, then
         pass collections of exponent ids occuring closer to the base (inner)
@@ -257,10 +268,6 @@ class Morphosyntax:
         # TODO: ? enforce individual relatives must be either inner xor outer compared to main
 
         return self.exponent_order.get(exponent_id)
-
-    def add_relative_word_class_order(self, word_class, pre=None, post=None):
-        """Store the position of other word classes before or after a word class"""
-        return
 
 
     ## Use stored morphosyntax to arrange words in a given unit or sentence
