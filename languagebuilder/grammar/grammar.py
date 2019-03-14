@@ -484,7 +484,15 @@ print("outer affix: " + outer_affix)
 added_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, inner=[
     inner_affix
 ], outer=[])
-print(added_ordering)
+print(grammar.morphosyntax.exponent_order)
+
+orderly_unit = grammar.build_unit("base", properties="present perfective")
+print(orderly_unit)
+
+switched_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, outer=[
+    inner_affix
+])
+print(grammar.morphosyntax.exponent_order)
 
 orderly_unit = grammar.build_unit("base", properties="present perfective")
 print(orderly_unit)

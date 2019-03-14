@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 # order word and sentence elements relative to each other
 class Morphosyntax:
     def __init__(self, grammar):
@@ -7,10 +5,7 @@ class Morphosyntax:
         self.grammar = grammar
         
         # relative exponent ordering word or phrase units
-        self.exponent_order = defaultdict(lambda: {
-            'inner': set(),
-            'outer': set()
-        })
+        self.exponent_order = {}
         
         # fixed left-to-right order of elements within a unit]
         #   - unit can be ordered by a mix of word classes and properties
@@ -174,6 +169,8 @@ class Morphosyntax:
 
     ## Relative Exponent ordering
 
+    # TODO: ordering of non-positional exponents for example multiple apophonies
+
     # relative inner OR outer exponents add method for one exponent
     def make_relative_exponents_set(self, exponent_id, exponents_collection, inner_outer_key):
         """Add to and return a copy of a relative exponents pre or post set"""
@@ -236,18 +233,33 @@ class Morphosyntax:
 
         # merge new relative exponents into stored exponent orders
         for position, added_exponents in filtered_exponents.items():
-            existing_exponents = self.exponent_order.get(exponent_id, {}).get(position, set())
+            # get current exponents at this position (inner/outer)
+            existing_exponents = self.exponent_order.setdefault(exponent_id, {})
+            position_exponents = existing_exponents.get(position, set())
+            
+            # get exponents set for the complementary position
+            opposite_position = "inner" if position == "outer" else "outer"
+            opposite_position_exponents = existing_exponents.get(opposite_position, set())
+
             # unite new exponent collection with existing set
-            updated_exponents = added_exponents | existing_exponents
+            updated_exponents = added_exponents | position_exponents
             # store updated relative positional exponent collection
-            self.exponent_order.setdefault(exponent_id, {})[position] = updated_exponents
+            self.exponent_order[exponent_id][position] = updated_exponents
+            self.exponent_order[exponent_id][opposite_position] = opposite_position_exponents
+
+            print("this exponent is ", existing_exponents)
+            print("the relative adds are ", added_exponents)
 
             # TODO: optimize searching and updating relative entries
             # reverse update relative entries with correct position of main exponent
-            opposite_position = "inner" if position == "outer" else "outer"
             for added_exponent in added_exponents:
-                # relative exponent inner and outer sets
-                added_exponent_details = self.exponent_order[added_exponent]
+                # remove relative from the added exponent's opposite position
+                # example: if adding "pre" inner relative to exponent, delete it from outer
+                self.exponent_order[exponent_id][opposite_position].discard(added_exponent)
+                
+                # get the relative exponent inner and outer sets
+                added_exponent_details = self.exponent_order.setdefault(added_exponent, {})
+                
                 # add main exponent to the opposite position in its relative
                 # (if they are inner or outer, add main outer/inner)
                 # example: -affix1-affix2 with affix2 relative inner affix1 should add affix1 to the set in the 'pre' key of affix2
@@ -265,7 +277,7 @@ class Morphosyntax:
                 #     .setdefault(added_exponent, {})         \
                 #     .setdefault(position, set())            \
                 #     .discard(exponent_id)
-        
+
         # TODO: ? enforce individual relatives must be either inner xor outer compared to main
 
         return self.exponent_order.get(exponent_id)
@@ -325,12 +337,16 @@ class Morphosyntax:
             for i in range(len(filtered_exponents)):
                 # the compared exponent details
                 compared_exponent = self.grammar.exponents.get(filtered_exponents[i])
+
+                print("comparing exponent ", current_exponent, " to ", compared_exponent)
                 
                 # check if this exponent fits earlier than current list element
+                # compare "pre" for catching outer (earlier) pre and circum elements first
                 if current_exponent['pre'] and compared_exponent['pre']:
                     if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('outer', []):
                         before_found = True
-                if current_exponent['post'] and compared_exponent['post']:
+                # compare "post" for catching inner (earlier) post elements
+                elif current_exponent['post'] and compared_exponent['post']:
                     if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('inner', []):
                         before_found = True
                 
