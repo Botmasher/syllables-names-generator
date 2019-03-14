@@ -373,6 +373,7 @@ class Grammar:
         # rearrange exponents using morphosyntax ordering
         if reorder:
             ordered_exponents = self.morphosyntax.arrange_exponents(exponent_ids)
+        # use whatever order exponents found in
         else:
             ordered_exponents = exponent_ids
 
@@ -470,17 +471,20 @@ plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_c
 print(singular_noun, plural_noun)
 
 
-
 # test arrange morphosyntax order
-inner_affix = grammar.exponents.add(pre="inn", post="ner", properties={
+inner_affix = grammar.exponents.add(pre="(inn-", post="-ner)", properties={
     'tense': "present"
 })
-outer_affix = grammar.exponents.add(pre="out", post="ter", properties={
+print("inner affix: " + inner_affix)
+outer_affix = grammar.exponents.add(pre="out-", post="-ter", properties={
     'aspect': "perfective"
 })
+print("outer affix: " + outer_affix)
 
-grammar.morphosyntax.add_exponent_order(outer_affix, inner=[
+added_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, inner=[
     inner_affix
 ], outer=[])
+print(added_ordering)
 
-
+orderly_unit = grammar.build_unit("base", properties="present perfective")
+print(orderly_unit)

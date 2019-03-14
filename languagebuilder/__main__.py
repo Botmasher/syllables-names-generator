@@ -1,4 +1,4 @@
-from example import my_language
+from .example import my_language
 
 def run_wordbuilder():
     print("Running wordbuilder")

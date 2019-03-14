@@ -1,6 +1,6 @@
 from uuid import uuid4      # for indexing exponent keys
 import math                 # for allowing finds to break at user-defined count or data limit
-from tools.functional_maps import merge_maps
+from ..tools.functional_maps import merge_maps
 
 class Exponents:
     def __init__(self, grammar):
@@ -70,7 +70,7 @@ class Exponents:
         
         # back out of add if no recognized properties provided by exponent
         if not recognized_properties:
-            print("Exponents.add failed - invalid grammatical category {0}".format(category))
+            print("Exponents.add failed - invalid properties")
             return
         
         # store exponent details

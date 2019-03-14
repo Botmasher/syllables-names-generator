@@ -1,5 +1,5 @@
 import unittest
-from wordbuilder.draft import grammar
+from ..draft import grammar
 
 ## test discovery through CLI from this dir or above:
 ## `python3 -m unittest discover -v -p "test_*"`

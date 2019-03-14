@@ -16,9 +16,15 @@ The code currently exists in two variants - a first take in C# for Unity and a m
 - get a copy of this repo
 - command line your way to your local copy (the same level as `setup.py`)
 - install the package: `pip3 install .`
-- run the example: `python3 wordbuilder`
 
-Once you verify it runs, you're probably eager to begin customizing your language. You can start by modifying the demo language in `example.py` or include modules in your own project.
+## Running scripts and packages
+
+After getting your own copy of the project, here are some things you can do with it.
+- run the main program: `python3 -m languagebuilder`
+- run one script (`grammar.py` for example): `python3 -m languagebuilder.grammar.grammar`
+- go through the tests: `python3 -m unittest discover -v -p "test_*"`
+
+Once you verify it runs, you're probably eager to begin customizing your language. You can start by modifying the demo language in `example.py` or include the modules into your own project.
 
 ## TODO
 

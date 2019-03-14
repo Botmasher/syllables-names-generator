@@ -1,14 +1,11 @@
 import unittest
 
-from grammar import grammar
+from ..grammar import grammar
 
 # compare classes to instances in tests
-from grammar.word_classes import WordClasses
-from grammar.exponents import Exponents
-from grammar.properties import Properties
-
-## test discovery through CLI from this dir or above:
-## `python3 -m unittest discover -v -p "test_*"`
+from ..grammar.word_classes import WordClasses
+from ..grammar.exponents import Exponents
+from ..grammar.properties import Properties
 
 def setUpModule():
     print("Setting up the Grammar test module")

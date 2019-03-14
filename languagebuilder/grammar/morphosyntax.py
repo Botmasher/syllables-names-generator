@@ -8,8 +8,8 @@ class Morphosyntax:
         
         # relative exponent ordering word or phrase units
         self.exponent_order = defaultdict(lambda: {
-            'pre': set(),
-            'post': set()
+            'inner': set(),
+            'outer': set()
         })
         
         # fixed left-to-right order of elements within a unit]
@@ -174,18 +174,19 @@ class Morphosyntax:
 
     ## Relative Exponent ordering
 
-    # TODO: abstract relative pre/post add method
-    def make_relative_exponents_set(self, exponent_id, exponents_collection, pre_post_key):
+    # relative inner OR outer exponents add method for one exponent
+    def make_relative_exponents_set(self, exponent_id, exponents_collection, inner_outer_key):
         """Add to and return a copy of a relative exponents pre or post set"""
         return self.exponent_order.get(
             exponent_id, {}
         ).get(
-            pre_post_key, set()
+            inner_outer_key, set()
         ) | {
             exponent for exponent in exponents_collection
             if self.grammar.exponents.get(exponent)
         }
 
+    # abstracted relative order-key collection add method for one axis item
     def make_relative_set(self, ordering_map, order_id, added_collection, order_item_key):
         """Add to and return a copy of a relative  set"""
         return ordering_map.get(
@@ -243,14 +244,14 @@ class Morphosyntax:
 
             # TODO: optimize searching and updating relative entries
             # reverse update relative entries with correct position of main exponent
-            opposite_position = "inner" if position == "outer" else "inner"
+            opposite_position = "inner" if position == "outer" else "outer"
             for added_exponent in added_exponents:
                 # relative exponent inner and outer sets
                 added_exponent_details = self.exponent_order[added_exponent]
                 # add main exponent to the opposite position in its relative
                 # (if they are inner or outer, add main outer/inner)
                 # example: -affix1-affix2 with affix2 relative inner affix1 should add affix1 to the set in the 'pre' key of affix2
-                added_exponent_details[opposite_position].add(exponent_id) 
+                added_exponent_details.setdefault(opposite_position, set()).add(exponent_id) 
                 # self.exponent_order                         \
                 #     .setdefault(added_exponent, {})         \
                 #     .setdefault(opposite_position, set())   \
@@ -259,7 +260,7 @@ class Morphosyntax:
                 # delete main from the non-opposite position in its relative
                 # (if main in relative's inner/outer and they're outer/inner, remove main)
                 # example: -affix1-affix2 with affix2 relative post affix1 should not store affix1 in the 'post' key of affix2
-                added_exponent_details[position].discard(exponent_id)
+                added_exponent_details.setdefault(position, set()).discard(exponent_id)
                 # self.exponent_order                         \
                 #     .setdefault(added_exponent, {})         \
                 #     .setdefault(position, set())            \
@@ -278,7 +279,7 @@ class Morphosyntax:
     #   - intended to keep exponents ordered vs each other, not to completely reorder all exponents
     # 
     # NOTE: what about circumfixes? They are more or less inner, but pre/post?
-    def arrange_exponents(self, exponent_ids):
+    def arrange_exponents(self, exponent_ids, filter_ordered_only=False):
         """Take a list of exponents to surround a base, then return a reordered
         list after applying relative exponent ordering. Exponents that were
         not added to the relative exponents map are not returned within the
@@ -286,16 +287,23 @@ class Morphosyntax:
         unpredictable order of single exponents or groups of ordered exponents.
         """
 
-        # filter down to a collection of exponents explicitly ordered
-        filtered_exponents = list(filter(
-            lambda x: x in self.exponent_order,
-            exponent_ids
-        ))
+        # filter down to a collection of only explicitly ordered exponents
+        if filter_ordered_only:
+            filtered_exponents = list(filter(
+                lambda x: x in self.exponent_order,
+                exponent_ids
+            ))
+        # collect any known exponent
+        else:
+            filtered_exponents = list(filter(
+                lambda x: self.grammar.exponents.get(x),
+                exponent_ids
+            ))
 
-        # back out if no valid exponents found
+        # back out if no filtered exponents found
         if not filtered_exponents:
-            print("Morphosyntax failed to arrange exponents - no valid exponent ids given")
-            return
+            #print("Morphosyntax failed to arrange exponents - no valid exponent ids given")
+            return []
 
         # initialize sorted list of exponents with the first exponent to compare
         ordered_exponents = [filtered_exponents[0]]
@@ -308,31 +316,31 @@ class Morphosyntax:
         #   - 'post' appear earlier in list when they're more "inner" (less "post") than another
         for exponent_id in filtered_exponents[1:]:
             # get reference to this exponent's details
-            current_exponent = self.grammar.exponents[exponent_id]
+            current_exponent = self.grammar.exponents.get(exponent_id)
 
             # whether or not an already-sorted exponent follows this one
-            after_found = False
+            before_found = False
 
             # go through and see if exponent fits earlier than anywhere in list
             for i in range(len(filtered_exponents)):
                 # the compared exponent details
-                compared_exponent = self.grammar.exponents[filtered_exponents[i]]
+                compared_exponent = self.grammar.exponents.get(filtered_exponents[i])
                 
                 # check if this exponent fits earlier than current list element
                 if current_exponent['pre'] and compared_exponent['pre']:
-                    if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('inner', []):
-                        after_found = True
-                if current_exponent['post'] and compared_exponent['post']:
                     if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('outer', []):
-                        after_found = True
+                        before_found = True
+                if current_exponent['post'] and compared_exponent['post']:
+                    if filtered_exponents[i] in self.exponent_order.get(exponent_id, {}).get('inner', []):
+                        before_found = True
                 
                 # insert exponent into the list before its later compared exponent
-                if after_found:
+                if before_found:
                     ordered_exponents = ordered_exponents[:i] + [exponent_id] + ordered_exponents[i:]
                     break
 
             # no exponents sort after this one - add it to the end
-            if not after_found:
+            if not before_found:
                 ordered_exponents.append(exponent_id)
 
         # send back the sorted exponents list
