@@ -1,4 +1,5 @@
 from grammar.grammar import Grammar
+from phonology.features import Features
 from phonology.phoneme import Phoneme
 from phonology.syllable import Syllable
 from phonology.environment import Environment
@@ -26,10 +27,11 @@ import random
 # - see tasks within other class files
 
 class Language:
-    def __init__(self, name="", display_name="", features=None, inventory=None, rules={}):
+    def __init__(self, name="", display_name="", features=None, inventory=None):
         self.name = name
         self.display_name = display_name
-        self.features = features
+        self.features = features if features else Features()
+        self.grammar = Grammar()
         # collection managers
         self.phonemes = Phonemes()
         self.environments = Collector(accepted_types=['Environment'])

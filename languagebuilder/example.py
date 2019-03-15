@@ -1,12 +1,5 @@
-# built and fed to language
-from inventory import Inventory
-from features import Features
-from language import Language
-# instantiated inside language
-from affixes import Affixes
-from phoneme import Phoneme
-from syllable import Syllable
-from environment import Environment
+from .phonology.features import Features
+from .language.language import Language
 
 ## TEST - make features
 features = Features()
@@ -117,8 +110,16 @@ print(my_language.apply_rules("akatakatta"))  # expected: "agadagatta", got: "ag
 word_entry = my_language.build_word(length=2, definition="camel")
 print(word_entry)
 
-## TEST - add affixes
-
-## TEST - build word with affixes
+## TEST - add affixes and build words with them
+my_language.grammar.properties.add("number", "singular")
+my_language.grammar.properties.add("number", "plural")
+my_language.grammar.properties.add("semantic", "doer-person")
+my_language.grammar.word_classes.add("noun")
+my_language.grammar.word_classes.add("verb")
+plural_s = my_language.grammar.exponents.add(post="s", properties="plural noun")
+gerund_ing = my_language.grammar.exponents.add(post="er", properties="gerund")
+my_language.grammar.morphosyntax.add_exponent_order(plural_s, inner=gerund_ing)
+healers = my_language.grammar.build_unit("heal", properties="plural doer-person")
+print(healers)
 
 # TODO: compounding (plus or minus exponents)

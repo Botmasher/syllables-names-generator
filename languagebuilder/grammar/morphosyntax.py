@@ -247,9 +247,6 @@ class Morphosyntax:
             self.exponent_order[exponent_id][position] = updated_exponents
             self.exponent_order[exponent_id][opposite_position] = opposite_position_exponents
 
-            print("this exponent is ", existing_exponents)
-            print("the relative adds are ", added_exponents)
-
             # TODO: optimize searching and updating relative entries
             # reverse update relative entries with correct position of main exponent
             for added_exponent in added_exponents:
@@ -338,8 +335,6 @@ class Morphosyntax:
                 # the compared exponent details
                 compared_exponent = self.grammar.exponents.get(filtered_exponents[i])
 
-                print("comparing exponent ", current_exponent, " to ", compared_exponent)
-                
                 # check if this exponent fits earlier than current list element
                 # compare "pre" for catching outer (earlier) pre and circum elements first
                 if current_exponent['pre'] and compared_exponent['pre']:

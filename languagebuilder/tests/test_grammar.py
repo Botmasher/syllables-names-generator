@@ -417,7 +417,10 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         # add properties to provide across ordered exponents
         this_class.grammar.properties.add("category", "grammeme1")
         this_class.grammar.properties.add("category", "grammeme2")
-        
+        # and for switching places
+        this_class.grammar.properties.add("category", "grammemeSwap1")
+        this_class.grammar.properties.add("category", "grammemeSwap2")
+
     def test_order_exponents(self):
         # add orderable exponents
         first_prefix = self.grammar.exponents.add(pre="first-", properties={'category': 'grammeme1'}, bound=True)
@@ -434,19 +437,18 @@ class GrammarOrderMorphosyntax(GrammarFixture):
 
     def test_reorder_exponents(self):
         # add orderable exponents
-        first_prefix = self.grammar.exponents.add(pre="first-", properties={'category': 'grammeme1'}, bound=True)
-        second_prefix = self.grammar.exponents.add(pre="second-", properties={'category': 'grammeme2'}, bound=True)
+        first_prefix = self.grammar.exponents.add(pre="first-", properties={'category': 'grammemeSwap1'}, bound=True)
+        second_prefix = self.grammar.exponents.add(pre="second-", properties={'category': 'grammemeSwap2'}, bound=True)
         # order the exponents
         self.grammar.morphosyntax.add_exponent_order(first_prefix, inner=second_prefix)
         # reorder the exponents
         self.grammar.morphosyntax.add_exponent_order(first_prefix, outer=second_prefix)
         # see if exponents are in order when building word
-        built_unit = self.grammar.build_unit("rootword", properties="grammeme1 grammeme2")
+        built_unit = self.grammar.build_unit("rootword", properties="grammemeSwap1 grammemeSwap2")
         self.assertEqual(
             built_unit,
             "second-first-rootword",
             "morphosyntax did not rearrange exponents to switch their order correctly"
-        )  
-        
-# TODO: testing intuitive cases including building nouns, verbs
+        )
+
 # TODO: more robust testing of parse strings
