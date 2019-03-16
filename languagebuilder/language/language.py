@@ -1,15 +1,15 @@
-from grammar.grammar import Grammar
-from phonology.features import Features
-from phonology.phoneme import Phoneme
-from phonology.syllable import Syllable
-from phonology.environment import Environment
-from phonology.rule import Rule
-from phonology.ruletracker import RuleTracker
-from phonology.phonemes import Phonemes
-from tools.collector import Collector
-from tools.setcollector import SetCollector
+from ..grammar.grammar import Grammar
+from ..phonology.features import Features
+from ..phonology.phoneme import Phoneme
+from ..phonology.syllable import Syllable
+from ..phonology.environment import Environment
+from ..phonology.rule import Rule
+from ..phonology.ruletracker import RuleTracker
+from ..phonology.phonemes import Phonemes
+from ..tools.collector import Collector
+from ..tools.setcollector import SetCollector
 #from rules import Rules
-from lexicon.dictionary import Dictionary
+from ..lexicon.dictionary import Dictionary
 import random
 
 # NOTE: throughout the code "ipa" (usu uncaps) denotes any stored phonetic symbols associated with a set of features in a language

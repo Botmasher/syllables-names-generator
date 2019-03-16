@@ -1,4 +1,4 @@
-from tools.collector import Collector
+from ..tools.collector import Collector
 
 # TODO separate phonemes/letters/weights (language) from ipa-features (features) - do not handle features here!
 class Phonemes(Collector):

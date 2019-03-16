@@ -113,13 +113,65 @@ print(word_entry)
 ## TEST - add affixes and build words with them
 my_language.grammar.properties.add("number", "singular")
 my_language.grammar.properties.add("number", "plural")
-my_language.grammar.properties.add("semantic", "doer-person")
+my_language.grammar.properties.add("semantic", "doer")
 my_language.grammar.word_classes.add("noun")
 my_language.grammar.word_classes.add("verb")
-plural_s = my_language.grammar.exponents.add(post="s", properties="plural noun")
-gerund_ing = my_language.grammar.exponents.add(post="er", properties="gerund")
-my_language.grammar.morphosyntax.add_exponent_order(plural_s, inner=gerund_ing)
-healers = my_language.grammar.build_unit("heal", properties="plural doer-person")
+
+# TODO: also parse properties in call to create exponent
+
+# TODO: add exponents then run sound change in case attached
+#   - this means the form stored under 'sound' is the main one to pass around
+#   - option to change across word boundaries
+#   - example: if create root vafiv and attach is-, voicing changes the whole to izvaviv
+
+# TODO: logic of inner vs outer (including inconsistencies building with pre vs post)
+#   - am I adding elements that are to the exponent's inner?
+#   - or am I adding elements the exponent is inner to?
+# - resolution: 
+
+plural_s = my_language.grammar.exponents.add(post="s", properties={'number': "plural"})
+doer_er = my_language.grammar.exponents.add(post="er", properties={'semantic': "doer"})
+
+my_language.grammar.morphosyntax.add_exponent_order(plural_s, inner=doer_er)
+healers = my_language.grammar.build_unit("heal", properties="plural doer")
 print(healers)
+
+my_language.grammar.properties.add("semantic", "re")
+my_language.grammar.properties.add("semantic", "un")
+prefix_re = my_language.grammar.exponents.add(pre="re", properties={'semantic': "re"})
+prefix_un = my_language.grammar.exponents.add(pre="un", properties={'semantic': "un"})
+my_language.grammar.morphosyntax.add_exponent_order(prefix_un, inner=prefix_re)
+unrehealers = my_language.grammar.build_unit("heal", properties="plural re un doer")
+print(unrehealers)
+
+# TODO: handle circumfixes - attaching material gets interlaced
+#   - currently all pres attach first then all posts
+#   - evaluate circumfix pieces individually for both post and pre inners/outers
+
+my_language.grammar.properties.add("semantic", "circumfix1")
+my_language.grammar.properties.add("semantic", "circumfix2")
+circumfix1 = my_language.grammar.exponents.add(
+    pre="circum1-",
+    post="-fix1",
+    properties={'semantic': "circumfix1"}
+)
+circumfix2 = my_language.grammar.exponents.add(
+    pre="circum2-",
+    post="-fix2",
+    properties={'semantic': "circumfix2"}
+)
+my_language.grammar.morphosyntax.add_exponent_order(circumfix1, outer=circumfix2)
+circum_unrehealers_fix = my_language.grammar.build_unit(
+    "heal",
+    properties="plural doer un circumfix2 re circumfix1"
+)
+print(circum_unrehealers_fix)
+
+# NOTE: grammar will find the optimal exponent providing requested properties
+my_language.grammar.exponents.add(post="(eclipsed both -s & -er)", bound=False, properties={
+    'number': "plural",
+    'semantic': "doer"
+})
+print(my_language.grammar.build_unit("heal", properties="doer plural"))
 
 # TODO: compounding (plus or minus exponents)
