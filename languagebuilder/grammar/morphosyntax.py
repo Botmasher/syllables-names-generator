@@ -282,12 +282,8 @@ class Morphosyntax:
 
     ## Use stored morphosyntax to arrange words in a given unit or sentence
     
-    # TODO: rewrite it as taking a contiguous list (pre-exponents or post-exponents)
-    #   - stick exponents on the end if they're "inner"/nearer-to-base than the main
-    #   - otherwise back until finding one they're "outer" compared to the main
-    #   - intended to keep exponents ordered vs each other, not to completely reorder all exponents
-    # 
-    # NOTE: what about circumfixes? They are more or less inner, but pre/post?
+    # TODO: surround with bound before surrounding with unbound
+
     def arrange_exponents(self, exponent_ids, filter_ordered_only=False):
         """Take a list of exponents to surround a base, then return a reordered
         list after applying relative exponent ordering. Exponents that were
@@ -295,6 +291,10 @@ class Morphosyntax:
         reordered sequence. Breaks in relative exponent chain may result in
         unpredictable order of single exponents or groups of ordered exponents.
         """
+        # NOTE: post list traverses from last to first, pre from first to last
+        #   - consistency is on outer vs inner
+        #   - outermost post is the first one in the list
+        #   - outermost pre is also the first one in the list
 
         # filter down to a collection of only explicitly ordered exponents
         if filter_ordered_only:
@@ -314,9 +314,8 @@ class Morphosyntax:
             #print("Morphosyntax failed to arrange exponents - no valid exponent ids given")
             return []
 
-        # initialize sorted collections of pre and post exponents
-        ordered_pres = []   # also holds circumfixes
-        ordered_posts = []
+        # initialize collection of sorted exponents
+        ordered_exponents = []
 
         # compare and sort recognized exponents by inner/outerness
         # with inner terms closer to the base and outer further from it
@@ -324,58 +323,57 @@ class Morphosyntax:
         # NOTE: orders 'pre' and 'post' exponents, including circumfixes
         #   - 'pre' appear later in list when they're more "inner" (less "pre") than another
         #   - 'post' appear later in list when they're less "inner" (more "post") than another
+        
         for exponent_id in filtered_exponents:
+            # add first exponent to empty list
+            if not ordered_exponents:
+                ordered_exponents.append(exponent_id)
+                continue
+            
             # get reference to this exponent's details
             exponent_details = self.grammar.exponents.get(exponent_id)
 
+            # TODO: can capture both just by relying on pre and post?
+            # figure out where to add circum-material, both before and after base
+            #if exponent_details['pre'] and exponent_details['post']:
+            #    ordered_exponents.append(exponent_id)
+
             # figure out where to add this pre-exponent in its ordered list
             if exponent_details['pre']:
-                # add as first pre in empty list
-                if not ordered_pres:
-                    ordered_pres.append(exponent_id)
-                    continue
                 
                 # hold first pre to which this pre is outer
-                outer_i = len(ordered_pres) # start assuming it's at the end
+                outer_i = len(ordered_exponents) # start assuming it's at the end
                
                 # locate earliest element having this pre in its outers
-                for i in range(len(ordered_pres)):
-                    compared_id = ordered_pres[i]
+                for i in range(len(ordered_exponents)):
+                    compared_id = ordered_exponents[i]
                     # check for outermost pre to which this pre is outer
-                    if compared_id in self.exponent_order[exponent_id]['outer']:
+                    if exponent_id in self.exponent_order[compared_id]['outer']:
                         outer_i = i
                         break
                 
                 # sort pre-exponent at found spot within the ordered list
-                ordered_pres = ordered_pres[:outer_i] + [exponent_id] + ordered_pres[outer_i:]
+                ordered_exponents = ordered_exponents[:outer_i] + [exponent_id] + ordered_exponents[outer_i:]
             
             # figure out where to order this post-exponent
-            elif exponent_details['post']:
-                # add as first post-exponent to empty list
-                if not ordered_posts:
-                    ordered_posts.append(exponent_id)
-                    continue
-                
+            elif exponent_details['post']:                
                 # hold first post to which this post is inner
-                inner_i = len(ordered_posts) # start assuming final position
+                outer_i = len(ordered_exponents) # start assuming final position
                
                 # locate earliest element having this pre in its outers
-                for i in range(len(ordered_posts)):
-                    compared_id = ordered_posts[i]
+                for i in range(len(ordered_exponents)):
+                    compared_id = ordered_exponents[i]
                     # check for outermost pre to which this pre is outer
-                    if exponent_id in self.exponent_order[compared_id]['inner']:
-                        inner_i = i
+                    if exponent_id in self.exponent_order[compared_id]['outer']:
+                        outer_i = i
                         break
                 
                 # sort pre-exponent at found spot within the ordered list
-                ordered_posts = ordered_posts[:inner_i] + [exponent_id] + ordered_posts[inner_i:]
+                ordered_exponents = ordered_exponents[outer_i:] + [exponent_id] + ordered_exponents[:outer_i]
 
             # no pre- or post-exponent material to compare
             else:
                 pass
-
-        # combine sorted pre-exponents and post-exponents
-        ordered_exponents = ordered_pres + ordered_posts
 
         # send back the sorted exponents list
         return ordered_exponents

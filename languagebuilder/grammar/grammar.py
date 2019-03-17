@@ -364,10 +364,19 @@ class Grammar:
             return
 
         # exponent attachment types in in sequential order
-        attachment_sequence = ('preposition', 'prefix', 'root', 'postfix', 'postposition')
+        attachment_sequence = (
+            'preposition',
+            'prefix',
+            'root',
+            'postfix',
+            'postposition'
+        )
 
         # keep word pieces accounting for possible positions and spacing
-        exponented_word_map = {attachment: deque() for attachment in attachment_sequence}
+        exponented_word_map = {
+            attachment: deque()
+            for attachment in attachment_sequence
+        }
         exponented_word_map['root'].append(root)
 
         # rearrange exponents using morphosyntax ordering
@@ -395,11 +404,11 @@ class Grammar:
 
             # add exponent as the next-affixed/apposed material
             # add to left of prefixes or prepositions collection
-            pre and exponented_word_map[pre_key].appendleft(spacing)
-            pre and exponented_word_map[pre_key].appendleft(pre)
+            pre and exponented_word_map[pre_key].append(spacing)
+            pre and exponented_word_map[pre_key].append(pre)
             # add to right of suffixes or postpositions collection
-            post and exponented_word_map[post_key].append(spacing)
-            post and exponented_word_map[post_key].append(post)
+            post and exponented_word_map[post_key].appendleft(spacing)
+            post and exponented_word_map[post_key].appendleft(post)
 
         # turn the exponenting map into a flat sequence
         exponented_word = [

@@ -160,7 +160,8 @@ circumfix2 = my_language.grammar.exponents.add(
     post="-fix2",
     properties={'semantic': "circumfix2"}
 )
-my_language.grammar.morphosyntax.add_exponent_order(circumfix1, outer=circumfix2)
+my_language.grammar.morphosyntax.add_exponent_order(circumfix2, inner=circumfix1)
+my_language.grammar.morphosyntax.add_exponent_order(circumfix1, outer=circumfix2, inner=prefix_un)
 circum_unrehealers_fix = my_language.grammar.build_unit(
     "heal",
     properties="plural doer un circumfix2 re circumfix1"
