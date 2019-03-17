@@ -384,31 +384,48 @@ class Grammar:
             ordered_exponents = self.morphosyntax.arrange_exponents(exponent_ids)
         # use whatever order exponents found in
         else:
-            ordered_exponents = exponent_ids
+            ordered_exponents = {
+                'pre': exponent_ids,
+                'post': exponent_ids
+            }
+
+        # formatted_ordered_exponents = {
+        #     'pre': [self.exponents.get(e)['pre'] for e in ordered_exponents['pre']],
+        #     'post': [self.exponents.get(e)['post'] for e in ordered_exponents['post']]
+        # }
+        # print(f"{formatted_ordered_exponents}")
 
         # go through exponents and map them as prescribed in the exponent
-        for exponent_id in ordered_exponents:
-            exponent_details = self.exponents.get(exponent_id)
-            # check for valid exponent
-            if not exponent_details:
-                print("Grammar attach_exponents skipped invalid exponent {}".format(exponent_id))
-                continue
+        for position in ordered_exponents:
+            
+            # set up positional keys and checks
+            attachment_keys = ('preposition', 'prefix') if position == 'pre' else ('postposition', 'postfix')
+            is_pre = position == 'pre'
+            is_post = position == 'post'
 
-            # decide to store exponent as affixal or positional
-            pre_key, post_key = ('prefix', 'postfix') if exponent_details['bound'] else ('preposition', 'postposition')
-            # leave space between non-affixes and base
-            spacing = "" if exponent_details['bound'] else " "
-            # reference to the actual material being added
-            pre = exponent_details['pre'] if exponent_details['pre'] else ""
-            post = exponent_details['post'] if exponent_details['post'] else ""
+            # traverse and compile exponents destined for this position
+            for exponent_id in ordered_exponents[position]:
+                exponent_details = self.exponents.get(exponent_id)
 
-            # add exponent as the next-affixed/apposed material
-            # add to left of prefixes or prepositions collection
-            pre and exponented_word_map[pre_key].append(spacing)
-            pre and exponented_word_map[pre_key].append(pre)
-            # add to right of suffixes or postpositions collection
-            post and exponented_word_map[post_key].appendleft(spacing)
-            post and exponented_word_map[post_key].appendleft(post)
+                # check for valid exponent
+                if not exponent_details:
+                    print("Grammar attach_exponents skipped invalid exponent {}".format(exponent_id))
+                    continue
+                
+                # use binding to determine placement and spacing
+                attachment_key = attachment_keys[exponent_details['bound']]
+                spacing = "" if exponent_details['bound'] else " "
+
+                # reference the actual material being added
+                exponent_material = exponent_details[position]
+
+                # add both spacing and material to the relevant attachment list
+                if is_post:
+                    exponented_word_map[attachment_key].appendleft(exponent_material)
+                    exponented_word_map[attachment_key].appendleft(spacing)
+                elif is_pre:
+                    exponented_word_map[attachment_key].append(exponent_material)
+                    exponented_word_map[attachment_key].append(spacing)
 
         # turn the exponenting map into a flat sequence
         exponented_word = [

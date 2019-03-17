@@ -291,10 +291,13 @@ class Morphosyntax:
         reordered sequence. Breaks in relative exponent chain may result in
         unpredictable order of single exponents or groups of ordered exponents.
         """
-        # NOTE: post list traverses from last to first, pre from first to last
-        #   - consistency is on outer vs inner
-        #   - outermost post is the first one in the list
-        #   - outermost pre is also the first one in the list
+
+        # NOTE: latest take returns a map with both pre and post id lists
+        #   - placement decided on outer vs inner
+        #   - innermost ("first") post is the first one in the list
+        #   - outermost ("first") pre is the first one in the list
+        #   - externally both can be read as placing elements left-to-right
+        #   - both lists contain ids so traversing requires extra lookups
 
         # filter down to a collection of only explicitly ordered exponents
         if filter_ordered_only:
@@ -309,13 +312,15 @@ class Morphosyntax:
                 exponent_ids
             ))
 
+        # initialize map of sorted exponents
+        ordered_exponents = {
+            'pre': [],
+            'post': []
+        }
+
         # back out if no filtered exponents found
         if not filtered_exponents:
-            #print("Morphosyntax failed to arrange exponents - no valid exponent ids given")
-            return []
-
-        # initialize collection of sorted exponents
-        ordered_exponents = []
+            return ordered_exponents
 
         # compare and sort recognized exponents by inner/outerness
         # with inner terms closer to the base and outer further from it
@@ -325,51 +330,67 @@ class Morphosyntax:
         #   - 'post' appear later in list when they're less "inner" (more "post") than another
         
         for exponent_id in filtered_exponents:
-            # add first exponent to empty list
-            if not ordered_exponents:
-                ordered_exponents.append(exponent_id)
-                continue
             
             # get reference to this exponent's details
             exponent_details = self.grammar.exponents.get(exponent_id)
 
             # TODO: can capture both just by relying on pre and post?
             # figure out where to add circum-material, both before and after base
-            #if exponent_details['pre'] and exponent_details['post']:
-            #    ordered_exponents.append(exponent_id)
 
             # figure out where to add this pre-exponent in its ordered list
             if exponent_details['pre']:
-                
+                # # add first exponent to empty pres list
+                # # NOTE: loop below should add at length 0
+                # #
+                # if not ordered_exponents['pre']:
+                #    ordered_exponents['pre'].append(exponent_id)
+                #    continue
+
                 # hold first pre to which this pre is outer
-                outer_i = len(ordered_exponents) # start assuming it's at the end
-               
+                # start by assuming it's the innermost pre
+                pres_count = len(ordered_exponents['pre'])
+                outer_i = pres_count
+
+                # TODO: deal with placing unordered early in list then never getting to compare them
+                #   - also iterate through outers of each placed exponent
+                #   - check if current id is in those exponents and they appear in the filtered list
+                # 
+                #   - alternatively expect ordering of every possible exponent that might appear before/after
+                #   - at least ensure final list does not contain exponents in opposite order of inner/outers
+                #       - right now pres that are outermost getting placed first wrinkle results
+
+                print(f"evaluating pre {exponent_details['pre']}")
                 # locate earliest element having this pre in its outers
-                for i in range(len(ordered_exponents)):
-                    compared_id = ordered_exponents[i]
+                for i in range(pres_count):
+                    compared_id = ordered_exponents['pre'][i]
                     # check for outermost pre to which this pre is outer
                     if exponent_id in self.exponent_order[compared_id]['outer']:
+                        print (f"{self.grammar.exponents.get(exponent_id)['pre']} is outer to {self.grammar.exponents.get(compared_id)['pre']}")
+                        print (f"Here's my proof, my entry: {self.exponent_order[exponent_id]}")
                         outer_i = i
                         break
                 
                 # sort pre-exponent at found spot within the ordered list
-                ordered_exponents = ordered_exponents[:outer_i] + [exponent_id] + ordered_exponents[outer_i:]
+                ordered_exponents['pre'] = ordered_exponents['pre'][:outer_i] + [exponent_id] + ordered_exponents['pre'][outer_i:]
             
             # figure out where to order this post-exponent
-            elif exponent_details['post']:                
+            # NOTE: do not else branch to allow circums with both pre and post
+            if exponent_details['post']:
                 # hold first post to which this post is inner
-                outer_i = len(ordered_exponents) # start assuming final position
-               
+                # start out assuming it's the outermost post
+                posts_count = len(ordered_exponents['post'])
+                inner_i = posts_count
+
                 # locate earliest element having this pre in its outers
-                for i in range(len(ordered_exponents)):
-                    compared_id = ordered_exponents[i]
-                    # check for outermost pre to which this pre is outer
-                    if exponent_id in self.exponent_order[compared_id]['outer']:
-                        outer_i = i
+                for i in range(posts_count):
+                    compared_id = ordered_exponents['post'][i]
+                    # check for innermost pre to which this pre is inner
+                    if exponent_id in self.exponent_order[compared_id]['inner']:
+                        inner_i = i
                         break
                 
                 # sort pre-exponent at found spot within the ordered list
-                ordered_exponents = ordered_exponents[outer_i:] + [exponent_id] + ordered_exponents[:outer_i]
+                ordered_exponents['post'] = ordered_exponents['post'][inner_i:] + [exponent_id] + ordered_exponents['post'][:inner_i]
 
             # no pre- or post-exponent material to compare
             else:
