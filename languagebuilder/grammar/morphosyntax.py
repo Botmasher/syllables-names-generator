@@ -312,15 +312,8 @@ class Morphosyntax:
                 exponent_ids
             ))
 
-        # initialize map of sorted exponents
-        ordered_exponents = {
-            'pre': [],
-            'post': []
-        }
-
-        # back out if no filtered exponents found
-        if not filtered_exponents:
-            return ordered_exponents
+        # store exponent ids sorted from by innerness
+        sorted_ids = []
 
         # compare and sort recognized exponents by inner/outerness
         # with inner terms closer to the base and outer further from it
@@ -329,72 +322,73 @@ class Morphosyntax:
         #   - 'pre' appear later in list when they're more "inner" (less "pre") than another
         #   - 'post' appear later in list when they're less "inner" (more "post") than another
         
-        for exponent_id in filtered_exponents:
+        # copy iterated list - mutated while keeping track of which ids are yet to sort
+        # swap exponent sorted at this position with one at index that does get placed
+        exponents_to_order = filtered_exponents[:]
+
+        # sort a list of which exponents are inner-outer compared to each other
+        #
+        # Every element may know if it's "inner" or "outer" compared to one or
+        # more other elements, but for any single element the attribute is optional
+        # (an element is allowed to know nothing about inners or outers).
+        # Sort all of them from outermost to innermost.
+
+        # order from outermost to innermost
+        for i in range(len(filtered_exponents)):
+            # determine a candidate exponent to sort as innermore this pass
+            #
+            # store the exponent to assume as innermost and to place
+            # in ordered exponents if none are inner compared to it
+            #   - the first found that is inner to it gets placed instead
+            #   - if another is placed the two get swapped in exponents_to_order
+            exponent_id = exponents_to_order[i]
+
+            # store index and id of exponent that is more inner than current one
+            inner_index = i
+            inner_exponent = exponent_id
+            # compare every sortable, yet unplaced exponent after this one
+            for compared_index in range(i+1, len(exponents_to_order)):
+                compared_id = exponents_to_order[compared_index]
+                if compared_id in self.exponent_order[exponent_id]['inner']:
+                    inner_exponent = compared_id
+                    inner_index = compared_index
+                    break
             
-            # get reference to this exponent's details
-            exponent_details = self.grammar.exponents.get(exponent_id)
+            # swap current to sort later with its innermore getting sorted now
+            # only run if current is not already its own innermore
+            if inner_index != i:
+                exponents_to_order[i] = inner_exponent
+                exponents_to_order[inner_index] = exponent_id
 
-            # TODO: can capture both just by relying on pre and post?
-            # figure out where to add circum-material, both before and after base
-
-            # figure out where to add this pre-exponent in its ordered list
-            if exponent_details['pre']:
-                # # add first exponent to empty pres list
-                # # NOTE: loop below should add at length 0
-                # #
-                # if not ordered_exponents['pre']:
-                #    ordered_exponents['pre'].append(exponent_id)
-                #    continue
-
-                # hold first pre to which this pre is outer
-                # start by assuming it's the innermost pre
-                pres_count = len(ordered_exponents['pre'])
-                outer_i = pres_count
-
-                # TODO: deal with placing unordered early in list then never getting to compare them
-                #   - also iterate through outers of each placed exponent
-                #   - check if current id is in those exponents and they appear in the filtered list
-                # 
-                #   - alternatively expect ordering of every possible exponent that might appear before/after
-                #   - at least ensure final list does not contain exponents in opposite order of inner/outers
-                #       - right now pres that are outermost getting placed first wrinkle results
-
-                print(f"evaluating pre {exponent_details['pre']}")
-                # locate earliest element having this pre in its outers
-                for i in range(pres_count):
-                    compared_id = ordered_exponents['pre'][i]
-                    # check for outermost pre to which this pre is outer
-                    if exponent_id in self.exponent_order[compared_id]['outer']:
-                        print (f"{self.grammar.exponents.get(exponent_id)['pre']} is outer to {self.grammar.exponents.get(compared_id)['pre']}")
-                        print (f"Here's my proof, my entry: {self.exponent_order[exponent_id]}")
-                        outer_i = i
-                        break
-                
-                # sort pre-exponent at found spot within the ordered list
-                ordered_exponents['pre'] = ordered_exponents['pre'][:outer_i] + [exponent_id] + ordered_exponents['pre'][outer_i:]
+            # update the current exponent to the currently identified innermore
+            # either the same or the one inner to it with which it was swapped
+            exponent_id = exponents_to_order[i]
             
-            # figure out where to order this post-exponent
-            # NOTE: do not else branch to allow circums with both pre and post
-            if exponent_details['post']:
-                # hold first post to which this post is inner
-                # start out assuming it's the outermost post
-                posts_count = len(ordered_exponents['post'])
-                inner_i = posts_count
+            # now compare the candidate exponent to already placed exponents
+            # start by assuming it's at the end
+            placement_i = len(sorted_ids)
 
-                # locate earliest element having this pre in its outers
-                for i in range(posts_count):
-                    compared_id = ordered_exponents['post'][i]
-                    # check for innermost pre to which this pre is inner
-                    if exponent_id in self.exponent_order[compared_id]['inner']:
-                        inner_i = i
-                        break
-                
-                # sort pre-exponent at found spot within the ordered list
-                ordered_exponents['post'] = ordered_exponents['post'][inner_i:] + [exponent_id] + ordered_exponents['post'][:inner_i]
+            # traverse sorted ids looking for an innermore compared to this one
+            # iterating through all the way will sort it at the end (innermost)
+            for sorted_i in range(len(sorted_ids)):
+                sorted_exponent = sorted_ids[sorted_i]
+                if sorted_exponent in self.exponent_order[sorted_exponent]['outer']:
+                    placement_i = sorted_i
+                    break
+            
+            # sort to targeted inner/outer position within ordered list
+            sorted_ids = sorted_ids[:placement_i] + [exponent_id] + sorted_ids[placement_i:]
 
-            # no pre- or post-exponent material to compare
-            else:
-                pass
+        # initialize map of sorted exponents to be returned
+        # separated into "pre" and "post" for traversal by grammar
+        #
+        # TODO: consider sending back innermost-to-outermost
+        #   - let grammar access and format data as it will
+        #   - avoid hardcoding or entangling exponent data (pre/post) here
+        ordered_exponents = {
+            'pre': sorted_ids,
+            'post': list(reversed(sorted_ids))
+        }
 
         # send back the sorted exponents list
         return ordered_exponents
