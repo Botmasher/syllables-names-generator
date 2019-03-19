@@ -282,21 +282,25 @@ class Morphosyntax:
 
     ## Use stored morphosyntax to arrange words in a given unit or sentence
     
-    # TODO: surround with bound before surrounding with unbound
+    # TODO: Latest fix works much of the time, but solve for:
+    #   - create exponent1, exponent2, exponent3, exponent4
+    #   - order exponent4 inner to exponent3
+    #   - order exponent2 outer to exponent3 and inner to exponent1
+    #   - sometimes result => exponent1, exponent2, exponent3, exponent4
+    #   - sometimes result => exponent3, exponent4, exponent1, exponent2
 
     def arrange_exponents(self, exponent_ids, filter_ordered_only=False):
-        """Take a list of exponents to surround a base, then return a reordered
-        list after applying relative exponent ordering. Exponents that were
-        not added to the relative exponents map are not returned within the
-        reordered sequence. Breaks in relative exponent chain may result in
+        """Take a list of exponents and return a reordered copy of the list
+        after applying relative exponent inner/outer ordering. Exponents not
+        added to the morphosyntax ordered exponents map are not returned within
+        the reordered sequence. Breaks in relative exponent chain may result in
         unpredictable order of single exponents or groups of ordered exponents.
         """
 
-        # NOTE: latest take returns a map with both pre and post id lists
+        # NOTE: latest take returns a list of ids ordered from outermost to innermost
         #   - placement decided on outer vs inner
-        #   - innermost ("first") post is the first one in the list
+        #   - outermost ("last") post is the first one in the list
         #   - outermost ("first") pre is the first one in the list
-        #   - externally both can be read as placing elements left-to-right
         #   - both lists contain ids so traversing requires extra lookups
 
         # filter down to a collection of only explicitly ordered exponents
@@ -313,14 +317,10 @@ class Morphosyntax:
             ))
 
         # store exponent ids sorted from by innerness
-        sorted_ids = []
+        ordered_exponents = []
 
         # compare and sort recognized exponents by inner/outerness
         # with inner terms closer to the base and outer further from it
-        # 
-        # NOTE: orders 'pre' and 'post' exponents, including circumfixes
-        #   - 'pre' appear later in list when they're more "inner" (less "pre") than another
-        #   - 'post' appear later in list when they're less "inner" (more "post") than another
         
         # copy iterated list - mutated while keeping track of which ids are yet to sort
         # swap exponent sorted at this position with one at index that does get placed
@@ -366,29 +366,18 @@ class Morphosyntax:
             
             # now compare the candidate exponent to already placed exponents
             # start by assuming it's at the end
-            placement_i = len(sorted_ids)
+            placement_i = len(ordered_exponents)
 
             # traverse sorted ids looking for an innermore compared to this one
             # iterating through all the way will sort it at the end (innermost)
-            for sorted_i in range(len(sorted_ids)):
-                sorted_exponent = sorted_ids[sorted_i]
-                if sorted_exponent in self.exponent_order[sorted_exponent]['outer']:
+            for sorted_i in range(len(ordered_exponents)):
+                sorted_exponent = ordered_exponents[sorted_i]
+                if exponent_id in self.exponent_order[sorted_exponent]['outer']:
                     placement_i = sorted_i
                     break
             
             # sort to targeted inner/outer position within ordered list
-            sorted_ids = sorted_ids[:placement_i] + [exponent_id] + sorted_ids[placement_i:]
-
-        # initialize map of sorted exponents to be returned
-        # separated into "pre" and "post" for traversal by grammar
-        #
-        # TODO: consider sending back innermost-to-outermost
-        #   - let grammar access and format data as it will
-        #   - avoid hardcoding or entangling exponent data (pre/post) here
-        ordered_exponents = {
-            'pre': sorted_ids,
-            'post': list(reversed(sorted_ids))
-        }
+            ordered_exponents = ordered_exponents[:placement_i] + [exponent_id] + ordered_exponents[placement_i:]
 
         # send back the sorted exponents list
         return ordered_exponents

@@ -378,10 +378,18 @@ class Grammar:
             for attachment in attachment_sequence
         }
         exponented_word_map['root'].append(root)
-
+        
         # rearrange exponents using morphosyntax ordering
         if reorder:
-            ordered_exponents = self.morphosyntax.arrange_exponents(exponent_ids)
+            # get back innermost-to-outermost ordered ids list
+            sorted_ids = self.morphosyntax.arrange_exponents(exponent_ids)
+            # store ordered 'pre' and 'post' exponents, leaving circums in both
+            #   - 'pre' appear later in list when they're more "inner" (less "pre") than another
+            #   - 'post' appear later in list when they're less "inner" (more "post") than another
+            ordered_exponents = {
+                'pre': sorted_ids,
+                'post': list(reversed(sorted_ids))
+            }
         # use whatever order exponents found in
         else:
             ordered_exponents = {
@@ -421,8 +429,8 @@ class Grammar:
 
                 # add both spacing and material to the relevant attachment list
                 if is_post:
-                    exponented_word_map[attachment_key].appendleft(exponent_material)
-                    exponented_word_map[attachment_key].appendleft(spacing)
+                    exponented_word_map[attachment_key].append(exponent_material)
+                    exponented_word_map[attachment_key].append(spacing)
                 elif is_pre:
                     exponented_word_map[attachment_key].append(exponent_material)
                     exponented_word_map[attachment_key].append(spacing)
@@ -437,7 +445,7 @@ class Grammar:
         if as_string:
             return "".join(exponented_word)
         return list(exponented_word)
-
+    
     def attach_exponent(self, base, exponent_id=None, as_string=False):
         """Attach one grammatical exponent around a root word"""
         # check for a good stem and an exponent to attach to it

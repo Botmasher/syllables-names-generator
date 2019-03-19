@@ -161,12 +161,28 @@ circumfix2 = my_language.grammar.exponents.add(
     properties={'semantic': "circumfix2"}
 )
 #my_language.grammar.morphosyntax.add_exponent_order(circumfix2, inner=[circumfix1, prefix_un, prefix_re])
-my_language.grammar.morphosyntax.add_exponent_order(circumfix1, outer=circumfix2, inner=[prefix_un, prefix_re])
+my_language.grammar.morphosyntax.add_exponent_order(circumfix1, outer=circumfix2, inner=[prefix_un, plural_s])
 circum_unrehealers_fix = my_language.grammar.build_unit(
     "heal",
     properties="plural doer un circumfix2 re circumfix1"
 )
 print(circum_unrehealers_fix)
+
+my_language.grammar.properties.add("semantic", "exponent1")
+my_language.grammar.properties.add("semantic", "exponent2")
+my_language.grammar.properties.add("semantic", "exponent3")
+my_language.grammar.properties.add("semantic", "exponent4")
+exponent1 = my_language.grammar.exponents.add(pre="exponent1", properties={'semantic': 'exponent1'})
+exponent2 = my_language.grammar.exponents.add(pre="exponent2", properties={'semantic': 'exponent2'})
+exponent3 = my_language.grammar.exponents.add(pre="exponent3", properties={'semantic': 'exponent3'})
+exponent4 = my_language.grammar.exponents.add(pre="exponent4", properties={'semantic': 'exponent4'})
+my_language.grammar.morphosyntax.add_exponent_order(exponent3, inner=exponent4)
+my_language.grammar.morphosyntax.add_exponent_order(exponent2, outer=exponent1, inner=exponent3)
+exponents123 = my_language.grammar.build_unit(
+    " ",
+    properties="exponent2 exponent1 exponent4 exponent3"
+)
+print(exponents123)
 
 # NOTE: grammar will find the optimal exponent providing requested properties
 my_language.grammar.exponents.add(post="(eclipsed both -s & -er)", bound=False, properties={

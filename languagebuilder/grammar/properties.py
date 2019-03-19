@@ -369,6 +369,11 @@ class Properties:
             if category not in base_properties:
                 return False
 
+            # expect falsy category values to be shared by both
+            if not compared_properties[category]:
+                if base_properties[category]:
+                    return False
+
             # expect iterable to turn into set of properties
             compared_grammemes = {grammeme for grammeme in compared_properties[category]}
             base_grammemes = {grammeme for grammeme in base_properties[category]}
