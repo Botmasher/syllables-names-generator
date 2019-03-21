@@ -289,6 +289,78 @@ class Morphosyntax:
     #   - sometimes result => exponent1, exponent2, exponent3, exponent4
     #   - sometimes result => exponent3, exponent4, exponent1, exponent2
 
+    # build chains of inner-to-outermosts
+    #   - filter input list for valid exponent ids
+    #       - if ordered-only flag, drop unordered ids from this list
+    #       - (unordered ids are any not found as keys in exponent_order)
+    #   - use a source (unordered) and target (ordered) list
+    #       - source is filtered exponent ids
+    #       - target is initialized empty list
+    #   - sort the exponent ids based on inner-to-outerness
+    #       - traverse source list looking for next innermost not yet in the target
+    #       - if none are innermore than this one, ?prepend it
+    #       - look to end each time for innermost compared to this one
+    #   - once innermost identified in that traversal, build inner/outer tree
+    #       - (this still runs within the traversal)
+    #       - look through the innermost's outers
+    #       - if any of those outers are in the source list, order them
+    #           - make sure they aren't already in targets
+    #           - place them and their inner/outers in the list before the innermost
+    #       - search their inners and outers for source list matches
+    #           - make sure they aren't already in targets
+    #           - attach inners after and outers before the compared matches
+    #           - recursively though: the inners are the inners/outers of inners...
+    #           - ... and the outers are inners/outers of outers
+    #   - resulting shape:
+    #       - [inners, outermore, outers] + []
+
+    def _chain_innermores(self, exponent_id, source_ids, sorted_ids):
+        # check if exponent is not in the sortable source list
+        # or already exists in the target list being sorted
+        if exponent_id not in source_ids or exponent_id in sorted_ids:
+            return []
+        
+        # grab the inners and outers for this exponent
+        sortable_outers = [outer_id for outer_id in self.exponent_order[exponent_id]['outer']]
+        sortable_inners = [inner_id for inner_id in self.exponent_order[exponent_id]['inner']]
+        
+        if exponent_id not in self.exponent_order or not (sortable_inners or sortable_outers):
+            sorted_ids.append(exponent_id)
+            return [exponent_id]
+
+        # return [self._chain_innermores(outer_id) for outer_id in sortable_outers] + [exponent_id] + [self._chain_innermores(inner_id) for inner_id in sortable_inners]
+
+    # test building a simple inner/outer list
+    d = {
+        'happy': {'inner': ['sad', 'angry'], 'outer': []},
+        'angry': {'inner': ['sad'], 'outer': ['happy']},
+        'sad': {'inner': [], 'outer': ['angry', 'happy']}
+    }
+    def build_simple_order(self, e):
+        if e not in self.exponent_order:
+            return []
+
+        outers = self.exponent_order[e]['outer']
+        inners = self.exponent_order[e]['inner']
+
+        if not (inners or outers):
+            return [e]
+        
+        return [item for item in 
+            [self.build_simple_order(outer) for outer in outers] +
+            [e] +
+            [self.build_simple_order(inner) for inner in inners]
+        ]
+
+    # def _chain_em(self, emotion_id):
+    #     if emotion_id not in source_ids or emotion_id in sorted_ids:
+    #         return []
+    #     sortable_inners = [inner_id for inner_id in d[emotion_id]['inner']]
+    #     sortable_outers = [outer_id for outer_id in d[emotion_id]['outer']]
+    #     if emotion_id not in d:
+    #             return [emotion_id]
+    #     return [_chain_em(outer, source_ids, sorted_ids) for outer in sortable_outers] + [emotion_id] + [_chain_em(inner, source_ids, sorted_ids) for inner in sortable_inners]
+
     def arrange_exponents(self, exponent_ids, filter_ordered_only=False):
         """Take a list of exponents and return a reordered copy of the list
         after applying relative exponent inner/outer ordering. Exponents not
@@ -390,17 +462,6 @@ class Morphosyntax:
             
             # sort to targeted inner/outer position within ordered list
             ordered_exponents = ordered_exponents[:placement_i] + [exponent_id] + ordered_exponents[placement_i:]
-
-            # build back an exponent chain using outers from this current innermost
-            #   - search for an innermost
-            #   - if the innermost, switch to searching for placing its outermosts
-            #       - one outer to this
-            #       - then one outer to that...
-            #       - until next-outermore search fails
-            #       - still place outermore as next sorted, swapping it from its index
-            #   - cycle back to search for the next innermost
-            #       - do the outermore thing again
-            #   ...
 
             # avoid looking for outers of the found inner if it's not ordered
             if exponent_id not in self.exponent_order:
