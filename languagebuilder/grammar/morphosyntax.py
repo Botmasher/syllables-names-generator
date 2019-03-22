@@ -332,24 +332,28 @@ class Morphosyntax:
 
     # test building a simple inner/outer list
     d = {
-        'happy': {'inner': ['sad', 'angry'], 'outer': []},
-        'angry': {'inner': ['sad'], 'outer': ['happy']},
-        'sad': {'inner': [], 'outer': ['angry', 'happy']}
+        '1': {'inner': ['2', '3'], 'outer': []},
+        '2': {'inner': ['3'], 'outer': ['1']},
+        '3': {'inner': ['4'], 'outer': ['2']},
+        '4': {'inner': ['5'], 'outer': ['3']},
+        '5': {'inner': [], 'outer': ['4']}
     }
-    def build_simple_order(self, e):
+    ns = ['4', '2', '1', '5', '3']
+    def build_simple_order(self, e, source_ns):
         if e not in self.exponent_order:
             return []
 
-        outers = self.exponent_order[e]['outer']
-        inners = self.exponent_order[e]['inner']
+        # intersection
+        outers = [outer for outer in self.exponent_order[e]['outer'] if outer in source_ns]
+        inners = [inner for inner in self.exponent_order[e]['inner'] if inner in source_ns]
 
         if not (inners or outers):
             return [e]
         
         return [item for item in 
-            [self.build_simple_order(outer) for outer in outers] +
+            [self.build_simple_order(outer, source_ns) for outer in outers] +
             [e] +
-            [self.build_simple_order(inner) for inner in inners]
+            [self.build_simple_order(inner, source_ns) for inner in inners]
         ]
 
     # def _chain_em(self, emotion_id):
