@@ -1,3 +1,5 @@
+from ..tools.flat_list import flatten
+
 # order word and sentence elements relative to each other
 class Morphosyntax:
     def __init__(self, grammar):
@@ -314,56 +316,54 @@ class Morphosyntax:
     #   - resulting shape:
     #       - [inners, outermore, outers] + []
 
-    def _chain_innermores(self, exponent_id, source_ids, sorted_ids):
-        # check if exponent is not in the sortable source list
-        # or already exists in the target list being sorted
-        if exponent_id not in source_ids or exponent_id in sorted_ids:
+    def _chain_inners_outers(self, exponent_id, source_ids, skipset=None):
+        """Return a list of contiguous inner/outer exponent ids ordered from
+        outermost to innermost. Only orders source_ids and avoids ids in skipset.
+        exponent_id:    ordered exponent to branch off inners/outers this call 
+        source_ids:     collection of ids to chain
+        skipset:        set of ids already chained; initialize with values to skip
+        """
+        # initialize a set for tracked ids on the first call if none provided
+        if skipset is None:
+            skipset = set()
+        else:
+            skipset = set(skipset)
+        
+        # do not order ids not in ordered map or already in handled tracked cases
+        if exponent_id not in self.exponent_order or exponent_id in skipset:
             return []
         
-        # grab the inners and outers for this exponent
-        sortable_outers = [outer_id for outer_id in self.exponent_order[exponent_id]['outer']]
-        sortable_inners = [inner_id for inner_id in self.exponent_order[exponent_id]['inner']]
-        
-        if exponent_id not in self.exponent_order or not (sortable_inners or sortable_outers):
-            sorted_ids.append(exponent_id)
-            return [exponent_id]
+        # register this id as a handled case
+        skipset.add(exponent_id)
 
-        # return [self._chain_innermores(outer_id) for outer_id in sortable_outers] + [exponent_id] + [self._chain_innermores(inner_id) for inner_id in sortable_inners]
+        # vet left and right branches for untracked ids that still need to be sorted
+        inners = list(filter(
+            lambda inner: inner not in skipset and inner in source_ids,
+            self.exponent_order[exponent_id]['inner']
+        ))
+        outers = list(filter(
+            lambda outer: outer not in skipset and outer in source_ids,
+            self.exponent_order[exponent_id]['outer']
+        ))
 
-    # test building a simple inner/outer list
-    d = {
-        '1': {'inner': ['2', '3'], 'outer': []},
-        '2': {'inner': ['3'], 'outer': ['1']},
-        '3': {'inner': ['4'], 'outer': ['2']},
-        '4': {'inner': ['5'], 'outer': ['3']},
-        '5': {'inner': [], 'outer': ['4']}
-    }
-    ns = ['4', '2', '1', '5', '3']
-    def build_simple_order(self, e, source_ns):
-        if e not in self.exponent_order:
-            return []
-
-        # intersection
-        outers = [outer for outer in self.exponent_order[e]['outer'] if outer in source_ns]
-        inners = [inner for inner in self.exponent_order[e]['inner'] if inner in source_ns]
-
+        # exponent only if pursuing empty left and right branches
         if not (inners or outers):
-            return [e]
+            return [exponent_id]
         
-        return [item for item in 
-            [self.build_simple_order(outer, source_ns) for outer in outers] +
-            [e] +
-            [self.build_simple_order(inner, source_ns) for inner in inners]
+        # id between branches
+        # allows branching over/skipping ids not in source list
+        central_id = [exponent_id] if exponent_id in source_ids else []
+
+        # recursively build up inners and outers branching to both sides
+        # of these inners and outers...
+        inners_outers = [
+            self._chain_inners_outers(outer, source_ids, skipset) for outer in outers
+        ] + central_id + [
+            self._chain_inners_outers(inner, source_ids, skipset) for inner in inners
         ]
 
-    # def _chain_em(self, emotion_id):
-    #     if emotion_id not in source_ids or emotion_id in sorted_ids:
-    #         return []
-    #     sortable_inners = [inner_id for inner_id in d[emotion_id]['inner']]
-    #     sortable_outers = [outer_id for outer_id in d[emotion_id]['outer']]
-    #     if emotion_id not in d:
-    #             return [emotion_id]
-    #     return [_chain_em(outer, source_ids, sorted_ids) for outer in sortable_outers] + [emotion_id] + [_chain_em(inner, source_ids, sorted_ids) for inner in sortable_inners]
+        # send back a flatlist bubbling up from all chained inners and outers
+        return flatten(inners_outers)
 
     def arrange_exponents(self, exponent_ids, filter_ordered_only=False):
         """Take a list of exponents and return a reordered copy of the list
@@ -410,102 +410,49 @@ class Morphosyntax:
         # Sort all of them from outermost to innermost.
 
         # order from outermost to innermost
-        index_offset = 0
-        for i in range(len(filtered_exponents)):
-            # offset to sort outermores after each current innermost
-            evaluated_i = i + index_offset
-            index_offset = 0
-            if evaluated_i > len(filtered_exponents):
-                break
+        for i, exponent_id in enumerate(exponents_to_order):
 
+            # do not repeat branch-chain-sort on already ordered exponents
+            if exponent_id in ordered_exponents:
+                continue            
+
+            # TODO: check if you even need this! - just chain order if not already in?
+            #
             # determine a candidate exponent to sort as innermore this pass
             #
             # store the exponent to assume as innermost and to place
             # in ordered exponents if none are inner compared to it
             #   - the first found that is inner to it gets placed instead
             #   - if another is placed the two get swapped in exponents_to_order
-            exponent_id = exponents_to_order[evaluated_i]
-
+            #
             # store index and id of exponent that is more inner than current one
-            inner_index = evaluated_i
             inner_exponent = exponent_id
+            #
             # compare every sortable, yet unplaced exponent after this one
             # to find the innermost from the remaining exponents to order
-            for compared_index in range(i+1, len(exponents_to_order)):
-                compared_id = exponents_to_order[compared_index]
+            for compared_index, compared_id in enumerate(exponents_to_order, i + 1):
                 if compared_id in self.exponent_order[inner_exponent]['inner']:
                     inner_exponent = compared_id
-                    inner_index = compared_index
-                    print(f"found an innermore to sort - {self.grammar.exponents.get(inner_exponent)['pre']}")
-
-            print([self.grammar.exponents.get(e)['pre'] for e in exponents_to_order])
             
-            # swap current to sort later with its innermost getting sorted now
-            # only run if current is not already its own innermore
-            if inner_index != evaluated_i:
-                exponents_to_order[evaluated_i] = inner_exponent
-                exponents_to_order[inner_index] = exponent_id
-
-            # update the current exponent to the currently identified innermost
-            # either the same or the one inner to it with which it was swapped
-            exponent_id = exponents_to_order[evaluated_i]
+            exponent_id = inner_exponent
+            #print([self.grammar.exponents.get(e)['pre'] for e in exponents_to_order])
             
-            print(f"The next exponent I'm trying to order is: {self.grammar.exponents.get(exponent_id)['pre']}")
-
-            # now compare the candidate exponent to already placed exponents
-            # start by assuming it's at the end
-            placement_i = len(ordered_exponents)
-
-            # traverse sorted ids looking for an innermost compared to this one
-            # iterating through all the way will sort it at the end (innermost)
-            for sorted_i in range(len(ordered_exponents)):
-                sorted_exponent = ordered_exponents[sorted_i]
-                if exponent_id in self.exponent_order[sorted_exponent]['outer']:
-                    placement_i = sorted_i
-                    break
+            #print(f"The next exponent I'm trying to order is: {self.grammar.exponents.get(exponent_id)['pre']}")
             
-            # sort to targeted inner/outer position within ordered list
-            ordered_exponents = ordered_exponents[:placement_i] + [exponent_id] + ordered_exponents[placement_i:]
-
             # avoid looking for outers of the found inner if it's not ordered
             if exponent_id not in self.exponent_order:
-                continue
-
-            # use found innermost as axis, placing its
-            for outer_id in self.exponent_order[exponent_id]:
-                try:
-                    outer_i = exponents_to_order.index(outer_id)
-                    # verify it's beyond those already evaluated for ordering
-                    if outer_i > evaluated_i + index_offset:
-                        # sort it before the found innermost in the ordered exponents
-                        ordered_exponents = ordered_exponents[:placement_i] + [outer_id] + ordered_exponents[placement_i:]
-                        index_offset += 1
-                        # swap it with the next innermost to evaluate
-                        next_evaluated = exponents_to_order[evaluated_i + index_offset]
-                        exponents_to_order[evaluated_i + index_offset] = outer_id
-                        exponents_to_order[outer_i] = next_evaluated
-
-                        ##
-                        # TODO: recursively order outers of outers
-                        # call this loop here but for outer_ids in outer_id['outer']
-                        #
-                        for outermore_id in self.exponent_order[outer_id]:
-                            try:
-                                outermore_i = exponents_to_order.index(outermore_id)
-                                if outermore_i > evaluated_i + index_offset:
-                                    ordered_exponents = ordered_exponents[:placement_i] + [outermore_id] + ordered_exponents[placement_i:]
-                                    index_offset += 1
-                                    next_evaluated = exponents_to_order[evaluated_i + index_offset]
-                                    exponents_to_order[evaluated_i + index_offset] = outermore_id
-                                    exponents_to_order[outermore_i] = next_evaluated
-                            except ValueError:
-                                pass
-                        #
-                        ##
-
-                # compared from exponent's outers not among exponents to order
-                except ValueError:
-                    pass
+                ordered_exponents.append(exponent_id)
+            
+            # branch chain sort all inners and outers recursively off this exponent
+            #   - adjacency not required
+            #   - members not to be ordered are not included in returned list
+            #   - members not to be ordered still have inners outers searched
+            else:
+                ordered_exponents += self._chain_inners_outers(
+                    exponent_id,
+                    exponents_to_order,
+                    set()
+                )
 
         # send back the sorted exponents list
         return ordered_exponents

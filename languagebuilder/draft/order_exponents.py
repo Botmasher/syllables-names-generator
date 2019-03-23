@@ -1,7 +1,7 @@
 class TestOrderInnerOuter:
     def __init__(self):
         self.orders = {
-            '1': {'inner': ['2', '3'], 'outer': ['0']},
+            '1': {'inner': ['2'], 'outer': ['0']},
             '2': {'inner': ['3'], 'outer': ['1']},
             '3': {'inner': ['4'], 'outer': ['2']},
             '4': {'inner': ['4', '5'], 'outer': ['3']},
@@ -15,18 +15,17 @@ class TestOrderInnerOuter:
 
     def handle_branching(self):
         # start with unordered list
-        unordered_list = ['2', '4', '1', '5', '3']
+        unordered_list = ['2', '4', '1', '5']
         ordered_list = []
         #self.order_branches('3', ordered_list, unordered_list)
         print(ordered_list)
 
         tracker = set()
-        l = self.order_without_repetitions('5', tracker)
+        l = self.order_without_repetitions('2', unordered_list, tracker)
         print(l)
 
-    # TODO: third recursive attempt - avoid exceeding max depth!
-    def order_without_repetitions(self, n, tracker):
-        print(tracker)
+    # third recursive attempt - avoid exceeding max depth!
+    def order_without_repetitions(self, n, source_l, tracker):
 
         if n not in self.orders or n in tracker:
             return []
@@ -35,22 +34,26 @@ class TestOrderInnerOuter:
 
         # data
         inners = [
-            inner for inner in self.orders[n]['inner'] if inner not in tracker
+            inner for inner in self.orders[n]['inner']
+            if inner not in tracker
         ]
         outers = [
-            outer for outer in self.orders[n]['outer'] if outer not in tracker
+            outer for outer in self.orders[n]['outer']
+            if outer not in tracker
         ]
 
         # TODO: the base case
         if not (inners or outers):
             return [n]
         
+        central_member = [n] if n in source_l else []
+
         # TODO: the recursion
         # /!\ Ns point both ways, an inner to its outer and an outer back to its inner
         inners_outers = [
-            self.order_without_repetitions(outer, tracker) for outer in outers
-        ] + [n] + [
-            self.order_without_repetitions(inner, tracker) for inner in inners
+            self.order_without_repetitions(outer, source_l, tracker) for outer in outers
+        ] + central_member + [
+            self.order_without_repetitions(inner, source_l, tracker) for inner in inners
         ]
 
         return self._util_flatten(inners_outers)
