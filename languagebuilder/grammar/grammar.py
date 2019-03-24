@@ -360,7 +360,7 @@ class Grammar:
         """Exponent a complex word to correctly position a root, prefixes, postfixes, prepositions, postpositions"""
         # expect a collection of exponent ids and a word-building map
         if not isinstance(exponent_ids, (list, set, tuple)):
-            print("Grammar attach_exponent_map failed - invalid list of exponents {}".format(exponent_ids))
+            print(f"Grammar attach_exponents failed - invalid exponents collection {exponent_ids}")
             return
 
         # exponent attachment types in in sequential order
@@ -382,6 +382,11 @@ class Grammar:
         # rearrange exponents using morphosyntax ordering
         if reorder:
             # get back innermost-to-outermost ordered ids list
+            # NOTE: arranges a list of ids ordered from outermost to innermost
+            #   - placement decided on outer vs inner
+            #   - outermost ("last") post will be considered the first one in the list
+            #   - outermost ("first") pre will be considered the first one in the list
+            #   - both lists contain ids so traversing requires extra lookups
             sorted_ids = self.morphosyntax.arrange_exponents(exponent_ids)
             # store ordered 'pre' and 'post' exponents, leaving circums in both
             #   - 'pre' appear later in list when they're more "inner" (less "pre") than another
@@ -397,12 +402,6 @@ class Grammar:
                 'post': exponent_ids
             }
 
-        # formatted_ordered_exponents = {
-        #     'pre': [self.exponents.get(e)['pre'] for e in ordered_exponents['pre']],
-        #     'post': [self.exponents.get(e)['post'] for e in ordered_exponents['post']]
-        # }
-        # print(f"{formatted_ordered_exponents}")
-
         # go through exponents and map them as prescribed in the exponent
         for position in ordered_exponents:
             
@@ -417,7 +416,7 @@ class Grammar:
 
                 # check for valid exponent
                 if not exponent_details:
-                    print("Grammar attach_exponents skipped invalid exponent {}".format(exponent_id))
+                    print(f"Grammar attach_exponents skipped invalid exponent {exponent_id}")
                     continue
                 
                 # use binding to determine placement and spacing

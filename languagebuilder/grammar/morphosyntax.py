@@ -372,13 +372,6 @@ class Morphosyntax:
         the reordered sequence. Breaks in relative exponent chain may result in
         unpredictable order of single exponents or groups of ordered exponents.
         """
-
-        # NOTE: latest take returns a list of ids ordered from outermost to innermost
-        #   - placement decided on outer vs inner
-        #   - outermost ("last") post is the first one in the list
-        #   - outermost ("first") pre is the first one in the list
-        #   - both lists contain ids so traversing requires extra lookups
-
         # filter down to a collection of only explicitly ordered exponents
         if filter_ordered_only:
             filtered_exponents = list(filter(
@@ -395,50 +388,19 @@ class Morphosyntax:
         # store exponent ids sorted from by innerness
         ordered_exponents = []
 
-        # compare and sort recognized exponents by inner/outerness
-        # with inner terms closer to the base and outer further from it
-
-        # copy iterated list - mutated while keeping track of which ids are yet to sort
-        # swap exponent sorted at this position with one at index that does get placed
-        exponents_to_order = filtered_exponents[:]
-
-        # sort a list of which exponents are inner-outer compared to each other
+        # Sort a list of which exponents are inner-outer compared to each other
+        # with inner terms closer to a base and outer away from it.
         #
         # Every element may know if it's "inner" or "outer" compared to one or
         # more other elements, but for any single element the attribute is optional
         # (an element is allowed to know nothing about inners or outers).
-        # Sort all of them from outermost to innermost.
-
-        # order from outermost to innermost
-        for i, exponent_id in enumerate(exponents_to_order):
-
+        #
+        # Order all of them from outermost to innermost
+        for exponent_id in filtered_exponents:
             # do not repeat branch-chain-sort on already ordered exponents
             if exponent_id in ordered_exponents:
-                continue            
+                continue
 
-            # TODO: check if you even need this! - just chain order if not already in?
-            #
-            # determine a candidate exponent to sort as innermore this pass
-            #
-            # store the exponent to assume as innermost and to place
-            # in ordered exponents if none are inner compared to it
-            #   - the first found that is inner to it gets placed instead
-            #   - if another is placed the two get swapped in exponents_to_order
-            #
-            # store index and id of exponent that is more inner than current one
-            inner_exponent = exponent_id
-            #
-            # compare every sortable, yet unplaced exponent after this one
-            # to find the innermost from the remaining exponents to order
-            for compared_index, compared_id in enumerate(exponents_to_order, i + 1):
-                if compared_id in self.exponent_order[inner_exponent]['inner']:
-                    inner_exponent = compared_id
-            
-            exponent_id = inner_exponent
-            #print([self.grammar.exponents.get(e)['pre'] for e in exponents_to_order])
-            
-            #print(f"The next exponent I'm trying to order is: {self.grammar.exponents.get(exponent_id)['pre']}")
-            
             # avoid looking for outers of the found inner if it's not ordered
             if exponent_id not in self.exponent_order:
                 ordered_exponents.append(exponent_id)
@@ -450,7 +412,7 @@ class Morphosyntax:
             else:
                 ordered_exponents += self._chain_inners_outers(
                     exponent_id,
-                    exponents_to_order,
+                    filtered_exponents,
                     set()
                 )
 
