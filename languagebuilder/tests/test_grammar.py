@@ -451,4 +451,120 @@ class GrammarOrderMorphosyntax(GrammarFixture):
             "morphosyntax did not rearrange exponents to switch their order correctly"
         )
 
+    # TODO: investigate why sometimes
+    def test_remote_order_exponents(self):
+        # check that non-contiguous inners and outers are sorted
+        # example: 1, 2, 4, 5 are sorted even though 3 is not present
+        # add properties and exponents
+        self.grammar.properties.add('n', '1')
+        self.grammar.properties.add('n', '2')
+        self.grammar.properties.add('n', '3')
+        self.grammar.properties.add('n', '4')
+        self.grammar.properties.add('n', '5')
+        n_1 = self.grammar.exponents.add(post="1", properties={'n': '1'}, bound=True)
+        n_2 = self.grammar.exponents.add(post="2", properties={'n': '2'}, bound=True)
+        n_3 = self.grammar.exponents.add(post="3", properties={'n': '3'}, bound=True)
+        n_4 = self.grammar.exponents.add(post="4", properties={'n': '4'}, bound=True)
+        n_5 = self.grammar.exponents.add(post="5", properties={'n': '5'}, bound=True)
+        
+        # order exponents
+        self.grammar.morphosyntax.add_exponent_order(n_2, inner=n_1, outer=n_3)
+        self.grammar.morphosyntax.add_exponent_order(n_3, inner=n_2, outer=n_4)
+        self.grammar.morphosyntax.add_exponent_order(n_5, inner=n_4)
+        
+        # see if exponents are in order when building word
+        built_unit = self.grammar.build_unit("rootword", properties="4 2 1 5")
+
+        self.assertEqual(
+            built_unit,
+            "rootword1245",
+            "morphosyntax did not correctly arrange exponents when not requesting one skipped ordered inner or outer element"
+        )
+    
+    def test_order_exponents_subset(self):
+        # check that only requested exponents are sorted when morphosyntax
+        # contains ordered info branching off to even more exponents
+        self.grammar.properties.add('abc', 'A')
+        self.grammar.properties.add('abc', 'B')
+        self.grammar.properties.add('abc', 'C')
+        self.grammar.properties.add('abc', 'D')
+        self.grammar.properties.add('abc', 'E')
+        abc_A = self.grammar.exponents.add(post="A", properties={'abc': 'A'}, bound=True)
+        abc_B = self.grammar.exponents.add(post="B", properties={'abc': 'B'}, bound=True)
+        abc_C = self.grammar.exponents.add(post="C", properties={'abc': 'C'}, bound=True)
+        abc_D = self.grammar.exponents.add(post="D", properties={'abc': 'D'}, bound=True)
+        abc_E = self.grammar.exponents.add(post="E", properties={'abc': 'E'}, bound=True)
+        
+        # order exponents
+        self.grammar.morphosyntax.add_exponent_order(abc_B, inner=abc_A, outer=abc_C)
+        self.grammar.morphosyntax.add_exponent_order(abc_D, inner=abc_C, outer=abc_E)
+        
+        # see if exponents are in order when building word
+        built_unit = self.grammar.build_unit("rootword", properties="C B")
+
+        self.assertEqual(
+            built_unit,
+            "rootwordBC",
+            "morphosyntax failed to include only requested ordered exponents"
+        )
+
+# TODO: TEST intuitive buildout of more realistic looking words
+#        - content differs but generally these tested actions are repeats
+#
+# grammar = Grammar()
+
+# # add grammemes and pos
+# grammar.word_classes.add(["noun", "verb"])
+# grammar.properties.add_many({
+#     'tense': ["present", "past", "future"],
+#     'aspect': ["perfective", "imperfective"],
+#     'number': ["singular", "plural"],
+#     'case': ["nominative", "oblique"]
+# })
+
+# # add basic exponents
+# plural_noun_exponent = grammar.exponents.add(
+#     post="s",
+#     properties={"case": "nominative", "number": "plural"},
+#     bound=True
+# )
+# grammar.exponents.add_pos(plural_noun_exponent, "noun")
+
+# # build words
+
+# singular_noun = grammar.build_unit("house", properties="nominative singular", word_classes=('noun'))
+# plural_noun = grammar.build_unit("house", properties="nominative plural", word_classes={'noun'})
+# print(singular_noun, plural_noun)
+
+# singular_noun = grammar.build_unit("mouse", properties="nominative singular", word_classes=["noun"])
+# plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_classes="noun")
+# print(singular_noun, plural_noun)
+
+
+# # test arrange morphosyntax order
+# inner_affix = grammar.exponents.add(pre="(inn-", post="-ner)", properties={
+#     'tense': "present"
+# })
+# print("inner affix: " + inner_affix)
+# outer_affix = grammar.exponents.add(pre="out-", post="-ter", properties={
+#     'aspect': "perfective"
+# })
+# print("outer affix: " + outer_affix)
+
+# added_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, inner=[
+#     inner_affix
+# ], outer=[])
+# print(grammar.morphosyntax.exponent_order)
+
+# orderly_unit = grammar.build_unit("base", properties="present perfective")
+# print(orderly_unit)
+
+# switched_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, outer=[
+#     inner_affix
+# ])
+# print(grammar.morphosyntax.exponent_order)
+
+# orderly_unit = grammar.build_unit("base", properties="present perfective")
+# print(orderly_unit)
+
 # TODO: more robust testing of parse strings

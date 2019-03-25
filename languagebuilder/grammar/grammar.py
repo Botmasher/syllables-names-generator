@@ -404,7 +404,6 @@ class Grammar:
 
         # go through exponents and map them as prescribed in the exponent
         for position in ordered_exponents:
-            
             # set up positional keys and checks
             attachment_keys = ('preposition', 'prefix') if position == 'pre' else ('postposition', 'postfix')
             is_pre = position == 'pre'
@@ -421,7 +420,8 @@ class Grammar:
                 
                 # use binding to determine placement and spacing
                 attachment_key = attachment_keys[exponent_details['bound']]
-                spacing = "" if exponent_details['bound'] else " "
+                # add spaces next to filled exponents that are unbound
+                spacing = "" if exponent_details['bound'] or not exponent_details[position] else " "
 
                 # reference the actual material being added
                 exponent_material = exponent_details[position]
@@ -439,6 +439,8 @@ class Grammar:
             piece for attachment in attachment_sequence
             for piece in exponented_word_map[attachment]
         ]
+
+        print(exponented_word)
 
         # return the sequence as a list or string
         if as_string:
@@ -471,61 +473,3 @@ class Grammar:
             return "".join(exponented_word)
         else:
             return exponented_word
-
-
-# DEMO - intuitive buildout of words
-grammar = Grammar()
-
-# add grammemes and pos
-grammar.word_classes.add(["noun", "verb"])
-grammar.properties.add_many({
-    'tense': ["present", "past", "future"],
-    'aspect': ["perfective", "imperfective"],
-    'number': ["singular", "plural"],
-    'case': ["nominative", "oblique"]
-})
-
-# add basic exponents
-plural_noun_exponent = grammar.exponents.add(
-    post="s",
-    properties={"case": "nominative", "number": "plural"},
-    bound=True
-)
-grammar.exponents.add_pos(plural_noun_exponent, "noun")
-
-# build words
-
-singular_noun = grammar.build_unit("house", properties="nominative singular", word_classes=('noun'))
-plural_noun = grammar.build_unit("house", properties="nominative plural", word_classes={'noun'})
-print(singular_noun, plural_noun)
-
-singular_noun = grammar.build_unit("mouse", properties="nominative singular", word_classes=["noun"])
-plural_noun = grammar.build_unit("mouse", properties="nominative plural", word_classes="noun")
-print(singular_noun, plural_noun)
-
-
-# test arrange morphosyntax order
-inner_affix = grammar.exponents.add(pre="(inn-", post="-ner)", properties={
-    'tense': "present"
-})
-print("inner affix: " + inner_affix)
-outer_affix = grammar.exponents.add(pre="out-", post="-ter", properties={
-    'aspect': "perfective"
-})
-print("outer affix: " + outer_affix)
-
-added_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, inner=[
-    inner_affix
-], outer=[])
-print(grammar.morphosyntax.exponent_order)
-
-orderly_unit = grammar.build_unit("base", properties="present perfective")
-print(orderly_unit)
-
-switched_ordering = grammar.morphosyntax.add_exponent_order(outer_affix, outer=[
-    inner_affix
-])
-print(grammar.morphosyntax.exponent_order)
-
-orderly_unit = grammar.build_unit("base", properties="present perfective")
-print(orderly_unit)
