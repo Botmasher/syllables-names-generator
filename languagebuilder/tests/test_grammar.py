@@ -451,7 +451,7 @@ class GrammarOrderMorphosyntax(GrammarFixture):
             "morphosyntax did not rearrange exponents to switch their order correctly"
         )
 
-    # TODO: investigate why sometimes
+    # TODO: investigate why sometimes => 4512 instead of 1245
     def test_remote_order_exponents(self):
         # check that non-contiguous inners and outers are sorted
         # example: 1, 2, 4, 5 are sorted even though 3 is not present
@@ -471,6 +471,19 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         self.grammar.morphosyntax.add_exponent_order(n_2, inner=n_1, outer=n_3)
         self.grammar.morphosyntax.add_exponent_order(n_3, inner=n_2, outer=n_4)
         self.grammar.morphosyntax.add_exponent_order(n_5, inner=n_4)
+        print({
+            self.grammar.exponents.get(e_id)['post']: {
+                'inner': [
+                    self.grammar.exponents.get(c_id)['post']
+                    for c_id in self.grammar.morphosyntax.exponent_order[e_id]['inner']
+                ],
+                'outer': [
+                    self.grammar.exponents.get(c_id)['post']
+                    for c_id in self.grammar.morphosyntax.exponent_order[e_id]['outer']
+                ]
+            }
+            for e_id in self.grammar.morphosyntax.exponent_order
+        })
         
         # see if exponents are in order when building word
         built_unit = self.grammar.build_unit("rootword", properties="4 2 1 5")
@@ -507,6 +520,7 @@ class GrammarOrderMorphosyntax(GrammarFixture):
             "rootwordBC",
             "morphosyntax failed to include only requested ordered exponents"
         )
+
 
 # TODO: TEST intuitive buildout of more realistic looking words
 #        - content differs but generally these tested actions are repeats

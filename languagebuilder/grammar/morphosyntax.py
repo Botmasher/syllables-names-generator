@@ -338,16 +338,16 @@ class Morphosyntax:
 
         # vet left and right branches for untracked ids that still need to be sorted
         inners = list(filter(
-            lambda inner: inner not in skipset and inner in source_ids,
+            lambda inner: inner not in skipset,
             self.exponent_order[exponent_id]['inner']
         ))
         outers = list(filter(
-            lambda outer: outer not in skipset and outer in source_ids,
+            lambda outer: outer not in skipset,
             self.exponent_order[exponent_id]['outer']
         ))
 
         # exponent only if pursuing empty left and right branches
-        if not (inners or outers):
+        if not (inners or outers) and exponent_id in source_ids:
             return [exponent_id]
         
         # id between branches
