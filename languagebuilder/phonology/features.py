@@ -1,3 +1,5 @@
+import random
+
 # (Features : features <> (ipa) <> letter : Phoneme)
 #   - "feature" is broad, including "consonant" or really any consistent string
 #   - "ipa" is any phonetic symbol associated with features
@@ -23,11 +25,11 @@ class Features:
 
     def has_ipa(self, symbol):
         """Check if the symbol exists in the ipa map"""
-        return type(symbol) is str and symbol in self.ipa
+        return isinstance(symbol, str) and symbol in self.ipa
 
-    def has_feature(self , feature):
+    def has_feature(self, feature):
         """Check if the feature exists in the features map"""
-        return type(feature) is str and feature in self.features
+        return isinstance(feature, str) and feature in self.features
 
     def map_by_features(self):
         """Read the ipa-per-features map"""
@@ -40,7 +42,7 @@ class Features:
     def get_features(self, symbol):
         """Find all features associated with a phonetic symbol"""
         if not self.has_ipa(symbol):
-            print("Features get_features failed - invalid phonetic symbol {0}".format(ipa))
+            print(f"Features get_features failed - invalid phonetic symbol {symbol}")
             return []
         return list(self.ipa[symbol])
 
@@ -84,14 +86,18 @@ class Features:
     #   - inventory creates two-way maps for quick lookups from language's chosen features/symbols
     #
     def add_entry(self, symbol, features):
+        """Alias for Features.add method"""
+        return self.add(symbol, features)
+
+    def add(self, symbol, features):
         """Add one phonetic symbol and its associated features to the maps"""
-        if type(symbol) is not str: #or len(symbol) > 2:
-            print("Features add_entry failed to add invalid symbol {0}".format(symbol))
+        if not isinstance(symbol, str): #or len(symbol) > 2:
+            print(f"Features add_entry failed to add invalid symbol {symbol}")
             return
         added_features = []
         for feature in features:
-            if type(feature) is not str:
-                print("Features add_entry skipped \'{0}\' - invalid feature".format(feature))
+            if not isinstance(feature, str):
+                print(f"Features add_entry skipped invalid feature {feature}")
             else:
                 if feature not in self.features:
                     self.features[feature] = set()
@@ -107,6 +113,7 @@ class Features:
         """Update a symbol in ipa and features maps"""
         if not self.has_ipa(symbol):
             return
+        features = self.ipa[symbol]
         self.ipa[new_symbol] = features
         self.remove_symbol(
             symbol,
@@ -158,11 +165,11 @@ class Features:
         high_frequency = 1000
         for i in range(len(vowels_input)):
             vowel = vowels_input[i]
-            symbol_count = (1 / i) * (most_common_frequency)
+            symbol_count = (1 / i) * (high_frequency)
             vowels += [vowel] * symbol_count
         for i in range(len(consonants_input)):
             consonant = consonants_input[i]
-            symbol_count = (1 / i) * (most_common_frequency)
+            symbol_count = (1 / i) * (high_frequency)
             consonants += [consonant] * symbol_count
         return {'consonants': consonants, 'vowels': vowels}
 

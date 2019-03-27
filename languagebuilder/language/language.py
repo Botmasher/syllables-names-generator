@@ -98,7 +98,7 @@ class Language:
                 new_syllable_structure.append(syllable_item)
         syllable = Syllable(new_syllable_structure)
         self.syllables.add(syllable)
-        return
+        return syllable
     
     # Rules
     def add_rule(self, source, target, environment_structure):
