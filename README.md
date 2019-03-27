@@ -33,6 +33,15 @@ Identified tasks for maintenance and improvement:
 - [ ] go through tasks in py files and organize them in the doc
 - [ ] weighting and ordering of phonemes, syllables, rules for choosing and applying
 
+- [ ] API documentation
+    - idiosyncratic use of "phonetics", "phonology", "ipa", "morphosyntax", "exponent"
+    - components: Language, Phonetics, Phonology, Grammar
+        - Phonetics -> ipa, features
+        - Phonology -> phonemes, rules, syllables, environments
+        - Grammar -> properties, word classes, exponents, morphosyntax
+    - document user methods for crud and "build" (generate)
+    - demo
+
 ## Contributing
 
 The current project and any future iterations are for play and in various states of tinkered disrepair. Still, I'm curious to hear if you have any suggestions or updates. If this is your thing, feel happy and free to open an issue or PR once you get going.
