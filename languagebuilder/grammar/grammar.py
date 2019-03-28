@@ -388,8 +388,6 @@ class Grammar:
             #   - outermost ("first") pre will be considered the first one in the list
             #   - both lists contain ids so traversing requires extra lookups
             sorted_ids = self.morphosyntax.arrange_exponents(exponent_ids)
-            print("Unsorted: {}".format([self.exponents.get(eid)['post'] for eid in exponent_ids]))
-            print("Sorted: {}".format([self.exponents.get(eid)['post'] for eid in sorted_ids]))
             # store ordered 'pre' and 'post' exponents, leaving circums in both
             #   - 'pre' appear later in list when they're more "inner" (less "pre") than another
             #   - 'post' appear later in list when they're less "inner" (more "post") than another
@@ -441,8 +439,6 @@ class Grammar:
             piece for attachment in attachment_sequence
             for piece in exponented_word_map[attachment]
         ]
-
-        print(exponented_word)
 
         # return the sequence as a list or string
         if as_string:

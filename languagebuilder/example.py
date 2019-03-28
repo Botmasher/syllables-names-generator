@@ -1,9 +1,13 @@
-from .phonology.features import Features
 from .language.language import Language
 
-## TEST - make features
-features = Features()
-features.add_map({
+# TEST - build empty language
+my_language = Language(
+    name='Testerlangubekke',
+    display_name='Testaroundish'
+)
+
+# TEST - make features
+my_language.phonology.features.add_map({
     'a': ['vowel', 'front', 'open', 'unrounded'],
     'i': ['vowel', 'front', 'close', 'unrounded'],
     'y': ['vowel', 'front', 'close', 'rounded'],
@@ -51,15 +55,9 @@ features.add_map({
     'w': ['consonant', 'voiced', 'velar', 'approximant']
 })
 
-# TEST - build empty language
-my_language = Language(
-    name='Testerlangubekke',
-    display_name='Testaroundish',
-    features=features
-)
 
 # TEST - add inventory to language
-my_language.add_sounds({
+my_language.phonology.add_sounds({
     'a': ['a', 'ah'],
     'i': ['i', 'ie'],
     'u': ['u'],
@@ -80,34 +78,35 @@ my_language.add_sounds({
 #       - but only for phonemes in the language
 
 # TEST - features by ipa and ipa by features readable from Features instance
-print(my_language.features.map_by_ipa())
-print(my_language.features.map_by_features())
+print(my_language.phonology.features.map_by_ipa())
+print(my_language.phonology.features.map_by_features())
 
 # TEST - special symbols like β and two-char ones like ts are readable and have correct features
-print(my_language.features.get_features('ts'))
-print(my_language.features.get_features('β'))
+print(my_language.phonology.features.get_features('ts'))
+print(my_language.phonology.features.get_features('β'))
 #
 # # TODO have inventory tie features to chars, and do the add sounds instead of language
 # #print(my_language.phonemes)     # recall this is a dict of ipa:phoneme pairs
 # print(my_language.get_sound_features('i'))
 #
 # # TODO weight syllables so CV > just V
-my_language.add_syllable('CVC')
-my_language.add_syllable('VC')
-my_language.add_syllable('CV')
-my_language.print_syllables()
+my_language.phonology.add_syllable('CVC')
+my_language.phonology.add_syllable('VC')
+my_language.phonology.add_syllable('CV')
+my_language.phonology.print_syllables()
 # TODO add word shapes (root, affixes, compounds, or initial VCV but not mid CVVCV)
 
 ## TEST - run rules (independent of above features, inventory, lang)
-my_language.add_rule(['voiceless'], ['voiced'], 'V_V')
+my_language.phonology.add_rule(['voiceless'], ['voiced'], 'V_V')
+my_language.phonology.add_rule(['plosive'], ['fricative'], '#_V')
 # TODO spelling layer can change too but if not default to historical
-print(my_language.apply_rules("kat"))    # expected: "kat", got: "kat"
-print(my_language.apply_rules("kata"))   # expected: "kada", got: "kada"
-print(my_language.apply_rules("katta"))  # expected: "katta", got: "katta"
-print(my_language.apply_rules("akatakatta"))  # expected: "agadagatta", got: "agadagatta"
+print(my_language.phonology.apply_rules("kat"))    # expected: "kat", got: "kat"
+print(my_language.phonology.apply_rules("kata"))   # expected: "kada", got: "kada"
+print(my_language.phonology.apply_rules("katta"))  # expected: "katta", got: "katta"
+print(my_language.phonology.apply_rules("akatakatta"))  # expected: "agadagatta", got: "agadagatta"
 
 ## TEST - build root word
-word_entry = my_language.build_word(length=2, definition="camel")
+word_entry = my_language.phonology.build_word(length=2, definition="camel")
 print(word_entry)
 
 ## TEST - add affixes and build words with them
