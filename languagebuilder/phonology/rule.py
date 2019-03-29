@@ -1,7 +1,7 @@
 # TODO rule management and prioritization
 class Rule:
     def __init__(self, source=None, target=None, environment=None):
-        self.set(source=source, target=target, environment=environment)
+        self.set_rule(source=source, target=target, environment=environment)
         return
 
     def get(self):
@@ -33,23 +33,20 @@ class Rule:
             self.environment.get_pretty(use_notation=use_notation)
         )
 
-    # TODO partial feature list (NOT Phoneme) for source, target
     def check(self):
         """Internal method for checking the validity of rule attributes"""
-        if type(self.source) is not list:
-        #if type(self.source.__name__) != 'Phoneme':
-            print("Rule check failed - invalid source {0}".format(source))
+        if not isinstance(self.source, list):
+            print(f"Rule check failed - invalid source {self.source}")
             return False
-        if type(self.target) is not list:
-        #if type(self.target.__name__) != 'Phoneme':
-            print("Rule check failed - invalid target {0}".format(target))
+        if not isinstance(self.target, list):
+            print(f"Rule check failed - invalid target {self.target}")
             return False
         if type(self.environment.__name__) != 'Environment':
-            print("Rule check failed - invalid environment {0}".format(environment))
+            print(f"Rule check failed - invalid environment {self.environment}")
             return False
         return True
 
-    def set(self, source, target, environment):
+    def set_rule(self, source, target, environment):
         """Internal method for setting all rule attributes"""
         self.source = source
         self.target = target
@@ -64,9 +61,9 @@ class Rule:
         new_source = source if source else prev_rule['source']
         new_target = target if target else prev_rule['target']
         new_environment = environment if environment else prev_rule['environment']
-        self.set(source, target, environment)
+        self.set_rule(new_source, new_target, new_environment)
         if not self.check():
-            self.set(prev_rule['source'], prev_rule['target'], prev_rule['environment'])
+            self.set_rule(prev_rule['source'], prev_rule['target'], prev_rule['environment'])
             return
         return self.get()
 

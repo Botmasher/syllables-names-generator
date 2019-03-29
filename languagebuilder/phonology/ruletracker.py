@@ -12,6 +12,8 @@ class RuleTracker():
         """Add ongoing rule environment slot match check to the rules application tracker"""
         # compare first environment slot to see if current symbol fits
         rule_environment = rule.get_environment().get_structure()
+        print(f"RuleTracker will track rule if sound fits {rule_environment[0]}")
+        
         environment_slot = rule_environment[0]
         if not self.is_features_submatch(environment_slot, sound_features):
             print("RuleTracker failed to track - sound {0} did not match environment slot {1}".format(sound_features, environment_slot))
@@ -30,6 +32,7 @@ class RuleTracker():
             # rule object defining environment and change
             'rule': rule
         }
+        print("RuleTracker started tracking")
         return track_id
 
     def untrack(self, track_id):
@@ -49,29 +52,30 @@ class RuleTracker():
                 return {}
         return self.tracker
 
-    # TODO connect match setting directly to source/environment check methods to avoid business logic in Language.apply_rule
+    # TODO: connect match setting directly to source/environment check methods
+    #   - avoid business logic in Language.apply_rule
     def set_source_match(self, track_id, source=None, index=None):
         """Add identified source sound and source index to an existing rule track"""
-        if track_id not in self.tracker or not index or not source:
-            print("RuleTracker set source failed - unknown track {0}".format(track_id))
+        if track_id not in self.tracker:
+            print(f"RuleTracker set source failed - unknown track {track_id}")
             return
-        print("Found source match (_)! Storing {0}".format(source))
+        if not index or not source:
+            print(f"RuleTracker set source failed - missing critical ipa index or source info")
+            return
+        print(f"Found source match (_)! Storing {source}")
         self.tracker[track_id]['source'] = source
         self.tracker[track_id]['index'] = index
         self.tracker[track_id]['count'] += 1
         return self.tracker[track_id]
 
     def count_features_match(self, track_id):
-        """Count up an """
+        """Count up a matching feature for this track. Counts are used
+        to determine when a rule fully applies across sounds in a word."""
         if track_id not in self.tracker:
             print("RuleTracker count match failed - unknown track {0}".format(track_id))
             return
         self.tracker[track_id]['count'] += 1
         return self.tracker[track_id]
-
-    # TODO method to reset a single rule tracker entry
-    # def reset_track(self, track_id):
-    #    return
 
     # determine if a phonetic symbol fits in an environment slot
     def is_features_submatch(self, slot_features, symbol_features):
@@ -98,50 +102,3 @@ class RuleTracker():
             return False
         # surrounding environment match - keep tracking rule
         return True
-
-    # TODO ?remove? after testing - old way to track for rule apply
-
-    # # fit a word symbol to a rule environment slot and untrack or keep tracking rule
-    # def track_symbol_slot_match(self, track_id, symbol, symbol_features, word_index):
-    #     """Check if ongoing tracked rule application matches symbol from a word to current rule environment slot"""
-    #     # a track is an ongoing attempt to match a single rule
-    #     # each track is expected to match shape of value added in _track_rule
-    #     track = self.tracker[track_id]
-    #
-    #     # the rule being matched by this track
-    #     # one rule may be associated with multiple (even overlapping) tracks within a sound symbols string
-    #     rule = track['rule']
-    #
-    #     # current location in environment symbol is tested against
-    #     environment_slot = rule.get_environment().get_structure()[track['count']]
-    #
-    #     # log this attempt to fit symbol into rule environment
-    #     print("Applying rule {0}".format(rule))
-    #     print("{0}".format(rule.get_pretty()))
-    #     print("Looking for environment matching: {0}".format(environment_slot))
-    #
-    #     # environment source slot match - store sound as the
-    #     if environment_slot in ["_", ["_"]]:
-    #         # check if the sound is one changed by rule source -> target
-    #         if self.is_features_submatch(rule.get_source(), symbol_features):
-    #             print("Found source match (_)! Storing {0}".format(symbol))
-    #             # store source matches and keep tracking rule
-    #             track['source'] = symbol
-    #             track['index'] = word_index
-    #             track['count'] += 1
-    #             return True
-    #         # source slot failed to match - stop tracking rule
-    #         else:
-    #             print("Did not find a source match on {0}, even though environment up to this point matched.".format(symbol))
-    #             self.untrack(track_id)
-    #             return False
-    #     # surrounding environment match - keep tracking rule
-    #     elif self.is_features_submatch(environment_slot, symbol_features):
-    #         print("Found features match in symbol: {0}".format(symbol))
-    #         track['count'] += 1
-    #         return True
-    #     # no environment match - reset this particular rule
-    #     else:
-    #         print("Found no features match - resetting the rule")
-    #         self.untrack(track_id)
-    #         return False

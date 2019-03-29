@@ -1,8 +1,7 @@
 # TODO store environments in rules
 class Environment:
     def __init__(self, structure=[]):
-        self.set(structure)
-        return
+        self.set_structure(structure)
 
     def is_structure(self, structure):
         if type(structure) is list and structure.count('_') == 1:
@@ -36,19 +35,21 @@ class Environment:
                     slot_txt += "V"
                 elif slot == '_':
                     slot_txt += "_"
-                features = ["+{0}".format(feature) for feature in slot if feature not in ('consonant', 'vowel')]
+                elif slot == '#':
+                    slot_txt += "#"
+                features = [f"+{feature}" for feature in slot if feature not in ('consonant', 'vowel')]
                 if features:
                     body += "{0}({1})".format(slot_txt, ",".join(features))
                 else:
-                    body += "{0}".format(slot_txt)
+                    body += f"{slot_txt}"
                 continue
             # verbose
             line = ""
-            if type(slot) is list:
+            if isinstance(slot, list):
                 line += "an " if slot[0][0].lower() in ['a', 'e', 'i', 'o', 'u'] else "a "
                 for feature in slot:
-                    line += ("{0}, ".format(feature))
-            elif type(slot) is str:
+                    line += f"{feature}, "
+            elif isinstance(slot, str):
                 if slot == "_":
                     if i == 0:
                         intro_text += "before "
@@ -58,20 +59,24 @@ class Environment:
                         intro_text += "between "
                         body_text = self._clip_comma(body_text)
                         line += " and "
+                elif slot == "#":
+                    line += "a word break "
                 else:
-                    line += "a {0}".format(slot)
+                    line += f"a {slot}"
             else:
                 pass
             body_text += line
         if body_text[(len(body_text)-2):] == ", ":
             body_text = body_text[:-2]
-        return "{0}{1}".format(intro_text, body_text)
+        return f"{intro_text}{body_text}"
 
-    def set(self, structure):
+    # TODO: allow more complex environments including specific consonant/vowel features
+    def set_structure(self, structure):
+        """Create an environment structure from a features list or string"""
         # parse short strings like 'C_C'
-        if type(structure) is str:
+        if isinstance(structure, str):
             parsed_structure = []
-            short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_"}
+            short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_", '#': "#"}
             for symbol in structure:
                 if symbol in short_symbols.keys():
                     parsed_structure.append(short_symbols[symbol])

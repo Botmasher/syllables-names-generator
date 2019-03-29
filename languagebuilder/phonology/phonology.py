@@ -209,9 +209,13 @@ class Phonology:
     # - see if rule and word environments match (relying on RuleTracker for help)
     # - apply rule to change source sound in word to rule target sound if they do
 
-    # TODO boundary hashtags - start/end tags #string# to match rules applying at borders
-    # TODO change to or from silence to add or delete sounds (e.g. katta > kata, katata > kataata)
-    # TODO interact with lexicon storage, adding phonetic word and sound change alongside spelling and definition
+    # TODO: boundary hashtags
+    #   - start/end tags #string# to match rules applying at borders
+    #   - change to or from silence to add or delete sounds (e.g. katta > kata, katata > kataata)
+    
+    # TODO: interact with lexicon storage, adding phonetic word and sound change alongside spelling and definition
+    #   - store tracks or store the changed symbols list alongside word in lexicon
+
     def apply_rules(self, ipa_string):
         """Change a phonetic word's sounds applying all of the language's sound change rules"""
         # store tracks for each possible rule application
@@ -229,6 +233,9 @@ class Phonology:
         # gather index, symbol replacement pairs to update final string
         changed_symbols = []    # list of (string index, new symbol)
 
+        # collect each track of rules that applies within the word ipa
+        successful_tracks = []
+
         # store local rules map to search for rule matches
         rules = self.rules.get()
 
@@ -243,16 +250,11 @@ class Phonology:
                 continue
             print("Evaluating the current sound: {0}".format(sound_features))
 
-            # TODO: update to check for new rule applications to track
-            # - think through if self.rule_tracker should be class level?
-            # - instead make it local since it's cleared out each call (avoiding leaking to other words)
-            # - then store it (or better the changed symbols list) alongside word in lexicon
-
             # (1) Rules Loop: do any new rules start to match at this symbol? Track them.
             # check if any new rule applications can be tracked
             for rule_id in rules:
                 rule = rules[rule_id]
-                print("Checking to see if rule {0} starts applying here".format(rule_id))
+                print(f"Checking to see if rule {rule_id} starts applying here")
                 # start tracking for full environment match
                 # - track checked while iterating through rest of ipa_string
                 # - tracker only tracks as long as environment matches
@@ -279,7 +281,6 @@ class Phonology:
             # - futureproof support later adding weight / rel chron order
 
             # TODO: update tracks to continue checking or discard ongoing rule applications
-            # NOTE error dict changes size during iteration (due to untrack pops)!
 
             # store completed rule tracks and avoid mutating dict mid iteration
             tracks_to_pop = []
@@ -320,20 +321,28 @@ class Phonology:
                 # fetch track again for refreshed count and index data
                 track = rule_tracker.get(track_id=track_id)
 
+                # TODO: apply RuleTracker tracks in order instead of changing each here
+                #   - this overwrites sounds based on individual rule determination
+                #   - stack changes by feeding each one to the other
+                #   - see if the next one applies if not pass same sound down
+
                 # matched to the end of the rule environment - add to found changes
                 if did_keep_tracking and track['count'] >= track['length']:
-                    # new symbol, index pairs for updating the final sound string (changed word)
-                    # TODO incorporate weighting or relative chronology as a third value
-                    changed_symbols.append((
-                        track['index'],
-                        self.change_symbol(
-                            rule.get_source(),  # rule source features that were matched
-                            rule.get_target(),  # rule target features to transform sound
-                            track['source']     # the matched sound to change
-                        )
-                    ))
+                    
+                    print(f"\n\nMatched track all the way!\n{track}\n")
+                    successful_tracks.append(track)
+
+                    ## new symbol, index pairs for updating the final sound string (changed word)
+                    # changed_symbols.append((
+                    #     track['index'],
+                    #     self.change_symbol(
+                    #         rule.get_source(),  # rule source features that were matched
+                    #         rule.get_target(),  # rule target features to transform sound
+                    #         track['source']     # the matched sound to change
+                    #     )
+                    # ))
+                    
                     # drop this track from the tracker
-                    # TODO consider keeping tracker, storing ['target'] and ['index'] and using them below
                     tracks_to_pop.append(track_id)
 
             # ditch any successful or failed completed track
@@ -341,9 +350,43 @@ class Phonology:
 
         # build a new ipa representation of the word after rule applied
         new_ipa_string = list(ipa_string)
-        for entry in changed_symbols:
-            # transform word by updating index to changed symbol
-            new_ipa_string[entry[0]] = entry[1]
+
+        # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
+        #
+        # TODO: incorporate weighting or relative chronology in values
+        for successful_track in successful_tracks:
+            print(successful_track)
+            # get the sound to change
+            index_to_change = successful_track['index']
+            ipa_to_change = new_ipa_string[index_to_change]
+            applied_rule = successful_track['rule']
+            
+            # NOTE: tracker ['source'] is in this loop the original sound
+            # before any changes were layered
+            #original_ipa = successful_track['source']
+            
+            # verify sound to change has not been updated to fall outside of rule
+            features_to_change = self.features.get_features(ipa_to_change)
+            if not rule_tracker.is_features_submatch(applied_rule.get_source(), features_to_change):
+                continue
+
+            # perform the sound change
+            changed_ipa = self.change_symbol(
+                applied_rule.get_source(),  # rule source features that were matched
+                applied_rule.get_target(),  # rule target features to transform sound
+                ipa_to_change               # the matched sound to change
+            )
+            print("source ipa: " + ipa_to_change)
+            print("updated ipa: " + changed_ipa)
+
+            # store the changed sound
+            new_ipa_string[index_to_change] = changed_ipa
+
+        ## NOTE: old way - mutate symbols directly based on track changing that index
+        # for entry in changed_symbols:
+        #     # transform word by updating index to changed symbol
+        #     new_ipa_string[entry[0]] = entry[1]
+
         print("".join(new_ipa_string))
         return (ipa_string, "".join(new_ipa_string))
 
@@ -385,8 +428,8 @@ class Phonology:
                     letters = self.phonemes.get_letters(symbol)
                     word_spelling.append(random.choice(letters))
 
-        # NOTE affixation here before sound changes
-        # - see TODO above this method
+        # TODO: affixation before sound changes
+        #   - have Language method for building and applying sound change atop units
 
         # apply sound changes to built word
         word_changed = self.apply_rules(word_ipa)[1] if apply_rules else word_ipa

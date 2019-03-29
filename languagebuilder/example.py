@@ -98,7 +98,7 @@ my_language.phonology.print_syllables()
 
 ## TEST - run rules (independent of above features, inventory, lang)
 my_language.phonology.add_rule(['voiceless'], ['voiced'], 'V_V')
-my_language.phonology.add_rule(['plosive'], ['fricative'], '#_V')
+my_language.phonology.add_rule(['stop'], ['fricative'], 'V_V')
 # TODO spelling layer can change too but if not default to historical
 print(my_language.phonology.apply_rules("kat"))    # expected: "kat", got: "kat"
 print(my_language.phonology.apply_rules("kata"))   # expected: "kada", got: "kada"
