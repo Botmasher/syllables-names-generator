@@ -1,13 +1,13 @@
 from .language.language import Language
 
-# TEST - build empty language
+# build empty language
 my_language = Language(
-    name='Testerlangubekke',
+    name='Kattattakka',
     display_name='Testaroundish'
 )
 
-# TEST - make features
-my_language.phonology.features.add_map({
+# define phonetics
+my_language.phonetics.add_map({
     'a': ['vowel', 'front', 'open', 'unrounded'],
     'i': ['vowel', 'front', 'close', 'unrounded'],
     'y': ['vowel', 'front', 'close', 'rounded'],
@@ -55,8 +55,7 @@ my_language.phonology.features.add_map({
     'w': ['consonant', 'voiced', 'velar', 'approximant']
 })
 
-
-# TEST - add inventory to language
+# inventory to language
 my_language.phonology.add_sounds({
     'a': ['a', 'ah'],
     'i': ['i', 'ie'],
@@ -71,45 +70,46 @@ my_language.phonology.add_sounds({
     'ts': ['ds']
 })
 
-# NOTE three methods for getting features for an IPA char
+# NOTE: three methods for getting features for an IPA char
 #   - Inventory.get_features reads local inventory dict listing letters by feature
 #   - Features.get_features retrieves list of feature keys where sound exists in set
 #   - Language.get_sound_features wraps the features (NOT inventory) method
 #       - but only for phonemes in the language
 
-# TEST - features by ipa and ipa by features readable from Features instance
-print(my_language.phonology.features.map_by_ipa())
-print(my_language.phonology.features.map_by_features())
+# TEST: features by ipa and ipa by features readable from Features instance
+print(my_language.phonetics.map_by_ipa())
+print(my_language.phonetics.map_by_features())
 
-# TEST - special symbols like β and two-char ones like ts are readable and have correct features
-print(my_language.phonology.features.get_features('ts'))
-print(my_language.phonology.features.get_features('β'))
-#
-# # TODO have inventory tie features to chars, and do the add sounds instead of language
-# #print(my_language.phonemes)     # recall this is a dict of ipa:phoneme pairs
-# print(my_language.get_sound_features('i'))
-#
-# # TODO weight syllables so CV > just V
+# TEST: special symbols like β and two-char ones like ts are readable and have correct features
+print(my_language.phonetics.get_features('ts'))
+print(my_language.phonetics.get_features('β'))
+
+# TODO: weight syllables for frequency during generation, like CV > V
 my_language.phonology.add_syllable('CVC')
 my_language.phonology.add_syllable('VC')
 my_language.phonology.add_syllable('CV')
 my_language.phonology.print_syllables()
-# TODO add word shapes (root, affixes, compounds, or initial VCV but not mid CVVCV)
+# TODO: add word shapes, like initial VCV but not mid CVVCV
 
-## TEST - run rules (independent of above features, inventory, lang)
+## TEST: run rules (independent of above features, inventory, lang)
 my_language.phonology.add_rule(['voiceless'], ['voiced'], 'V_V')
 my_language.phonology.add_rule(['stop'], ['fricative'], 'V_V')
-# TODO spelling layer can change too but if not default to historical
-print(my_language.phonology.apply_rules("kat"))    # expected: "kat", got: "kat"
-print(my_language.phonology.apply_rules("kata"))   # expected: "kada", got: "kada"
-print(my_language.phonology.apply_rules("katta"))  # expected: "katta", got: "katta"
-print(my_language.phonology.apply_rules("akatakatta"))  # expected: "agadagatta", got: "agadagatta"
 
-## TEST - build root word
+# TODO: spelling layer can change too but if not default to historical
+
+# TODO: sound change to or from silence or zero, like katta > kata
+#   - also look for same sounds as last (identical)
+
+print(my_language.phonology.apply_rules("kat"))         # expected: > "kat"
+print(my_language.phonology.apply_rules("kata"))        # expected: > "kada" > "ka"
+print(my_language.phonology.apply_rules("katta"))       # expected: > "katta"
+print(my_language.phonology.apply_rules("akatakatta"))  # expected: > "agadagatta" > "aɣaaɣatta"
+
+## TEST: build word root
 word_entry = my_language.phonology.build_word(length=2, definition="camel")
 print(word_entry)
 
-## TEST - add affixes and build words with them
+## TEST: add exponents and build units
 my_language.grammar.properties.add("number", "singular")
 my_language.grammar.properties.add("number", "plural")
 my_language.grammar.properties.add("semantic", "doer")

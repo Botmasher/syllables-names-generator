@@ -19,7 +19,7 @@ import random
 #       - this means storing strings of features for each word, or phon symbs
 
 # features to and from phonetic symbols
-class Features:
+class Phonetics:
     def __init__(self):
         self.features = {}  # map feature:{ipa}
         self.ipa = {}       # map ipa:{features}
@@ -92,24 +92,21 @@ class Features:
 
     def add(self, symbol, features):
         """Add one phonetic symbol and its associated features to the maps"""
+        # check that the symbol is valid ipa
         if not isinstance(symbol, str): #or len(symbol) > 2:
             print(f"Features add_entry failed to add invalid symbol {symbol}")
             return
-        added_features = []
+        # add each feature to both symbols and features maps
         for feature in features:
+            # check that the feature is valid
             if not isinstance(feature, str):
                 print(f"Features add_entry skipped invalid feature {feature}")
-            else:
-                if feature not in self.features:
-                    self.features[feature] = set()
-                if symbol not in self.ipa:
-                    self.ipa[symbol] = set()
-                self.features[feature].add(symbol)
-                self.ipa[symbol].add(feature)
-                added_features.append(feature)
-        return {symbol: added_features}
+                continue
+            # add features and symbols to their sets
+            self.features.setdefault(feature, set()).add(symbol)
+            self.ipa.setdefault(symbol, set()).add(feature)
+        return {symbol: self.ipa[symbol]}
 
-    # NOTE: maps crud still untested
     def update_symbol(self, symbol, new_symbol):
         """Update a symbol in ipa and features maps"""
         if not self.has_ipa(symbol):
@@ -134,26 +131,37 @@ class Features:
         return features
 
     def update_feature(self, feature, new_feature):
-        """Update a feature in ipa and features maps"""
+        """Update a feature name in ipa and features maps"""
+        # verify that the feature exists
         if not self.has_feature(feature):
             return
+        # move the old feature data to the new feature
+        old_feature_symbols = self.features[feature]
+        self.features[new_feature] = old_feature_symbols
+        # remove the old feature from features and symbols maps
         self.remove_feature(
             feature,
+            # add the new feature to all symbols that had the old one
             ipa_callback=lambda s: self.ipa[s].add(new_feature)
         )
+        # return the updated feature name and data
         return {new_feature: self.features[new_feature]}
 
     def remove_feature(self, feature, ipa_callback=None):
         """Remove a feature from ipa and features maps"""
+        # verify the feature exists
         if not self.has_feature(feature):
             return
-        symbols = list(self.features[feature])
+        # remove the feature and grab its stored symbols
+        symbols = list(self.features.pop(feature))
+        # remove the feature from symbols
         for symbol in symbols:
             self.ipa[symbol].remove(feature)
             ipa_callback and ipa_callback(symbol)
-        return symbols
+        # send back the deleted data
+        return {feature: symbols}
 
-    # TODO unrandomize - allow for weighted rank input
+    # TODO: unrandomize - allow ordering/sorting
     def distribute_sounds(self, ipa):
         """Populate selectable symbols following a Zipf distribution"""
         # construct a mock population that behaves Zipfianly
@@ -173,49 +181,3 @@ class Features:
             symbol_count = (1 / i) * (high_frequency)
             consonants += [consonant] * symbol_count
         return {'consonants': consonants, 'vowels': vowels}
-
-    # OLD methods for managing one map or the other
-    def _add_ipa(self, symbol, features, overwrite_symbol=False):
-        """Add a phonetic symbol to existing feature symbol sets"""
-        if type(symbol) != str or type(features) != list:
-            print("Features add_ipa failed - invalid symbol or features")
-            return False
-        # add new symbol
-        if not self.has_ipa(symbol) or overwrite_symbol:
-            print("Features add_ipa - adding new symbol {0}".format(symbol))
-            self.ipa[symbol] = set()
-        # add features to symbol
-        for feature in features:
-            if not self.has_feature(feature):
-                print("Features add_ipa skipped unknown feature {0} for symbol {1}".format(feature, symbol))
-            else:
-                self.ipa[symbol].add(feature)
-        return True
-
-    def _add_features(self, features, symbol=None):
-        """Add features to the features map with an associated phonetic symbol"""
-        if type(features) is not list:
-            print("Features add_features failed - invalid features list {0}".format(features))
-            return False
-        for feature in features:
-            # log unrecognized or new features
-            if type(feature) is not str:
-                print("Features add_feature skipped invalid feature {0}".format(feature))
-            # add feature
-            if not self.has_feature(feature):
-                print("Adding new feature {0}".format(feature))
-                self.features[feature] = set()
-            # add symbol to feature
-            symbol and self.features[feature].add(symbol)
-        return True
-
-    def _add_feature(self, feature, default_value=None):
-        """Add one new feature to the features map"""
-        if type(feature) is not str:
-            print("Features add_feature failed - invalid feature {0}".format(feature))
-            return
-        if feature not in self.features:
-            self.features[feature] = {default_value} if default_value else {}
-            return feature
-        print("Features add_feature ignored {0} - key already exists".format(feature))
-        return

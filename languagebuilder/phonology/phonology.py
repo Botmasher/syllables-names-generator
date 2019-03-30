@@ -1,5 +1,3 @@
-# ipa and features
-from ..phonetics.features import Features
 # collection management
 from .phonemes import Phonemes
 from ..tools.collector import Collector
@@ -19,9 +17,9 @@ import random
 #   - inject classes here
 
 class Phonology:
-    def __init__(self):
+    def __init__(self, phonetics):
         # phonetic mapping between ipa and features
-        self.features = Features()
+        self.phonetics = phonetics
         # collections for this inventory
         self.phonemes = Phonemes()
         self.environments = Collector(accepted_types=['Environment'])
@@ -32,11 +30,6 @@ class Phonology:
     def inventory(self):
         """Read all phonetic symbols stored for this language"""
         return self.phonemes.symbols()
-
-    # map of all possible ipa <> features
-    def set_features(self, features):
-        """Set the features object for this language"""
-        self.features = features
 
     def print_syllables(self):
         """Print out all syllables in a human-readable formatted string"""
@@ -69,7 +62,7 @@ class Phonology:
         new_syllable_structure = []
         for syllable_item in syllable_structure:
             if type(syllable_item) is str:
-                if not (syllable_item in syllable_characters or self.features.has_feature(syllable_item)):
+                if not (syllable_item in syllable_characters or self.phonetics.has_feature(syllable_item)):
                     print("Language add_syllable failed - invalid syllable item {0}".format(syllable_item))
                     return
                 elif syllable_item == 'C':
@@ -80,7 +73,7 @@ class Phonology:
                     new_syllable_structure.append([syllable_item])
             elif type(syllable_item) is list:
                 for feature in syllable_item:
-                    if not self.features.has_feature(syllable_item):
+                    if not self.phonetics.has_feature(syllable_item):
                         print("Language add_syllable failed - invalid syllable feature {0}".format(feature))
                         return
                 new_syllable_structure.append(syllable_item)
@@ -112,7 +105,7 @@ class Phonology:
     # TODO decide to handle sound lookups and feature associations here vs inventory
     #   - features knows all possibilities but inventory builds out current set
     def is_ipa(self, symbol):
-        if not self.features.has_ipa(symbol):
+        if not self.phonetics.has_ipa(symbol):
             print("invalid phonetic symbol {0}".format(symbol))
             return False
         return True
@@ -121,7 +114,7 @@ class Phonology:
         if not self.is_ipa(ipa) or not self.phonemes.has(ipa):
             print("Language get_sound_features failed - unknown symbol {0}".format(ipa))
             return
-        return self.features.get_features(ipa)
+        return self.phonetics.get_features(ipa)
     #
     def get_sound_letters(self, ipa):
         if not self.is_ipa(ipa) or not self.phonemes.has(ipa):
@@ -130,11 +123,11 @@ class Phonology:
         letters = self.phonemes.get_letters(ipa)
         return letters
 
-    # TODO add weights for letter choice? relative chron order for rules?
-    #   - current weight intended for distributing phon commonness/freq of occ
+    # TODO: add weights for letter choice
+    #   - current weight intended for distributing phon freq
     def add_sound(self, ipa, letters=[], weight=0):
         """Add one phonetic symbol, associated letters and optional weight to the language's inventory"""
-        if not self.features.has_ipa(ipa) or not all(isinstance(l, str) for l in letters):
+        if not self.phonetics.has_ipa(ipa) or not all(isinstance(l, str) for l in letters):
             print("Language add_sound failed - invalid phonetic symbol or letters")
             return {}
         phoneme = Phoneme(ipa, letters=letters, weight=weight)
@@ -155,7 +148,7 @@ class Phonology:
     # use rule to turn symbol from source into target
     def change_symbol(self, source_features, target_features, ipa_symbol):
         """Turn one symbol into another with a source->target features shift"""
-        symbol_features = self.features.get_features(ipa_symbol)
+        symbol_features = self.phonetics.get_features(ipa_symbol)
         print(symbol_features)
         new_symbol_features = set(target_features)
         print(target_features)
@@ -169,7 +162,7 @@ class Phonology:
                 new_symbol_features.add(feature)
         # find phonetic symbols with these features
         # choose from all possible symbols not just current inventory
-        new_symbols = self.features.get_ipa(list(new_symbol_features))
+        new_symbols = self.phonetics.get_ipa(list(new_symbol_features))
 
         # TODO choose a new symbol from matching symbols if more than one
         new_symbol = new_symbols[0]
@@ -225,13 +218,10 @@ class Phonology:
         # set of word sounds
         word_sounds = set([c for c in ipa_string])
         # features for all sounds in the word
-        # TODO should features (like original inventory) store two-way mapping?
         word_features = {
-            ipa: self.features.get_features(ipa)
+            ipa: self.phonetics.get_features(ipa)
             for ipa in word_sounds
         }
-        # gather index, symbol replacement pairs to update final string
-        changed_symbols = []    # list of (string index, new symbol)
 
         # collect each track of rules that applies within the word ipa
         successful_tracks = []
@@ -329,18 +319,8 @@ class Phonology:
                 # matched to the end of the rule environment - add to found changes
                 if did_keep_tracking and track['count'] >= track['length']:
                     
-                    print(f"\n\nMatched track all the way!\n{track}\n")
+                    # full ruletrack match
                     successful_tracks.append(track)
-
-                    ## new symbol, index pairs for updating the final sound string (changed word)
-                    # changed_symbols.append((
-                    #     track['index'],
-                    #     self.change_symbol(
-                    #         rule.get_source(),  # rule source features that were matched
-                    #         rule.get_target(),  # rule target features to transform sound
-                    #         track['source']     # the matched sound to change
-                    #     )
-                    # ))
                     
                     # drop this track from the tracker
                     tracks_to_pop.append(track_id)
@@ -366,7 +346,7 @@ class Phonology:
             #original_ipa = successful_track['source']
             
             # verify sound to change has not been updated to fall outside of rule
-            features_to_change = self.features.get_features(ipa_to_change)
+            features_to_change = self.phonetics.get_features(ipa_to_change)
             if not rule_tracker.is_features_submatch(applied_rule.get_source(), features_to_change):
                 continue
 
@@ -414,7 +394,7 @@ class Phonology:
             syllable_structure = syllable.get()
             for feature_set in syllable_structure:
                 # find all inventory ipa that have these features
-                symbols = self.features.get_ipa(feature_set, filter_phonemes=self.inventory())
+                symbols = self.phonetics.get_ipa(feature_set, filter_phonemes=self.inventory())
                 # TODO you store Phoneme with associated letters so this should be easy
                 #   - right now inventory maps features to letters
                 #   - features maps them to sounds
