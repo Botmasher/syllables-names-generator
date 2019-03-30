@@ -288,8 +288,8 @@ class Phonology:
                 environment_slot_features = rule.get_environment().get_structure()[track['count']]
 
                 # log this attempt to fit symbol into rule environment
-                print("Applying rule {0}: {1}".format(rule, rule.get_pretty()))
-                print("Looking for environment matching {0}".format(environment_slot_features))
+                print(f"Applying rule: {rule.get_pretty()}")
+                print(f"Looking for environment matching {environment_slot_features}")
 
                 # flag to check if rule track fails to match sound to slot
                 did_keep_tracking = False

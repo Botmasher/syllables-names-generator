@@ -45,7 +45,7 @@ class Language:
     #   - otherwise must pass language/dictionary down to phonology to store
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, definition="", num_syllables=None, properties=None, word_classes=None):
+    def generate(self, definition="", num_syllables=None, properties=None, word_classes=None, ):
         num_syllables = random.randrange(1, 4)
         root = self.phonology.build_word(length=num_syllables)
         # TODO: handle dictionary here not in phonology
@@ -53,3 +53,11 @@ class Language:
         # TODO: also dictionary but including exponents (corpus?)
         return self.grammar.build_unit(root, properties=properties, word_classes=word_classes)
         
+    def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
+        # TODO: lookup by definition or headword
+        # TODO: store word classes in dictionary
+        definition and self.dictionary.search
+        word and self.dictionary.lookup(headword=word, entry_index=entry_index)
+        # TODO: build up around found word
+        self.grammar.build_unit(word, properties, word_classes)
+    

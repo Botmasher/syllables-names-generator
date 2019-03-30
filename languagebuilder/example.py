@@ -2,7 +2,7 @@ from .language.language import Language
 
 # build empty language
 my_language = Language(
-    name='Kattattakka',
+    name='Katattahk',
     display_name='Testaroundish'
 )
 
