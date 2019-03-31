@@ -8,6 +8,6 @@ class Syllable:
 
     def update(self, structure):
         """Update the syllable structure"""
-        if type(structure) is list:
+        if isinstance(structure, list):
             self.structure = structure
         return self.structure
