@@ -34,7 +34,7 @@ class PhonologyAddUpdateDelete(PhonologyFixture):
         
     def test_add_sound(self):
         self.phonology.add_sound("a", ["a"])
-        self.assertEqual(
+        self.assertTrue(
             self.phonology.has_sound("a"),
             "failed to add a new sound to the phonology"
         )
@@ -73,29 +73,32 @@ class PhonologySyllables(PhonologyFixture):
 
     def test_add_syllable(self):
         self.phonology.add_syllable("CVC")
-        self.assertTrue(
-            self.phonology.syllables.has(["C", "V", "C"]),
+        self.assertNotIn(
+            self.phonology.find_syllables(["C", "V", "C"]),
             "failed to add a new syllable to the phonology"
         )
 
     def test_add_syllable_with_features(self):
         self.phonology.add_syllable(["velar stop", "V", "velar fricative"])
-        self.assertTrue(
-            self.phonology.syllables.has(["V"]),
+        self.assertNotIn(
+            find
+            self.phonology.find_syllables(["V"]),
             "failed to add a new syllable with phonological features to the phonology"
         )
     
     def test_update_syllable(self):
         self.phonology.update_syllable("CV", "CVV")
-        self.assertTrue(
-            self.phonology.syllables.has(["C", "V", "V"]),
+        self.assertNotIn(
+            self.phonology.find_syllables(['C', 'V', 'V']),
+            [None, []],
             "failed to update an existing syllable in the phonology"
         )
 
     def test_remove_syllable(self):
-        self.phonology.remove_syllable("V")
-        self.assertFalse(
-            self.phonology.syllables.has(["V"]),
+        confirmations = self.phonology.remove_syllable("V")
+        self.assertNotIn(
+            confirmations,
+            [None, []],
             "failed to remove an existing syllable from the phonology"
         )
 
@@ -125,6 +128,21 @@ class PhonologyBuildWord(PhonologyFixture):
             "failed to build a word with simple spelling"
         )
 
+    def test_add_rule(self):
+        rule_id = self.phonology.add_rule(['vowel'], ['vowel'], "V")
+        self.assertTrue(
+            self.phonology.has_rule(rule_id),
+            "could not add one sound change rule to the rules"
+        )
+    
+    def test_remove_rule(self):
+        rule_id = self.phonology.add_rule(['vowel'], ['vowel'], "V")
+        self.phonology.remove_rule(rule_id)
+        self.assertFalse(
+            self.phonology.has_rule(rule_id),
+            "could not create then remove a single sound change rule"
+        )
+
     def test_build_word_multisyllable(self):
         entry = self.phonology.build_word(3)
         self.assertEqual(
@@ -134,8 +152,9 @@ class PhonologyBuildWord(PhonologyFixture):
         )
 
     def test_build_word_fricativization(self):
-        self.phonology.add_rule(["stop"], ["fricative"], "V_V")
+        rule_id = self.phonology.add_rule(["stop"], ["fricative"], "V_V")
         entry = self.phonology.build_word(2)
+        self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['change'],
             "kaxa",

@@ -39,7 +39,7 @@ class Phonology:
         for syllable in self.syllables.get():
             count += 1
             syllable_text += "Syllable {0}: ".format(count)
-            for syllable_item in syllable.get():
+            for syllable_item in syllable.get_structure():
                 for feature in syllable_item:
                     syllable_text += "{0}, ".format(feature)
             syllable_text = syllable_text[:-2]
@@ -81,6 +81,38 @@ class Phonology:
         syllable = Syllable(new_syllable_structure)
         self.syllables.add(syllable)
         return syllable
+
+    def update_syllable(self, structure, new_structure):
+        """Modify the structure of an existing syllable"""
+        matching_syllables = self.find_syllables(structure)
+        if not matching_syllables:
+            print("Phonology update_syllable failed - unrecognized syllable structure")
+            return
+        for syllable in matching_syllables:
+            syllable.update(new_structure)
+        return matching_syllables
+
+    def remove_syllable(self, structure):
+        """Remove existing syllables matching this structure"""
+        matching_syllables = self.find_syllables(structure)
+        if not matching_syllables:
+            print("Phonology update_syllable failed - unrecognized syllable structure")
+            return
+        removal_confirmations = [
+            self.syllables.remove(syllable)
+            for syllable in matching_syllables
+        ]
+        return removal_confirmations
+
+    def find_syllables(self, structure):
+        """Return syllables with the given structure"""
+        if not isinstance(structure, list):
+            print("Phonology find_syllables failed - expected syllable structure list")
+            return
+        return [
+            syllable for syllable in self.syllables.get()
+            if structure == syllable.get_structure()
+        ]
     
     # Rules
     def add_rule(self, source, target, environment_structure):
@@ -107,6 +139,14 @@ class Phonology:
             return rule.get_pretty()
         # send back the rule object
         return rule
+
+    def has_rule(self, rule_id):
+        """Check if a single rule exists in the phonological rules collection"""
+        return self.rules.has(rule_id)
+    
+    def remove_rule(self, rule_id):
+        """Delete a rule from the phonological rules collection"""
+        return self.rules.remove(rule_id)
 
     # IPA read methods checking both phonology and phonetics
     def has_sound(self, ipa):
@@ -395,7 +435,7 @@ class Phonology:
             except:
                 print("Phonology build_word failed - no syllables found in inventory")
                 return
-            syllable_structure = syllable.get()
+            syllable_structure = syllable.get_structure()
             for feature_set in syllable_structure:
                 # find all inventory ipa that have these features
                 symbols = self.phonetics.get_ipa(feature_set, filter_phonemes=self.inventory())

@@ -2,7 +2,7 @@ class Syllable:
     def __init__(self, structure):
         self.structure = structure
 
-    def get(self):
+    def get_structure(self):
         """Read the syllable structure"""
         return self.structure
 
