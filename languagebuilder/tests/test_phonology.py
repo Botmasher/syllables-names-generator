@@ -42,7 +42,7 @@ class PhonologyAddUpdateDelete(PhonologyFixture):
     def test_get_sound_features(self):
         self.phonology.add_sound("k", ["k"])
         self.assertEqual(
-            self.phonology.get_sound_features("k") & {"voiceless", "velar", "stop"},
+            set(self.phonology.get_sound_features("k")) & {"voiceless", "velar", "stop"},
             {"voiceless", "velar", "stop"},
             "failed to add a sound and get its features"
         )
@@ -68,37 +68,35 @@ class PhonologySyllables(PhonologyFixture):
     @classmethod
     def setUpClass(this_class):
         super(PhonologySyllables, this_class).setUpClass()
-        this_class.phonology.add_syllable("CV")
-        this_class.phonology.add_syllable("V")
 
     def test_add_syllable(self):
-        self.phonology.add_syllable("CVC")
-        self.assertNotIn(
-            self.phonology.find_syllables(["C", "V", "C"]),
+        syllable_id = self.phonology.syllables.add("CVC")
+        self.assertTrue(
+            self.phonology.syllables.has(syllable_id),
             "failed to add a new syllable to the phonology"
         )
 
     def test_add_syllable_with_features(self):
-        self.phonology.add_syllable(["velar stop", "V", "velar fricative"])
-        self.assertNotIn(
-            find
-            self.phonology.find_syllables(["V"]),
+        syllable_id = self.phonology.syllables.add(["velar stop", "V", "velar fricative"])
+        self.assertTrue(
+            self.phonology.syllables.has(syllable_id),
             "failed to add a new syllable with phonological features to the phonology"
         )
     
     def test_update_syllable(self):
-        self.phonology.update_syllable("CV", "CVV")
-        self.assertNotIn(
-            self.phonology.find_syllables(['C', 'V', 'V']),
-            [None, []],
+        syllable_id = self.phonology.syllables.add("VVV")
+        self.phonology.syllables.update(syllable_id, "CVV")
+        self.assertEqual(
+            self.phonology.syllables.get(syllable_id)
+            ["C", "V", "V"],
             "failed to update an existing syllable in the phonology"
         )
 
     def test_remove_syllable(self):
-        confirmations = self.phonology.remove_syllable("V")
-        self.assertNotIn(
-            confirmations,
-            [None, []],
+        syllable_id = self.phonology.syllables.add("CCC")
+        self.phonology.syllables.remove(syllable_id)
+        self.assertIsNone(
+            self.phonology.syllables.get(syllable_id),
             "failed to remove an existing syllable from the phonology"
         )
 
@@ -110,7 +108,7 @@ class PhonologyBuildWord(PhonologyFixture):
         super(PhonologyBuildWord, this_class).setUpClass()
         this_class.phonology.add_sound("k", ["q"])
         this_class.phonology.add_sound("a", ["a"])
-        this_class.phonology.add_syllable("CV")
+        this_class.phonology.syllables.add("CV")
 
     def test_build_word_sounds(self):
         entry = self.phonology.build_word(1)

@@ -1,10 +1,11 @@
 # collection management
 from .phonemes import Phonemes
 from ..tools.collector import Collector
-from ..tools.setcollector import SetCollector
+#from ..tools.setcollector import SetCollector
 # objects collected
 from .phoneme import Phoneme
-from .syllable import Syllable
+#from .syllable import Syllable
+from .syllables import Syllables
 from .environment import Environment
 from .rule import Rule
 from .ruletracker import RuleTracker
@@ -24,7 +25,7 @@ class Phonology:
         # collections for this inventory
         self.phonemes = Phonemes()
         self.environments = Collector(accepted_types=['Environment'])
-        self.syllables = SetCollector(accepted_types=['Syllable'])
+        self.syllables = Syllables(self)    # reference phonology for feature checking
         self.rules = Collector(accepted_types=['Rule'])
 
     # inventory now managed through Phonemes (letters <> ipa) and Features (features <> ipa) instead of previous Inventory class
@@ -32,87 +33,85 @@ class Phonology:
         """Read all phonetic symbols stored in this inventory"""
         return self.phonemes.symbols()
 
-    def print_syllables(self):
-        """Print out all syllables in a human-readable formatted string"""
-        syllable_text = ""
-        count = 0
-        for syllable in self.syllables.get():
-            count += 1
-            syllable_text += "Syllable {0}: ".format(count)
-            for syllable_item in syllable.get_structure():
-                for feature in syllable_item:
-                    syllable_text += "{0}, ".format(feature)
-            syllable_text = syllable_text[:-2]
-            syllable_text += "\n"
-        print(syllable_text)
-        return syllable_text
+    # def print_syllables(self):
+    #     """Print out all syllables in a human-readable formatted string"""
+    #     syllable_text = ""
+    #     count = 0
+    #     for syllable in self.syllables.get():
+    #         count += 1
+    #         syllable_text += "Syllable {0}: ".format(count)
+    #         for syllable_item in syllable.get_structure():
+    #             for feature in syllable_item:
+    #                 syllable_text += "{0}, ".format(feature)
+    #         syllable_text = syllable_text[:-2]
+    #         syllable_text += "\n"
+    #     print(syllable_text)
+    #     return syllable_text
 
-    def add_syllable(self, syllable_structure, parse_cv=True):
-        """Add one syllable to the syllables collection for this phonology"""
-        # build valid symbol or features list
-        syllable_characters = ['_', '#', ' ', 'C', 'V', ]
-        if parse_cv and isinstance(syllable_structure, str):
-            cv_structure = []
-            for cv_char in syllable_structure:
-                if cv_char in syllable_characters:
-                    cv_structure.append(cv_char)
-                else:
-                    print("Phonology add_syllable failed - invalid character {0} found when parsing syllable string".format(cv_char))
-                    return
-            syllable_structure = cv_structure
-        new_syllable_structure = []
-        for syllable_item in syllable_structure:
-            if isinstance(syllable_item, str):
-                if not (syllable_item in syllable_characters or self.phonetics.has_feature(syllable_item)):
-                    print("Phonology add_syllable failed - invalid syllable item {0}".format(syllable_item))
-                    return
-                elif syllable_item == 'C':
-                    new_syllable_structure.append(["consonant"])
-                elif syllable_item == 'V':
-                    new_syllable_structure.append(["vowel"])
-                else:
-                    new_syllable_structure.append([syllable_item])
-            elif isinstance(syllable_item, list):
-                for feature in syllable_item:
-                    if not self.phonetics.has_feature(syllable_item):
-                        print("Phonology add_syllable failed - invalid syllable feature {0}".format(feature))
-                        return
-                new_syllable_structure.append(syllable_item)
-        syllable = Syllable(new_syllable_structure)
-        self.syllables.add(syllable)
-        return syllable
+    # def add_syllable(self, syllable_structure, parse_cv=True):
+    #     """Add one syllable to the syllables collection for this phonology"""
+    #     # build valid symbol or features list
+    #     syllable_characters = ['_', '#', ' ', 'C', 'V', ]
+    #     if parse_cv and isinstance(syllable_structure, str):
+    #         cv_structure = []
+    #         for cv_char in syllable_structure:
+    #             if cv_char in syllable_characters:
+    #                 cv_structure.append(cv_char)
+    #             else:
+    #                 print("Phonology add_syllable failed - invalid character {0} found when parsing syllable string".format(cv_char))
+    #                 return
+    #         syllable_structure = cv_structure
+    #     new_syllable_structure = []
+    #     for syllable_item in syllable_structure:
+    #         if isinstance(syllable_item, str):
+    #             if not (syllable_item in syllable_characters or self.phonetics.has_feature(syllable_item)):
+    #                 print("Phonology add_syllable failed - invalid syllable item {0}".format(syllable_item))
+    #                 return
+    #             elif syllable_item == 'C':
+    #                 new_syllable_structure.append(["consonant"])
+    #             elif syllable_item == 'V':
+    #                 new_syllable_structure.append(["vowel"])
+    #             else:
+    #                 new_syllable_structure.append([syllable_item])
+    #         elif isinstance(syllable_item, list):
+    #             for feature in syllable_item:
+    #                 if not self.phonetics.has_feature(syllable_item):
+    #                     print("Phonology add_syllable failed - invalid syllable feature {0}".format(feature))
+    #                     return
+    #             new_syllable_structure.append(syllable_item)
+    #     syllable = Syllable(new_syllable_structure)
+    #     syllable_id = self.syllables.add(syllable)
+    #     return syllable_id
 
-    def update_syllable(self, structure, new_structure):
-        """Modify the structure of an existing syllable"""
-        matching_syllables = self.find_syllables(structure)
-        if not matching_syllables:
-            print("Phonology update_syllable failed - unrecognized syllable structure")
-            return
-        for syllable in matching_syllables:
-            syllable.update(new_structure)
-        return matching_syllables
+    # def update_syllable(self, syllable_id, structure):
+    #     """Modify the structure of an existing syllable"""
+    #     if not self.syllables.has(syllable_id):
+    #         print("Phonology update_syllable failed - unrecognized syllable_id")
+    #         return
+    #     self.syllables.update(syllable_id, structure)
+    #     return syllable_id
 
-    def remove_syllable(self, structure):
-        """Remove existing syllables matching this structure"""
-        matching_syllables = self.find_syllables(structure)
-        if not matching_syllables:
-            print("Phonology update_syllable failed - unrecognized syllable structure")
-            return
-        removal_confirmations = [
-            self.syllables.remove(syllable)
-            for syllable in matching_syllables
-        ]
-        return removal_confirmations
+    # def remove_syllable(self, structure):
+    #     """Remove existing syllables matching this structure"""
+    #     matching_syllables = self.find_syllables(structure)
+    #     if not matching_syllables:
+    #         print("Phonology remove_syllable failed - unrecognized syllable structure")
+    #         return
+    #     removal_confirmations = [
+    #         self.syllables.remove(syllable)
+    #         for syllable in matching_syllables
+    #     ]
+    #     return removal_confirmations
 
-    def find_syllables(self, structure):
-        """Return syllables with the given structure"""
-        if not isinstance(structure, list):
-            print("Phonology find_syllables failed - expected syllable structure list")
-            return
-        return [
-            syllable for syllable in self.syllables.get()
-            if structure == syllable.get_structure()
-        ]
+    # def find_syllables(self, structure):
+    #     """Return syllables with the given structure"""
+    #     if not isinstance(structure, list):
+    #         print("Phonology find_syllables failed - expected syllable structure list")
+    #         return
+    #     return [
+    #         syllable for syllable in self.syllables.get()
+    #         if structure == syllable.get_structure()
+    #     ]
     
     # Rules
     def add_rule(self, source, target, environment_structure):
@@ -190,6 +189,14 @@ class Phonology:
             added_sound = self.add_sound(ipa, letters=letters)
             sounds.update(added_sound)
         return sounds
+
+    # TODO: update and remove
+    def update_sound(self, ipa, letters=None):
+        # currently using both Phoneme and Phonemes
+        return
+    #
+    def remove_sound(self, ipa):
+        return
 
     # use rule to turn symbol from source into target
     def change_symbol(self, source_features, target_features, ipa_symbol):
