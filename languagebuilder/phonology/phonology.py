@@ -174,10 +174,10 @@ class Phonology:
         to the inventory"""
         if not self.phonetics.has_ipa(ipa) or not all(isinstance(l, str) for l in letters):
             print("Phonology add_sound failed - invalid phonetic symbol or letters")
-            return {}
+            return
         phoneme = Phoneme(ipa, letters=letters, weight=weight)
         self.phonemes.add(phoneme)
-        return {ipa: self.phonemes.get(key=ipa)}
+        return ipa
 
     def add_sounds(self, ipa_letters_map):
         """Add multiple sounds to the inventory"""
@@ -190,13 +190,19 @@ class Phonology:
             sounds.update(added_sound)
         return sounds
 
-    # TODO: update and remove
-    def update_sound(self, ipa, letters=None):
-        # currently using both Phoneme and Phonemes
-        return
-    #
-    def remove_sound(self, ipa):
-        return
+    # NOTE: update and removal moved to phonemes 
+    # def update_sound(self, ipa, letters=None, wieght=None):
+    #     # currently using both Phoneme and Phonemes
+    #     phoneme = self.phonemes.get(ipa)
+    #     if not phoneme:
+    #         print(f"Failed to update unrecognized phoneme {ipa}")
+    #         return
+    #     letters and phoneme.letters = set(letters)
+    #     weight and phoneme.weight = weight
+    #     return phoneme
+    # #
+    # def remove_sound(self, ipa):
+    #     return
 
     # use rule to turn symbol from source into target
     def change_symbol(self, source_features, target_features, ipa_symbol):

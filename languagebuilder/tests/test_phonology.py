@@ -49,7 +49,7 @@ class PhonologyAddUpdateDelete(PhonologyFixture):
 
     def test_update_sound_letters(self):
         self.phonology.add_sound("k", ["k"])
-        self.phonology.update_sound("k", ["k", "q"])
+        self.phonology.phonemes.update("k", ["k", "q"])
         self.assertIn(
             "q",
             self.phonology.get_sound_letters("k"),
@@ -58,7 +58,7 @@ class PhonologyAddUpdateDelete(PhonologyFixture):
 
     def test_remove_sound(self):
         self.phonology.add_sound("k", ["k"])
-        self.phonology.remove_sound("k")
+        self.phonology.phonemes.remove("k")
         self.assertFalse(
             self.phonology.has_sound("k"),
             "failed to remove a sound from the inventory"

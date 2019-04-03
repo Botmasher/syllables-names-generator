@@ -1,29 +1,87 @@
-from ..tools.collector import Collector
-
 # TODO separate phonemes/letters/weights (language) from ipa-features (features) - do not handle features here!
-class Phonemes(Collector):
+class Phonemes():
     def __init__(self):
-        Collector.__init__(self, accepted_types=['Phoneme'])
-#        self.ipa_by_feature = {}
+        self.phonemes = {}
+        self.phoneme_template = {
+            'letters': set(),
+            'ipa': None,
+            'weight': 0
+        }
 
-    def add(self, phoneme):
-        """Store a new phoneme object in the collection"""
-        if not type(phoneme).__name__ == 'Phoneme':
-            return("Phonemes add failed - invalid phoneme {0}".format(phoneme))
-        ipa = phoneme.get_symbol()
-        #for feature in features:
-        #    if feature not in self.ipa_by_feature:
-        #        self.ipa_by_feature[feature] = set()
-        #    self.ipa_by_feature[feature].add(ipa)
-        super(Phonemes, self).add(phoneme, key=ipa)
+    def has(self, ipa):
+        return ipa in self.phonemes
+    
+    def get(self, ipa=None):
+        """Return one phoneme or all if no specific one requested"""
+        if ipa is None:
+            return self.phonemes
+        return self.phonemes.get(ipa, None)
+
+    def add(self, ipa, letters, weight=0):
+        """Store a new phoneme object"""
+        # TODO: check ipa associated features
+
+        #if not type(phoneme).__name__ == 'Phoneme':
+        #    print(f"Phonemes failed to store invalid phoneme {phoneme}")
+        #    return
+        
+        # use ipa symbol as key
+        #ipa = phoneme.get_symbol()
+
+        # do not overwrite existing phoneme with this key
+        if ipa in self.phonemes:
+            print(f"Phonemes add failed - phoneme already exists for {ipa}")
+            return
+
+        # expect a phoneme object
+        phoneme = {
+            'ipa': ipa,
+            'letters': set(letters),
+            'weight': weight
+        }
+
+        # create entry
+        self.phonemes[ipa] = phoneme
+        return ipa
+    
+    # TODO: ability to manage (crud) individual letters
+    def update(self, ipa, letters=None, weight=None):
+        """Update the phoneme object for an existing ipa phoneme"""
+        # fetch and check for existing phoneme
+        phoneme = self.phonemes.get(ipa)
+        if not phoneme:
+            print(f"Phonemes failed to update unrecognized phoneme {ipa}")
+            return
+        # update individual properties in the phoneme
+        phoneme.letters = set(letters) if letters else phoneme.letters
+        phoneme.weight = weight if weight else phoneme.weight
+        return phoneme
+    
+    # TODO: check that new ipa is featureful symbol
+    def update_ipa(self, ipa, new_ipa):
+        """Update the ipa symbol for an existing phoneme"""
+        # try to remove the existing phoneme
+        phoneme = self.remove(ipa)
+        # check that phoneme object exists
+        if not phoneme:
+            print(f"Phonemes update_ipa failed to find phoneme for {ipa}")
+            return
+        # modify and store the phoneme object
+        phoneme.symbol = new_ipa
+        self.phonemes[new_ipa] = phoneme
+        return new_ipa
+
+    def remove(self, ipa):
+        """Delete phoneme associated with one symbol from the phonemes"""
+        return self.phonemes.pop(ipa, None)
 
     def symbols(self):
-        """Read all phonetic symbols stored as keys in the collection"""
-        return self.get().keys()
+        """Read all symbols stored as keys in the phonemes map"""
+        return self.phonemes.keys()
 
     def get_symbol(self, ipa):
         """Read one phonetic symbol from one stored phoneme"""
-        phoneme = self.get(key=ipa)
+        phoneme = self.get(ipa)
         if not phoneme:
             print("Phonemes get_symbol failed - unknown phoneme {0}".format(phoneme))
             return
@@ -31,7 +89,7 @@ class Phonemes(Collector):
 
     def get_letters(self, ipa):
         """Read all letters from one stored phoneme"""
-        phoneme = self.get(key=ipa)
+        phoneme = self.get(ipa)
         if not phoneme:
             print("Phonemes get_letters failed - unknown phoneme {0}".format(phoneme))
             return
@@ -39,40 +97,8 @@ class Phonemes(Collector):
 
     def get_weight(self, ipa):
         """Read the weight for one stored phoneme"""
-        phoneme = self.get(key=ipa)
+        phoneme = self.get(ipa)
         if not phoneme:
             print("Phonemes get_weight failed - unknown phoneme {0}".format(phoneme))
             return
         return phoneme.get_weight()
-
-    # def get_ipa(self, features):
-    #     """Find every phonetic symbol that has the given features"""
-    #     if type(features) is str:
-    #         feature = features
-    #         if feature in self.ipa_by_feature:
-    #             return list(self.ipa_by_feature[feature])
-    #         else:
-    #             print("Inventory get_ipa failed - unknown feature {0}".format(feature))
-    #             return []
-    #
-    #     # reduce to set of found letters
-    #     matching_ipa = set()
-    #     for i in range(len(features)):
-    #         feature = features[i]
-    #         if feature not in self.ipa_by_feature:
-    #             print("Inventory get_ipa failed - unknown feature {0}".format(feature))
-    #             return []
-    #         if i == 0:
-    #             matching_ipa = self.ipa_by_feature[feature]
-    #             continue
-    #         matching_ipa &= self.ipa_by_feature[feature]
-    #
-    #     return list(matching_ipa)
-    #
-    # def get_features(self, ipa):
-    #     """Read all features associated with a single phonetic symbol"""
-    #     matching_features = []
-    #     for feature in self.ipa_by_feature:
-    #         if ipa in self.ipa_by_feature[feature]:
-    #             matching_features.append(feature)
-    #     return matching_features
