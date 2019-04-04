@@ -27,20 +27,20 @@ class PhonologyFixture(unittest.TestCase):
         print("Tearing down a Phonology instance")
         this_class.phonology = None
 
-class PhonologyAddUpdateDelete(PhonologyFixture):
+class PhonologyPhonemes(PhonologyFixture):
     @classmethod
     def setUpClass(this_class):
-        super(PhonologyAddUpdateDelete, this_class).setUpClass()
+        super(PhonologyPhonemes, this_class).setUpClass()
         
     def test_add_sound(self):
         self.phonology.add_sound("a", ["a"])
         self.assertTrue(
-            self.phonology.has_sound("a"),
+            self.phonology.phonemes.has("a"),
             "failed to add a new sound to the phonology"
         )
 
     def test_get_sound_features(self):
-        self.phonology.add_sound("k", ["k"])
+        self.phonology.phonemes.add("k", ["k"])
         self.assertEqual(
             set(self.phonology.get_sound_features("k")) & {"voiceless", "velar", "stop"},
             {"voiceless", "velar", "stop"},
@@ -48,7 +48,7 @@ class PhonologyAddUpdateDelete(PhonologyFixture):
         )
 
     def test_update_sound_letters(self):
-        self.phonology.add_sound("k", ["k"])
+        self.phonology.phonemes.add("k", ["k"])
         self.phonology.phonemes.update("k", ["k", "q"])
         self.assertIn(
             "q",
@@ -57,7 +57,7 @@ class PhonologyAddUpdateDelete(PhonologyFixture):
         )
 
     def test_remove_sound(self):
-        self.phonology.add_sound("k", ["k"])
+        self.phonology.phonemes.add("k", ["k"])
         self.phonology.phonemes.remove("k")
         self.assertFalse(
             self.phonology.has_sound("k"),
@@ -87,9 +87,17 @@ class PhonologySyllables(PhonologyFixture):
         syllable_id = self.phonology.syllables.add("VVV")
         self.phonology.syllables.update(syllable_id, "CVV")
         self.assertEqual(
-            self.phonology.syllables.get(syllable_id)
-            ["C", "V", "V"],
+            self.phonology.syllables.get(syllable_id),
+            self.phonology.syllables.structure("CVV"),
             "failed to update an existing syllable in the phonology"
+        )
+
+    def test_parse_syllable_characters(self):
+        structure = self.phonology.syllables.structure("V_C#")
+        self.assertEqual(
+            structure,
+            [['vowel'], ['_'], ['consonant'], ['#']],
+            "failed to parse a string into a structured list of syllable characters"
         )
 
     def test_remove_syllable(self):
@@ -102,12 +110,12 @@ class PhonologySyllables(PhonologyFixture):
 
 # TODO: test varied built words for determining if inventory, syllables and rules work
 # rather than testing substructure individually to probe how they work
-class PhonologyBuildWord(PhonologyFixture):
+class PhonologyWords(PhonologyFixture):
     @classmethod
     def setUpClass(this_class):
-        super(PhonologyBuildWord, this_class).setUpClass()
-        this_class.phonology.add_sound("k", ["q"])
-        this_class.phonology.add_sound("a", ["a"])
+        super(PhonologyWords, this_class).setUpClass()
+        this_class.phonology.phonemes.add("k", ["q"])
+        this_class.phonology.phonemes.add("a", ["a"])
         this_class.phonology.syllables.add("CV")
 
     def test_build_word_sounds(self):

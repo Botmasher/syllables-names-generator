@@ -175,8 +175,8 @@ class Phonology:
         if not self.phonetics.has_ipa(ipa) or not all(isinstance(l, str) for l in letters):
             print("Phonology add_sound failed - invalid phonetic symbol or letters")
             return
-        phoneme = Phoneme(ipa, letters=letters, weight=weight)
-        self.phonemes.add(phoneme)
+        #phoneme = Phoneme(ipa, letters=letters, weight=weight)
+        self.phonemes.add(ipa, letters, weight)
         return ipa
 
     def add_sounds(self, ipa_letters_map):

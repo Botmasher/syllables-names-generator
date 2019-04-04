@@ -2,11 +2,6 @@
 class Phonemes():
     def __init__(self):
         self.phonemes = {}
-        self.phoneme_template = {
-            'letters': set(),
-            'ipa': None,
-            'weight': 0
-        }
 
     def has(self, ipa):
         return ipa in self.phonemes
@@ -45,7 +40,7 @@ class Phonemes():
         return ipa
     
     # TODO: ability to manage (crud) individual letters
-    def update(self, ipa, letters=None, weight=None):
+    def update(self, ipa, letters=None, weight=None, new_ipa=None):
         """Update the phoneme object for an existing ipa phoneme"""
         # fetch and check for existing phoneme
         phoneme = self.phonemes.get(ipa)
@@ -53,8 +48,12 @@ class Phonemes():
             print(f"Phonemes failed to update unrecognized phoneme {ipa}")
             return
         # update individual properties in the phoneme
-        phoneme.letters = set(letters) if letters else phoneme.letters
-        phoneme.weight = weight if weight else phoneme.weight
+        phoneme['letters'] = set(letters) if letters else phoneme['letters']
+        phoneme['weight'] = weight if weight else phoneme['weight']
+        # also update the ipa and return the new object
+        if new_ipa:
+            return self.update_ipa(ipa, new_ipa)
+        # return the updated phoneme object
         return phoneme
     
     # TODO: check that new ipa is featureful symbol
@@ -67,9 +66,9 @@ class Phonemes():
             print(f"Phonemes update_ipa failed to find phoneme for {ipa}")
             return
         # modify and store the phoneme object
-        phoneme.symbol = new_ipa
+        phoneme['ipa'] = new_ipa
         self.phonemes[new_ipa] = phoneme
-        return new_ipa
+        return phoneme
 
     def remove(self, ipa):
         """Delete phoneme associated with one symbol from the phonemes"""
@@ -89,16 +88,8 @@ class Phonemes():
 
     def get_letters(self, ipa):
         """Read all letters from one stored phoneme"""
-        phoneme = self.get(ipa)
-        if not phoneme:
-            print("Phonemes get_letters failed - unknown phoneme {0}".format(phoneme))
-            return
-        return phoneme.get_letters()
+        return self.phonemes.get(ipa, {}).get('letters')
 
     def get_weight(self, ipa):
         """Read the weight for one stored phoneme"""
-        phoneme = self.get(ipa)
-        if not phoneme:
-            print("Phonemes get_weight failed - unknown phoneme {0}".format(phoneme))
-            return
-        return phoneme.get_weight()
+        return self.phonemes.get(ipa, {}).get('weight')

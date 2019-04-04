@@ -5,7 +5,13 @@ class Syllables():
         # map of syllable structures
         self.syllables = {}
         # special syllable character abbreviations
-        self.syllable_characters = ['_', '#', ' ', 'C', 'V']
+        self.syllable_characters = {
+            '_': "_",
+            '#': "#",
+            ' ': " ",
+            'C': "consonant",
+            'V': "vowel"
+        }
         # reference phonology into which injected
         self.phonology = phonology
 
@@ -14,10 +20,10 @@ class Syllables():
         return syllable_id in self.syllables
 
     # TODO: vet for syllable characters || features
-    def is_valid_structure(self, structure):
-        if not isinstance(structure, list):
-            return False
-        return True
+    # def is_valid_structure(self, structure):
+    #     if not isinstance(structure, list):
+    #         return False
+    #     return True
 
     def get(self, syllable_id=None):
         """Read one syllable or all if no id given"""
@@ -25,10 +31,7 @@ class Syllables():
         if not syllable_id:
             return self.syllables
         # return a single syllable entry
-        if self.has(syllable_id):
-            return self.syllables.get(syllable_id)
-        # no matching syllable entry
-        return
+        return self.syllables.get(syllable_id)
 
     # TODO: check how environment/rule formats readout
     def print_syllables(self):
@@ -46,38 +49,67 @@ class Syllables():
         print(syllable_text)
         return syllable_text
 
-    def add(self, structure):
-        """Add a new syllable to the syllables map"""
-        if not self.is_valid_structure(structure):
-            print(f"Syllables add failed - invalid structure {structure}")
+    def structure(self, raw_structure):
+        """Clean up and format a list or string as a list of features and syllable characters"""
+        if not isinstance(raw_structure, (list, tuple, str)):
+            print(f"Failed to structure syllable - expected list or string not {raw_structure}")
             return
+        
+        # treat string as list of special syllable characters
+        #
+        # TODO: parse string into list containing features or syllable characters
+        syllable_items = list(raw_structure) if isinstance(raw_structure, str) else raw_structure
 
-        # break up string into traversable terms
-        raw_structure = structure.split() if isinstance(structure, str) else structure
+        structure = []
 
-        # store valid terms for added structure
-        new_structure = []
-
-        # TODO: use below checks as starting point for vetting _is_valid_structure
+        # TODO: use below checks for vetting 
 
         # build up sequence of valid features or syllable characters
-        for syllable_item in raw_structure:
+        for syllable_item in syllable_items:
+            # add from string containing a single feature or syllable character
             if isinstance(syllable_item, str):
-                if not (syllable_item in self.syllable_characters or self.phonology.phonetics.has_feature(syllable_item)):
-                    print(f"Syllables add failed - invalid syllable item {syllable_item}")
-                    return
-                elif syllable_item == 'C':
-                    new_structure.append(["consonant"])
-                elif syllable_item == 'V':
-                    new_structure.append(["vowel"])
+
+                # split item string for parsing
+                syllable_subitems = syllable_item.split()
+                
+                # add syllable character to final list
+                # NOTE: consider how turning CV into 'consonant', 'vowel'
+                # plays with added features, build_word and rules/environments
+                if len(syllable_subitems) == 1 and syllable_subitems[0] in self.syllable_characters:
+                    structure.append([self.syllable_characters[syllable_subitems[0]]])
+                
+                # add a good list of features
                 else:
-                    new_structure.append([syllable_item])
+                    for syllable_subitem in syllable_subitems:
+                        if not self.phonology.phonetics.has_feature(syllable_subitem):
+                            print(f"Syllables add failed - invalid syllable item {syllable_item}")
+                            return
+                    structure.append(syllable_subitems)
+                
+            # catch and add syllable characters within a one-element list
+            elif isinstance(syllable_item, list) and len(syllable_item) == 1 and syllable_item[0] in self.syllable_characters:
+                structure.append(self.syllable_characters[syllable_item[0]])
+            # add good list of features directly to new structure
             elif isinstance(syllable_item, list):
                 for feature in syllable_item:
                     if not self.phonology.phonetics.has_feature(syllable_item):
                         print("Phonology add_syllable failed - invalid syllable feature {0}".format(feature))
                         return
-                new_structure.append(syllable_item)
+                structure.append(syllable_item)
+        
+        return structure
+        
+
+    def add(self, structure):
+        """Add a new syllable to the syllables map"""
+        
+        # store valid terms for added structure
+        new_structure = self.structure(structure)
+
+        # verify valid vetted structure
+        if not new_structure:
+            print(f"Syllables failed to add invalid structure {structure}")
+            return
         
         # add created syllable to the map
         syllable_id = f"syllable-{uuid4()}"
@@ -86,13 +118,21 @@ class Syllables():
 
     def update(self, syllable_id, structure):
         """Modify an existing syllable"""
+        # check if syllable exists
         if not self.get(syllable_id):
             print("Syllable update failed - unknown syllable_id")
             return
-        if not self.is_valid_structure(structure):
+        
+        # restructure into list of valid features and syllable characters
+        new_structure = self.structure(structure)
+
+        # check for valid updated structure
+        if not new_structure:
             print(f"Syllable update failed - invalid syllable structure {structure}")
             return
-        self.syllables[syllable_id] = structure
+        
+        # store the updated structure
+        self.syllables[syllable_id] = new_structure
         return syllable_id
 
     def remove(self, syllable_id):
