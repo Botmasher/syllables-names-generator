@@ -98,8 +98,7 @@ class Syllables():
                 structure.append(syllable_item)
         
         return structure
-        
-
+    
     def add(self, structure):
         """Add a new syllable to the syllables map"""
         

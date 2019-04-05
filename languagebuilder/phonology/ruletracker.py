@@ -12,6 +12,11 @@ class RuleTracker():
         """Add ongoing rule environment slot match check to the rules application tracker"""
         # compare first environment slot to see if current symbol fits
         rule_environment = rule.get_environment().get_structure()
+
+        if not rule_environment:
+            print(f"RuleTracker failed to track rule without environment - {rule}")
+            return
+
         print(f"RuleTracker will track rule if sound fits {rule_environment[0]}")
         
         environment_slot = rule_environment[0]

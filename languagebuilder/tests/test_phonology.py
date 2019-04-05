@@ -168,8 +168,9 @@ class PhonologyWords(PhonologyFixture):
         )
 
     def test_build_word_voicing(self):
-        self.phonology.add_rule(["voiceless"], ["voiced"], "V_V")
+        rule_id = self.phonology.add_rule(["voiceless"], ["voiced"], "V_V")
         entry = self.phonology.build_word(2)
+        self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['change'],
             "kaga",
@@ -177,11 +178,33 @@ class PhonologyWords(PhonologyFixture):
         )
 
     def test_build_word_lenition(self):
-        self.phonology.add_rule(["stop"], ["fricative"], "V_V")
-        self.phonology.add_rule(["voiceless"], ["voiced"], "V_V")
+        rule_0 = self.phonology.add_rule(["stop"], ["fricative"], "V_V")
+        rule_1 = self.phonology.add_rule(["voiceless"], ["voiced"], "V_V")
         entry = self.phonology.build_word(2)
+        self.phonology.remove_rule(rule_0)
+        self.phonology.remove_rule(rule_1)
         self.assertEqual(
             entry['change'],
             "kaɣa",
             "failed to layer multiple leniting rules correctly"
         )
+    
+    def test_build_word_inapplicable_rule(self):
+        rule_id = self.phonology.add_rule(["dental"], ["velar"], "_V")
+        entry = self.phonology.build_word(1)
+        self.phonology.remove_rule(rule_id)
+        self.assertEqual(
+            entry['sound'],
+            "ka",
+            "applied rule to inapplicable sound"
+        )
+    
+    def test_build_word_nochange_rule(self):
+        rule_id = self.phonology.add_rule(["velar"], ["velar"], "_V")
+        entry = self.phonology.build_word(1)
+        self.phonology.remove_rule(rule_id)
+        self.assertEqual(
+            entry['sound'],
+            "ka",
+            "applied rule to inapplicable sound"
+        )    

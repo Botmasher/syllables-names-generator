@@ -271,7 +271,7 @@ class Phonology:
         # store tracks for each possible rule application
         rule_tracker = RuleTracker()
 
-        print("\nApplying rules to word {0}".format(ipa_string))
+        print(f"\nApplying rules to {ipa_string}")
         # set of word sounds
         word_sounds = set([c for c in ipa_string])
         # features for all sounds in the word
@@ -431,10 +431,19 @@ class Phonology:
     def build_word(self, length=1, definition="", store_in_dictionary=True, apply_rules=True):
         """Form a word following the defined inventory and syllable structure"""
         # form a list of possible syllables to choose from
-        syllables = list(self.syllables.get())
+        syllables = self.syllables.get()
         if not syllables:
-            print("Phonology build_word failed - no possible syllables found in {0}".format(syllables))
+            print("Phonology build_word failed - no possible syllables found")
             return
+
+        # choose random syllable structures to build shape of final word
+        syllable_structures = [
+            syllables[random.choice(list(syllables.keys()))]
+            for i in range(length)
+        ]
+
+        print("Choosing from syllable structures: ")
+        print(syllable_structures)
 
         # store sound (phonemes) and spelling (graphemes) forms of words being built
         # TODO store same-length lists of letters and ipa in dictionary instead of strings
@@ -442,16 +451,11 @@ class Phonology:
         word_ipa = []
 
         # TODO choose letters by weighted freq/uncommonness
-        for i in range(length):
-            try:
-                syllable = random.choice(syllables)
-            except:
-                print("Phonology build_word failed - no syllables found in inventory")
-                return
-            syllable_structure = syllable.get_structure()
+        for syllable_structure in syllable_structures:
             for feature_set in syllable_structure:
                 # find all inventory ipa that have these features
                 symbols = self.phonetics.get_ipa(feature_set, filter_phonemes=self.inventory())
+                print("Choosing from the following symbols: ", symbols)
                 # TODO you store Phoneme with associated letters so this should be easy
                 #   - right now inventory maps features to letters
                 #   - features maps them to sounds
@@ -462,7 +466,7 @@ class Phonology:
                     symbol = random.choice(symbols)
                     word_ipa.append(symbol)
                     # choose letter from letters set inside phoneme object
-                    letters = self.phonemes.get_letters(symbol)
+                    letters = list(self.phonemes.get_letters(symbol))
                     word_spelling.append(random.choice(letters))
 
         # TODO: affixation before sound changes
