@@ -2,6 +2,11 @@ from uuid import uuid4      # for indexing exponent keys
 import math                 # for allowing finds to break at user-defined count or data limit
 from ..tools.functional_maps import merge_maps
 
+# TODO: consider "exponent" name
+#   - in linguistics may be used for expression of grammatical properties or even linguistic phenomena (like semantics)
+#   - more commonly recognized as a mathematical term
+#   - idiosyncratic here since just bundles adpositional and affixal elements
+
 class Exponents:
     def __init__(self, grammar):
         # grammar for which exponents provide properties and word classes

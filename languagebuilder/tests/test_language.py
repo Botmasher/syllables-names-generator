@@ -38,16 +38,7 @@ class LanguageSounds(LanguageFixture):
         self.assertTrue(
             self.language.phonology.has_sound("k"),
             "failed to add a phoneme to the language"
-        )
-
-    def test_remove_sound(self):
-        self.language.phonetics.add("k", ["voiceless", "velar", "stop", "consonant"])
-        self.language.phonology.add_sound("k", letters=["q"])
-        self.language.phonology.remove_sound("k")
-        self.assertTrue(
-            self.language.phonetics.has_ipa("k") and not self.language.phonology.has_sound("k"),
-            "failed to remove added ipa from phonology while keeping it in the phonetics"
-        )        
+        )      
 
     def test_update_sound(self):
         self.language.phonetics.add("k", ["voiceless", "velar", "stop", "consonant"])
@@ -59,23 +50,47 @@ class LanguageSounds(LanguageFixture):
             "failed to update properties for a phoneme"
         )
 
+    def test_remove_sound(self):
+        self.language.phonetics.add("k", ["voiceless", "velar", "stop", "consonant"])
+        self.language.phonology.add_sound("k", letters=["q"])
+        self.language.phonology.remove_sound("k")
+        self.assertTrue(
+            self.language.phonetics.has_ipa("k") and not self.language.phonology.has_sound("k"),
+            "failed to remove added ipa from phonology while keeping it in the phonetics"
+        )  
+    
     def test_add_syllable(self):
-        return
-
+        syllable_id = self.language.phonology.syllables.add("CVC")
+        self.assertTrue(
+            self.language.phonology.syllables.has(syllable_id),
+            "failed to add a syllable to the language"
+        )
+    
     def test_update_syllable(self):
-        return
+        syllable_id = self.language.phonology.syllables.add("CVC")
+        self.language.phonology.syllables.update(syllable_id, "CVV")
+        self.assertEqual(
+            self.language.phonology.syllables.get(syllable_id),
+            self.language.phonology.syllables.structure("CVV"),
+            "failed to update an existing syllable in the language"
+        )
 
     def test_remove_syllable(self):
-        return
+        syllable_id = self.language.phonology.syllables.add("CVC")
+        self.language.phonology.syllables.remove(syllable_id)
+        self.assertFalse(
+            self.language.phonology.syllables.has(syllable_id),
+            "failed to remove a syllable from the language"
+        )
 
     def test_add_rule(self):
-        return
-
-    def test_add_rules(self):
-        return
-
-    #def test_build_word(self):
-    #    return
+        self.language.phonetics.add("k", ["voiceless", "velar", "stop", "consonant"])
+        self.language.phonology.add_sound("k", letters=["q"])
+        rule_id = self.language.phonology.add_rule("k", "t", "_")
+        self.assertIsNotNone(
+            self.language.phonology.get_rule(rule_id),
+            "failed to add a sound change rule to the language"
+        )
 
 class LanguageGrammar(LanguageFixture):
     @classmethod
@@ -83,32 +98,131 @@ class LanguageGrammar(LanguageFixture):
         super(LanguageGrammar, this_class).setUpClass()
 
     def test_add_property(self):
-        return
+        self.language.grammar.properties.add("class", "animate")
+        self.assertIsNotNone(
+            self.language.grammar.properties.properties.get("class", {}).get("animate"),
+            "failed to add a grammatical property to the language"
+        )
 
     def test_add_word_class(self):
-        return
+        self.language.grammar.word_classes.add("noun")
+        self.assertIn(
+            "noun",
+            self.language.grammar.word_classes.word_classes,
+            "failed to add a grammatical word class to the language"
+        )
 
     def test_add_exponent(self):
-        return
-
-    #def test_build_unit(self):
-    #    return
+        self.language.grammar.properties.add("aspect", "perfective")
+        exponent_id = self.language.grammar.exponents.add(pre="i", post="nei", bound=False, properties="perfective")
+        self.assertIsNotNone(
+            self.language.grammar.exponents.get(exponent_id),
+            "failed to add a grammatical exponent to the language"
+        )
 
 class LanguageWords(LanguageFixture):
     @classmethod
     def setUpClass(this_class):
         super(LanguageWords, this_class).setUpClass()
+        # set up sounds
+        this_class.language.phonetics.add_map({
+            'a': ['vowel', 'front', 'open', 'unrounded'],
+            'i': ['vowel', 'front', 'close', 'unrounded'],
+            'y': ['vowel', 'front', 'close', 'rounded'],
+            'ə': ['vowel', 'central', 'mid', 'unrounded'],
+            'e': ['vowel', 'front', 'close', 'mid', 'unrounded'],
+            'ɑ': ['vowel', 'retracted', 'unrounded'],
+            'ɒ': ['vowel', 'retracted', 'rounded'],
+            'ɔ': ['vowel', 'retracted', 'mid', 'rounded'],
+            'o': ['vowel', 'raised', 'mid', 'rounded'],
+            'u': ['vowel', 'raised', 'rounded'],
+            'p': ['consonant', 'voiceless', 'bilabial', 'stop'],
+            'b': ['consonant', 'voiced', 'bilabial', 'stop'],
+            't': ['consonant', 'voiceless', 'dental', 'alveolar', 'stop'],
+            'd': ['consonant', 'voiced', 'dental', 'alveolar', 'stop'],
+            'k': ['consonant', 'voiceless', 'velar', 'stop'],
+            'g': ['consonant', 'voiced', 'velar', 'stop'],
+            'ϕ': ['consonant', 'voiceless', 'bilabial', 'fricative'],
+            'β': ['consonant', 'voiced', 'bilabial', 'fricative'],
+            'f': ['consonant', 'voiceless', 'labiodental', 'fricative'],
+            'v': ['consonant', 'voiced', 'labiodental', 'fricative'],
+            'θ': ['consonant', 'voiceless', 'dental', 'alveolar', 'fricative'],
+            'ð': ['consonant', 'voiced', 'dental', 'alveolar', 'fricative'],
+            'x': ['consonant', 'voiceless', 'velar', 'fricative'],
+            'ɣ': ['consonant', 'voiced', 'velar', 'fricative']
+        })
+        this_class.language.phonology.add_sounds({
+            'a': ['ah'],
+            'i': ['ee'],
+            'u': ['oo'],
+            'p': ['p'],
+            'f': ['hp'],
+            't': ['t'],
+            'θ': ['ht'],
+            'k': ['k'],
+            'x': ['hk']
+        })
+        this_class.language.phonology.syllables.add("CV")
+        this_class.language.phonology.add_rule("stop", "fricative", "V_V")
+        this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "_")
+
+        # set up grammar
+        this_class.language.grammar.properties.add("tense", "future")
+        this_class.language.grammar.properties.add("tense", "nonfuture")
+        this_class.language.grammar.properties.add("aspect", "perfective")
+        this_class.language.grammar.properties.add("aspect", "imperfective")
+        this_class.language.grammar.properties.add("number", "singular")
+        this_class.language.grammar.properties.add("number", "plural")
+        this_class.language.grammar.word_classes.add("noun")
+        this_class.language.grammar.word_classes.add("verb")
+        this_class.language.grammar.exponents.add(post="-l", properties="future perfective", pos="verb")
+        this_class.language.grammar.exponents.add(post="-n", properties="future imperfective", pos="verb")
+        this_class.language.grammar.exponents.add(post="-s", properties="nonfuture", pos="verb")
+        this_class.language.grammar.exponents.add(pre="0-", properties="singular", pos="noun")
+        this_class.language.grammar.exponents.add(pre="p-", properties="plural", pos="noun")
+        
         # TODO: sounds and grammar
         #   - phonetics, inventory, syllables
         #   - word classes, properties, exponents (including ordering)
 
-    def test_build_root(self):
-        return
+    def test_build_root_word(self):
+        root_word = self.language.build_root(4)
+        self.assertTrue(
+            isinstance(root_word, str) and len(root_word) == 8,
+            "failed to generate a new root word in the language"
+        )
+
+    def test_build_grammatical_piece(self):
+        self.language.grammar.properties.add("category", "grammeme")
+        particle = self.language.build_grammatical(4, word_class="verb", properties="grammeme")
+        self.assertIn(
+            'grammeme',
+            self.language.grammar.exponents.exponents.get('category', {}).get('grammeme'),
+            "failed to generate a new root word in the language"
+        )
 
     def test_build_unit(self):
-        return
+        root = self.language.build_root(2)
+        unit = self.language.build_unit(root, word_class="verb", properties="imperfective future")
+        self.assertEqual(
+            f"{root}-n",
+            "failed to generate a new root + grammatical unit in the language"
+        )
 
+    # TODO: generate and store examples in either dictionary or corpus
+    #   - take in a definition
+    #   - take in a word class
+    #   - for grammar, send to corpus and 
+    #   - also store grammar in dictionary but with exponent id
+    #   - should results of sound changes really be stored? or refs to the rules?
+    #   - should separate spellings be stored for changes? or flag for spelling before/after change?
+    #   - core idea is to store important data for display but only 
     def test_apply_grammar(self):
+        # - iterate through grammar for that part of speech
+        # - produce a unit
+        # - or produce a table of all possible forms
+        # - store the unit in the corpus
+        # how is this different from 
         return
 
     def test_apply_sound_changes(self):
@@ -132,6 +246,10 @@ class LanguageWords(LanguageFixture):
         return
 
     def test_print_dictionary(self):
+        return
+    
+    def test_read_grammatical_description(self):
+        # from properties and word classes
         return
     
 

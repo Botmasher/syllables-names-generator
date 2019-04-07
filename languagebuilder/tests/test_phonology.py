@@ -198,6 +198,16 @@ class PhonologyWords(PhonologyFixture):
             "ka",
             "applied rule to inapplicable sound"
         )
+
+    def test_build_word_applicable_rule_nonexisting_sound(self):
+        rule_id = self.phonology.add_rule(["velar"], ["palatal"], "_")
+        entry = self.phonology.build_word(1)
+        self.phonology.remove_rule(rule_id)
+        self.assertEqual(
+            entry['sound'],
+            "ka",
+            "failed to handle sound change where changed feature combination does not exist in the phonetics"
+        )
     
     def test_build_word_nochange_rule(self):
         rule_id = self.phonology.add_rule(["velar"], ["velar"], "_V")

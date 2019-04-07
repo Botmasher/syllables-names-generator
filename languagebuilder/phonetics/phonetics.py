@@ -69,8 +69,8 @@ class Phonetics:
 
     def add_map(self, ipa_features_map):
         """Add phonetic symbols mapped to their associated features"""
-        if type(ipa_features_map) is not dict:
-            print("Features add_map failed - expected dict not {0}".format(type(ipa_features_map)))
+        if not isinstance(ipa_features_map, dict):
+            print("Features add_map failed - expected dict mapping ipa:features")
             return
         # new symbols and new features - other methods do one or the other
         for symbol, features in ipa_features_map.items():
