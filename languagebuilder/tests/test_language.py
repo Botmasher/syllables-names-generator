@@ -175,65 +175,85 @@ class LanguageWords(LanguageFixture):
         this_class.language.grammar.properties.add("number", "plural")
         this_class.language.grammar.word_classes.add("noun")
         this_class.language.grammar.word_classes.add("verb")
-        this_class.language.grammar.exponents.add(post="-l", properties="future perfective", pos="verb")
-        this_class.language.grammar.exponents.add(post="-n", properties="future imperfective", pos="verb")
-        this_class.language.grammar.exponents.add(post="-s", properties="nonfuture", pos="verb")
+        this_class.language.grammar.exponents.add(post="-ta", properties="future perfective", pos="verb")
+        this_class.language.grammar.exponents.add(post="-ka", properties="future imperfective", pos="verb")
+        this_class.language.grammar.exponents.add(post="-fa", properties="nonfuture", pos="verb")
         this_class.language.grammar.exponents.add(pre="0-", properties="singular", pos="noun")
-        this_class.language.grammar.exponents.add(pre="p-", properties="plural", pos="noun")
+        this_class.language.grammar.exponents.add(pre="pa-", properties="plural", pos="noun")
         
         # TODO: sounds and grammar
         #   - phonetics, inventory, syllables
         #   - word classes, properties, exponents (including ordering)
 
-    def test_build_root_word(self):
-        root_word = self.language.build_root(4)
+    def test_generate_root_word(self):
+        root_word = self.language.generate(syllables=4, word_class="verb")
         self.assertTrue(
             isinstance(root_word, str) and len(root_word) == 8,
             "failed to generate a new root word in the language"
         )
 
-    def test_build_grammatical_piece(self):
+    def test_generate_grammatical_word(self):
         self.language.grammar.properties.add("category", "grammeme")
-        particle = self.language.build_grammatical(4, word_class="verb", properties="grammeme")
-        self.assertIn(
-            'grammeme',
-            self.language.grammar.exponents.exponents.get('category', {}).get('grammeme'),
-            "failed to generate a new root word in the language"
+        affix = self.language.generate(
+            pre=False,
+            post=True,
+            bound=True,
+            syllables=1,
+            word_class="verb",
+            properties="grammeme"
         )
-
-    def test_build_unit(self):
-        root = self.language.build_root(2)
-        unit = self.language.build_unit(root, word_class="verb", properties="imperfective future")
+        self.assertNotIn(
+            self.language.grammar.exponents.find(post=affix['post']),
+            [[], (), None],
+            "failed to generate a new grammatical word in the language"
+        )
+        
+    def test_apply_grammar(self):
+        root = self.language.generate(2)
+        unit = self.language.attach(
+            root,
+            word_class="verb",
+            properties="imperfective future"
+        )
         self.assertEqual(
+            unit,
             f"{root}-n",
             "failed to generate a new root + grammatical unit in the language"
         )
 
-    # TODO: generate and store examples in either dictionary or corpus
-    #   - take in a definition
-    #   - take in a word class
-    #   - for grammar, send to corpus and 
-    #   - also store grammar in dictionary but with exponent id
-    #   - should results of sound changes really be stored? or refs to the rules?
-    #   - should separate spellings be stored for changes? or flag for spelling before/after change?
-    #   - core idea is to store important data for display but only 
-    def test_apply_grammar(self):
-        # - iterate through grammar for that part of speech
-        # - produce a unit
-        # - or produce a table of all possible forms
-        # - store the unit in the corpus
-        # how is this different from 
-        return
+    def test_build_unit(self):
+        root = self.language.generate(2)
+        unit = self.language.attach(root, word_class="verb", properties="imperfective future")
+        self.assertEqual(
+            unit,
+            f"{root}-n",
+            "failed to generate a new root + grammatical unit in the language"
+        )
 
     def test_apply_sound_changes(self):
-        # to root, to unit
-        return
+        changed_sounds = self.language.change_sounds("paputaki")
+        self.assertEqual(
+            changed_sounds,
+            "pafuθaxi",
+            "failed to change sounds following sound rules in the language"
+        )
+    
+    def test_attach_and_sound_change(self):
+        root = "ta"
+        unit = self.language.attach(
+            root,
+            word_class="verb",
+            properties="imperfective future",
+            change_boundaries=True
+        )
+        self.assertEqual(
+            unit,
+            "taxa",
+            "failed to build a grammatical unit and change sounds across boundaries"
+        )
 
     def test_spell_word(self):
-        # stored? or from sound change?
-        return
 
-    def test_store_word(self):
         return
     
     def test_lookup_word(self):

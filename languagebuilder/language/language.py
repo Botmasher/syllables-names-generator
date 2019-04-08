@@ -51,13 +51,32 @@ class Language:
         # TODO: handle dictionary here not in phonology
         #   - citation forms?
         # TODO: also dictionary but including exponents (corpus?)
+        # TODO: sound changes
+        #   - before vs after?
+        #   - 
         return self.grammar.build_unit(root, properties=properties, word_classes=word_classes)
         
     def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
+        # - iterate through grammar for that part of speech
+        # - produce a unit
+        # - or produce a table of all possible forms
+        # - store the unit in the corpus
+    
         # TODO: lookup by definition or headword
         # TODO: store word classes in dictionary
         definition and self.dictionary.search
         word and self.dictionary.lookup(headword=word, entry_index=entry_index)
         # TODO: build up around found word
         self.grammar.build_unit(word, properties, word_classes)
+
+    # TODO: generate and store examples in either dictionary or corpus
+    #   - take in a definition
+    #   - take in a word class
+    #   - for grammar, send to corpus and 
+    #   - also store grammar in dictionary but with exponent id
+    #   - should results of sound changes really be stored? or refs to the rules?
+    #   - should separate spellings be stored for changes? or flag for spelling before/after change?
+    #   - core idea is to store important data for display but only 
+    def store(self):
+        self.dictionary.add()
     
