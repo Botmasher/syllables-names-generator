@@ -7,6 +7,41 @@ import random
 # NOTE: throughout the code "ipa" (usu uncaps) denotes any stored phonetic symbols
 # associated with a set of features in a language
 
+# TODO: consider layering spelling & sound change before storing vs when requested
+#   - fast access when computed then stored
+#   - computing on request avoids updated letters/rules leaving legacy sounds/spellings
+
+# Shape of stored language data:
+# dictionary : {
+#   ("word", 0): {          # entry headword, index
+#       'phones': "",       # phonemes generated for the word
+#       'change': "",       # phones after sound change rules applied
+#       'spelling': "",     # letters after spelling applied
+#       'rules': [],        # list of ids for sound change rules applied
+#       'word_class': "",   # part of speech used for word grammar
+#       'definition': "",   # user-inputted string defining the word (built automatically for exponents)
+#       'tags': []          # semantic tags for searching for the word
+#       'exponent': ""      # id pointing to attributes if grammatical piece
+#   },
+#   ...
+# }
+# 
+# units / corpus : {
+#   'example_id': {
+#       'phones': ""            # string containing the built unit example phones
+#       'change': ""            # string after sound changes applied
+#       'boundaries': True      # whether sound change applied across boundaries
+#       'spelling': ""          # string after spelling applied
+#       'spell_change': True    # whether spelling applied after sound changes
+#       'exponents': []         # exponents attached to this unit
+#   },
+#   ...
+# }
+#
+# TODO: lay out patterns for exponents around base
+# paradigms : {
+# }
+
 # TODO: language-level methods atop various components to check then pass through
 # - handle feature checks in language instead of shared Features dependency
 #   - check before passing non C xor V to syll
@@ -45,16 +80,20 @@ class Language:
     #   - otherwise must pass language/dictionary down to phonology to store
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, definition="", num_syllables=None, properties=None, word_classes=None, ):
-        num_syllables = random.randrange(1, 4)
-        root = self.phonology.build_word(length=num_syllables)
+    def generate(self, num_syllables=None, definition="", pre=False, post=False, bound=False, properties=None, word_classes=None):
+        if not num_syllables:
+            num_syllables = random.randrange(1, 4)
+        else:
+            if not isinstance(num_syllables, int):
+                return
+        word = self.phonology.build_word(length=num_syllables)
         # TODO: handle dictionary here not in phonology
         #   - citation forms?
         # TODO: also dictionary but including exponents (corpus?)
         # TODO: sound changes
         #   - before vs after?
         #   - 
-        return self.grammar.build_unit(root, properties=properties, word_classes=word_classes)
+        return self.grammar.build_unit(word, properties=properties, word_classes=word_classes)
         
     def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
         # - iterate through grammar for that part of speech

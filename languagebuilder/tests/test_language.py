@@ -253,24 +253,59 @@ class LanguageWords(LanguageFixture):
         )
 
     def test_spell_word(self):
+        word = self.language.generate(2)
+        spelling = self.language.spell((word, 0), post_change=True)
+        self.assertTrue(
+            isinstance(spelling, str) and len(str) > 1,
+            "failed to spell a newly generated word"
+        )
 
-        return
+    def test_spell_unit(self):
+        root = self.language.generate(2)
+        self.language.attach(root, word_class="verb", properties="imperfective future")
+        # TODO: find unit entry in corpus
+        spelling = self.language.spell(corpus_unit, post_change=True)
+        self.assertTrue(
+            isinstance(spelling, str) and len(str) > 1,
+            "failed to spell a newly generated unit"
+        )
     
     def test_lookup_word(self):
-        return
+        word = self.language.generate(2, "cat")
+        words = self.language.find(definition="cat")
+        self.assertEqual(
+            words[0],
+            word,
+            "failed to look up a generated word"
+        )
     
     def test_define_word(self):
-        return
+        word = self.language.generate(2, "dog")
+        definition = self.language.define(word)
+        self.assertEqual(
+            definition,
+            "dog",
+            "failed to define a generated word"
+        )        
     
     def test_search_word(self):
-        return
-
-    def test_print_dictionary(self):
-        return
+        word_0 = self.language.generate(2, "round")
+        word_1 = self.language.generate(2, "round table")
+        word_2 = self.language.generate(2, "table")
+        results = self.language.search("round")
+        self.assertTrue(
+            len(results) == 2 and word_0 in results and word_1 in results,
+            "failed to search for generated words"
+        )   
     
     def test_read_grammatical_description(self):
         # from properties and word classes
-        return
+        descriptions = self.language.describe("-ta")
+        self.assertEqual(
+            descriptions[0],
+            "suffix for imperfect aspect future tense verbs",
+            "failed to describe a grammatical piece"
+        )
     
 
     
