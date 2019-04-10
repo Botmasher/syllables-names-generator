@@ -347,7 +347,7 @@ class Phonology:
         return (ipa_string, "".join(new_ipa_string))
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, definition="", store_in_dictionary=True, apply_rules=True):
+    def build_word(self, length=1, apply_rules=True):
         """Form a word following the defined inventory and syllable structure"""
         # form a list of possible syllables to choose from
         syllables = self.syllables.get()
@@ -364,9 +364,8 @@ class Phonology:
         print("Choosing from syllable structures: ")
         print(syllable_structures)
 
-        # store sound (phonemes) and spelling (graphemes) forms of words being built
+        # store sound (phonemes) forms of words being built
         # TODO store same-length lists of letters and ipa in dictionary instead of strings
-        word_spelling = []
         word_ipa = []
 
         # TODO choose letters by weighted freq/uncommonness
@@ -384,9 +383,6 @@ class Phonology:
                     # choose from ipa symbols that matched subset of features
                     symbol = random.choice(symbols)
                     word_ipa.append(symbol)
-                    # choose letter from letters set inside phoneme object
-                    letters = list(self.phonemes.get_letters(symbol))
-                    word_spelling.append(random.choice(letters))
 
         # TODO: affixation before sound changes
         #   - have Language method for building and applying sound change atop units
@@ -394,18 +390,31 @@ class Phonology:
         # apply sound changes to built word
         word_changed = self.apply_rules(word_ipa)[1] if apply_rules else word_ipa
 
-        word_spelling = "".join(word_spelling)
+        word_spelling = "".join(self.spell(word_ipa))
         word_ipa = "".join(word_ipa)
 
-        # # add to dictionary instance
-        # if store_in_dictionary:
-        #     entries = self.dictionary.add(spelling=word_spelling, sound=word_ipa, sound_change=word_changed, definition=definition)
-        #     return entries[len(entries)-1]
-        #else:
         # mimic dictionary entry
         return {
             'spelling': word_spelling,
             'sound': word_ipa,
-            'change': word_changed,
-            'definition': definition
+            'change': word_changed
         }
+
+    # TODO: handle spelling rules and environments
+    def spell(self, phonemes):
+        """Transform a sequence of sounds into a list of characters (including multigraphs)
+        representing a spelled word"""
+        # left-to-right spelling letter storage
+        letters = []
+        # traverse choosing a letter for each sound
+        for phoneme in phonemes:
+            # determine if phoneme exists
+            if not self.phonemes.has(phoneme):
+                print(f"Phonology could not spell unrecognized phoneme {phoneme}")
+                return
+            # choose a random letter from possible representations
+            letter = random.choice(list(self.phonemes.get_letters(phoneme)))
+            # store the letter to spell this sound
+            letters.append(letter)
+        # send back a list of letters spelling the word
+        return letters

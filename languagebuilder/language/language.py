@@ -8,8 +8,13 @@ import random
 # associated with a set of features in a language
 
 # TODO: consider layering spelling & sound change before storing vs when requested
+#   NOTE:   similar update problems when syllables or phonemes change anyhow; how
+#           consistent do you want updates/stores to be compared to structures?
 #   - fast access when computed then stored
 #   - computing on request avoids updated letters/rules leaving legacy sounds/spellings
+#   - similar consideration to storing exponents though!
+#   - instead could have update functions through language
+#       - these manage both storage and manipulation
 
 # Shape of stored language data:
 # dictionary : {
@@ -80,20 +85,62 @@ class Language:
     #   - otherwise must pass language/dictionary down to phonology to store
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, num_syllables=None, definition="", pre=False, post=False, bound=False, properties=None, word_classes=None):
-        if not num_syllables:
-            num_syllables = random.randrange(1, 4)
+    def generate(self, length=None, definition="", spell_after_change=False, pre=False, post=False, bound=False, properties=None, word_classes=None):
+        # choose a random number of syllables if no syllable count supplied
+        if not length:
+            length = random.randrange(1, 5)
+        # verify that syllable count is a whole number
+        if not isinstance(length, int):
+            print(f"Language failed to generate word - invalid number of syllables {length}")
+            return
+        
+        # generate the created phonemes in syllables
+        word = self.phonology.build_word(length=length)
+
+        # add as a grammatical word piece
+        if pre or post:
+            # determine word to attach before or after
+            pre_word = word if pre else ""
+            post_word = word if post else ""
+            # generate a second word piece for circum material
+            if pre and post:
+                post_word = self.phonology.build_word(length=length)
+            # create the exponent
+            self.grammar.exponents.add(
+                pre=pre_word,
+                post=post_word,
+                properties=properties,
+                bound=bound,
+                pos=word_classes
+            )
+            pre_change = ""
+            post_change = ""
+            pre_spelling = ""
+            post_spelling = ""
+            grammatical_forms = {
+                (True, True, True): "circumfix",
+                (True, False, True): "prefix",
+                (True, False, False): "suffix",
+                (False, True, True): "circumposition",
+                (False, False, True): "preposition",
+                (False, False, False): "postposition"
+            }
+            grammatical_form = grammatical_forms[(bound, pre and post, pre)]
+            
+            # TODO: apply sound and spelling changes to grammatical pieces
+
+            # TODO: use exponents to create a formatted properties and word class string
+
+            formatted_word = f"{pre_word}{"- -" if pre and post else "-"}{post_word}"
+            formatted_spelling = f"{pre_spelling}{"- -" if pre and post else "-"}{post_spelling}"
+            formatted_change = f"{pre_change}{"- -" if pre and post else "-"}{post_change}"
+            formatted_definition = f"{grammatical_form} for {properties} {word_classes}"
         else:
-            if not isinstance(num_syllables, int):
-                return
-        word = self.phonology.build_word(length=num_syllables)
-        # TODO: handle dictionary here not in phonology
-        #   - citation forms?
-        # TODO: also dictionary but including exponents (corpus?)
-        # TODO: sound changes
-        #   - before vs after?
-        #   - 
-        return self.grammar.build_unit(word, properties=properties, word_classes=word_classes)
+            formatted_word = word
+            formatted_definition = definition.strip()
+
+        # store created word or word piece and return lookup info
+        return self.store(formatted_word, formatted_definition, formatted_change, formatted_spelling)
         
     def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
         # - iterate through grammar for that part of speech
@@ -116,6 +163,6 @@ class Language:
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
     #   - core idea is to store important data for display but only 
-    def store(self):
+    def store(self, word, definition):
         self.dictionary.add()
     
