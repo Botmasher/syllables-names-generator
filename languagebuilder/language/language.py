@@ -85,7 +85,7 @@ class Language:
     #   - otherwise must pass language/dictionary down to phonology to store
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, length=None, definition="", spell_after_change=False, pre=False, post=False, bound=False, properties=None, word_classes=None):
+    def generate(self, length=None, definition="", spell_after_change=False, pre=False, post=False, bound=False, properties=None, word_class=None):
         # choose a random number of syllables if no syllable count supplied
         if not length:
             length = random.randrange(1, 5)
@@ -106,41 +106,54 @@ class Language:
             if pre and post:
                 post_word = self.phonology.build_word(length=length)
             # create the exponent
-            self.grammar.exponents.add(
-                pre=pre_word,
-                post=post_word,
+            exponent_id = self.grammar.exponents.add(
+                pre=pre_word['sound'],
+                post=post_word['sound'],
                 properties=properties,
                 bound=bound,
-                pos=word_classes
+                pos=word_class
             )
-            pre_change = ""
-            post_change = ""
-            pre_spelling = ""
-            post_spelling = ""
+            pre_change = pre_word['change'] if pre else ""
+            post_change = post_word['change'] if post else ""
+            pre_spelling = pre_word['spelling'] if pre else ""
+            post_spelling = post_word['spelling'] if post else ""
             grammatical_forms = {
-                (True, True, True): "circumfix",
-                (True, False, True): "prefix",
-                (True, False, False): "suffix",
-                (False, True, True): "circumposition",
-                (False, False, True): "preposition",
-                (False, False, False): "postposition"
+                (True, True, True): ["circumfix", "- -"],
+                (True, False, True): ["prefix", "-"],
+                (True, False, False): ["suffix", "-"],
+                (False, True, True): ["circumposition", " ... "],
+                (False, False, True): ["preposition", ""],
+                (False, False, False): ["postposition", ""]
             }
-            grammatical_form = grammatical_forms[(bound, pre and post, pre)]
+            grammatical_form = grammatical_forms[(bound, pre and post, pre)][0]
+            spacing = grammatical_forms[(bound, pre and post, pre)][1]
             
             # TODO: apply sound and spelling changes to grammatical pieces
 
             # TODO: use exponents to create a formatted properties and word class string
 
-            formatted_word = f"{pre_word}{"- -" if pre and post else "-"}{post_word}"
-            formatted_spelling = f"{pre_spelling}{"- -" if pre and post else "-"}{post_spelling}"
-            formatted_change = f"{pre_change}{"- -" if pre and post else "-"}{post_change}"
-            formatted_definition = f"{grammatical_form} for {properties} {word_classes}"
+            formatted_word = f"{pre_word}{spacing}{post_word}"
+            formatted_change = f"{pre_change}{spacing}{post_change}"
+            formatted_definition = f"{grammatical_form} for a {self.grammar.pretty_properties(properties)}{(f'', f' {word_class}')[not word_class]}"
+            # respell word following sound changes
+            # TODO: handle this during build_word instead of here
+            if spell_after_change:
+                formatted_spelling = f"{''.join(self.phonology.spell(pre_change))}{spacing}{''.join(self.phonology.spell(post_change))}"
+            else:
+                formatted_spelling = f"{pre_spelling}{spacing}{post_spelling}"
         else:
-            formatted_word = word
+            exponent_id = None
+            formatted_word = word['sound']
             formatted_definition = definition.strip()
+            formatted_change = word['change']
+            # respell word following sound changes
+            if spell_after_change:
+                formatted_spelling = "".join(self.phonology.spell(word['change']))
+            else:
+                formatted_spelling = word['spelling']
 
         # store created word or word piece and return lookup info
-        return self.store(formatted_word, formatted_definition, formatted_change, formatted_spelling)
+        return self.store(formatted_word, formatted_definition, formatted_change, formatted_spelling, exponent_id)
         
     def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
         # - iterate through grammar for that part of speech
@@ -158,11 +171,11 @@ class Language:
     # TODO: generate and store examples in either dictionary or corpus
     #   - take in a definition
     #   - take in a word class
-    #   - for grammar, send to corpus and 
+    #   - for grammar, send to corpus 
     #   - also store grammar in dictionary but with exponent id
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
     #   - core idea is to store important data for display but only 
-    def store(self, word, definition):
+    def store(self, word, definition, spelling, change, exponent_id):
         self.dictionary.add()
     

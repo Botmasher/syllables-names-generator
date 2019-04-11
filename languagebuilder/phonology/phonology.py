@@ -347,7 +347,7 @@ class Phonology:
         return (ipa_string, "".join(new_ipa_string))
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, apply_rules=True):
+    def build_word(self, length=1, apply_rules=True, spell_after_change=False):
         """Form a word following the defined inventory and syllable structure"""
         # form a list of possible syllables to choose from
         syllables = self.syllables.get()
@@ -390,7 +390,10 @@ class Phonology:
         # apply sound changes to built word
         word_changed = self.apply_rules(word_ipa)[1] if apply_rules else word_ipa
 
-        word_spelling = "".join(self.spell(word_ipa))
+        if spell_after_change:
+            word_spelling = "".join(self.spell(word_changed, word_ipa))
+        else:
+            word_spelling = "".join(self.spell(word_ipa))
         word_ipa = "".join(word_ipa)
 
         # mimic dictionary entry
@@ -401,7 +404,10 @@ class Phonology:
         }
 
     # TODO: handle spelling rules and environments
-    def spell(self, phonemes):
+    # TODO: fall back on pre-change if letters do not exist for phoneme, including
+    #       when fallback phonemes are different length than final phonemes
+    #       - could pass same-length lists including empty string deletion elements
+    def spell(self, phonemes, fallback_phonemes=None):
         """Transform a sequence of sounds into a list of characters (including multigraphs)
         representing a spelled word"""
         # left-to-right spelling letter storage

@@ -91,6 +91,24 @@ class Grammar:
         # - case: what about abbreviations for a category like tns?
         self.abbreviations = {}
 
+    def pretty_properties(self, properties_text):
+        """Turn a string of grammatical terms into a readable text listing out grammatical properties.
+        Example: {'tense': {'present'}, 'mood': {'indicative'}} -> \"present tense, indicative mood\" """
+        properties = self.parse_properties(properties_text)
+        formatted_properties = f""
+        delimiter = ", "
+        # traverse properties map concatenating grammemes per category
+        for category in properties:
+            # add grammemes terms to string
+            for grammeme in properties[category]:
+                formatted_properties += f"{grammeme}{delimiter}"
+            # trim the grammemes delimiter
+            formatted_properties = formatted_properties.strip(delimiter)
+            # add category term to string
+            formatted_properties += f" {category}{delimiter}"
+        # trim the final delimiter and send back pretty string
+        return formatted_properties.trim(delimiter)
+
     def parse_properties(self, properties_text):
         """Turn a string of grammatical terms into a map of properties"""
         # check the properties data structure
