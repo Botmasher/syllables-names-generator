@@ -304,8 +304,8 @@ class Phonology:
             # ditch any successful or failed completed track
             [rule_tracker.untrack(track_id) for track_id in tracks_to_pop]
 
-        # build a new ipa representation of the word after rule applied
-        new_ipa_string = list(ipa_string)
+        # prepare an ipa representation of the word to update as rule applied
+        new_ipa_sequence = list(ipa_string)
 
         # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
         #
@@ -314,7 +314,7 @@ class Phonology:
             print(successful_track)
             # get the sound to change
             index_to_change = successful_track['index']
-            ipa_to_change = new_ipa_string[index_to_change]
+            ipa_to_change = new_ipa_sequence[index_to_change]
             applied_rule = successful_track['rule']
             
             # NOTE: tracker ['source'] is in this loop the original sound
@@ -336,15 +336,11 @@ class Phonology:
             print("updated ipa: " + changed_ipa)
 
             # store the changed sound
-            new_ipa_string[index_to_change] = changed_ipa
+            new_ipa_sequence[index_to_change] = changed_ipa
 
-        ## NOTE: old way - mutate symbols directly based on track changing that index
-        # for entry in changed_symbols:
-        #     # transform word by updating index to changed symbol
-        #     new_ipa_string[entry[0]] = entry[1]
-
-        print("".join(new_ipa_string))
-        return (ipa_string, "".join(new_ipa_string))
+        # send back the list of sequences with sounds changed
+        print(f"Finished applying rules to create new sequence: {new_ipa_sequence}")
+        return new_ipa_sequence
 
     # TODO add affixes, apply rules and store word letters and symbols
     def build_word(self, length=1, apply_rules=True, spell_after_change=False):
@@ -368,7 +364,7 @@ class Phonology:
         # TODO store same-length lists of letters and ipa in dictionary instead of strings
         word_ipa = []
 
-        # TODO choose letters by weighted freq/uncommonness
+        # TODO: choose ipa by frequency (commonness) using Phoneme 'weight'
         for syllable_structure in syllable_structures:
             for feature_set in syllable_structure:
                 # find all inventory ipa that have these features
@@ -387,40 +383,56 @@ class Phonology:
         # TODO: affixation before sound changes
         #   - have Language method for building and applying sound change atop units
 
+        # original word sounds chosen
+        #word_ipa = word_ipa
+
         # apply sound changes to built word
-        word_changed = self.apply_rules(word_ipa)[1] if apply_rules else word_ipa
+        word_changed = self.apply_rules(word_ipa) if apply_rules else word_ipa
 
-        if spell_after_change:
-            word_spelling = "".join(self.spell(word_changed, word_ipa))
-        else:
-            word_spelling = "".join(self.spell(word_ipa))
-        word_ipa = "".join(word_ipa)
-
-        # mimic dictionary entry
+        # respell word either before or following sound changes
+        # NOTE: expect word_changed and word_ipa have same elements count!         
+        word_spelling = self.spell(word_changed, word_ipa) if spell_after_change else self.spell(word_ipa)
+        
+        # send back phones, sound change result and spelling result
         return {
-            'spelling': word_spelling,
-            'sound': word_ipa,
-            'change': word_changed
+            'spelling': "".join(word_spelling),
+            'sound': "".join(word_ipa),
+            'change': "".join(word_changed)
         }
 
     # TODO: handle spelling rules and environments
-    # TODO: fall back on pre-change if letters do not exist for phoneme, including
-    #       when fallback phonemes are different length than final phonemes
-    #       - could pass same-length lists including empty string deletion elements
     def spell(self, phonemes, fallback_phonemes=None):
-        """Transform a sequence of sounds into a list of characters (including multigraphs)
-        representing a spelled word"""
+        """Transform a list of sounds into a list of letters (including multigraphs)
+        representing a spelled word. Use optional fallback list in case changed
+        phonemes do not have letters. Fallback length and character indexes must match
+        the main phonemes list."""
         # left-to-right spelling letter storage
         letters = []
+        # sound and letter that get spelled each pass
+        spelled_phoneme = None
+        letter = None
+        # characters that can be passed through without spelling
+        skippable_chars = ("")
+
         # traverse choosing a letter for each sound
-        for phoneme in phonemes:
-            # determine if phoneme exists
-            if not self.phonemes.has(phoneme):
+        for i, phoneme in enumerate(phonemes):
+            # do not attempt to respell ignored characters
+            if phoneme in skippable_chars:
+                continue
+
+            # find a valid spellable phoneme or fallback
+            if self.phonemes.has(phoneme):
+                spelled_phoneme = phoneme
+            elif self.phonemes.has(fallback_phonemes[i]):
+                spelled_phoneme = fallback_phonemes[i]
+            else:
                 print(f"Phonology could not spell unrecognized phoneme {phoneme}")
                 return
-            # choose a random letter from possible representations
-            letter = random.choice(list(self.phonemes.get_letters(phoneme)))
+            
+            # choose a letter from possible representations
+            letter = random.choice(list(self.phonemes.get_letters(spelled_phoneme)))
             # store the letter to spell this sound
             letters.append(letter)
+
         # send back a list of letters spelling the word
         return letters

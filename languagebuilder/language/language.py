@@ -94,17 +94,22 @@ class Language:
             print(f"Language failed to generate word - invalid number of syllables {length}")
             return
         
-        # generate the created phonemes in syllables
-        word = self.phonology.build_word(length=length)
+        # expect a single string for one part of speech
+        if word_class and not isinstance(word_class, str):
+            print(f"Language generate failed - expected one part of speech in a word_class string")
+            return
 
-        # add as a grammatical word piece
+        # generate the created phonemes in syllables
+        word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
+
+        # add as grammatical word
         if pre or post:
             # determine word to attach before or after
             pre_word = word if pre else ""
             post_word = word if post else ""
             # generate a second word piece for circum material
             if pre and post:
-                post_word = self.phonology.build_word(length=length)
+                post_word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
             # create the exponent
             exponent_id = self.grammar.exponents.add(
                 pre=pre_word['sound'],
@@ -113,48 +118,61 @@ class Language:
                 bound=bound,
                 pos=word_class
             )
+            # store sound changes and spelling for both grammatical pieces
             pre_change = pre_word['change'] if pre else ""
             post_change = post_word['change'] if post else ""
             pre_spelling = pre_word['spelling'] if pre else ""
             post_spelling = post_word['spelling'] if post else ""
+            # determine text linkers for formatted dictionary storage
             grammatical_forms = {
-                (True, True, True): ["circumfix", "- -"],
-                (True, False, True): ["prefix", "-"],
-                (True, False, False): ["suffix", "-"],
-                (False, True, True): ["circumposition", " ... "],
-                (False, False, True): ["preposition", ""],
-                (False, False, False): ["postposition", ""]
+                (True, True, True): ("circumfix", "- -"),
+                (True, False, True): ("prefix", "-"),
+                (True, False, False): ("suffix", "-"),
+                (False, True, True): ("circumposition", " ... "),
+                (False, False, True): ("preposition", ""),
+                (False, False, False): ("postposition", "")
             }
+            # basic term to define forms
             grammatical_form = grammatical_forms[(bound, pre and post, pre)][0]
+            # concatenator to place before, between or after forms
             spacing = grammatical_forms[(bound, pre and post, pre)][1]
             
-            # TODO: apply sound and spelling changes to grammatical pieces
-
             # TODO: use exponents to create a formatted properties and word class string
 
+            # format forms with spacing
             formatted_word = f"{pre_word}{spacing}{post_word}"
             formatted_change = f"{pre_change}{spacing}{post_change}"
+            # format definition
             formatted_definition = f"{grammatical_form} for a {self.grammar.pretty_properties(properties)}{(f'', f' {word_class}')[not word_class]}"
-            # respell word following sound changes
-            # TODO: handle this during build_word instead of here
-            if spell_after_change:
-                formatted_spelling = f"{''.join(self.phonology.spell(pre_change))}{spacing}{''.join(self.phonology.spell(post_change))}"
-            else:
-                formatted_spelling = f"{pre_spelling}{spacing}{post_spelling}"
-        else:
-            exponent_id = None
-            formatted_word = word['sound']
-            formatted_definition = definition.strip()
-            formatted_change = word['change']
-            # respell word following sound changes
-            if spell_after_change:
-                formatted_spelling = "".join(self.phonology.spell(word['change']))
-            else:
-                formatted_spelling = word['spelling']
-
-        # store created word or word piece and return lookup info
-        return self.store(formatted_word, formatted_definition, formatted_change, formatted_spelling, exponent_id)
+            # format the word spelling (before/after sound changes)
+            formatted_spelling = f"{pre_spelling}{spacing}{post_spelling}"
+            
+            # store and return a grammatical word entry
+            return self.store(
+                formatted_word,
+                formatted_definition,
+                formatted_change,
+                formatted_spelling,
+                exponent_id
+            )
         
+        # Store and return a base word entry
+
+        # respell word using ipa produced from sound changes
+        if spell_after_change:
+            spelling = "".join(self.phonology.spell(word['change']))
+        # or maintain original pre-change spelling spelling
+        else:
+            spelling = word['spelling']
+        
+        # store created word or word piece and return lookup info
+        return self.store(
+            word=word['sound'],
+            change=word['change'],
+            definition=definition.strip(),
+            spelling=spelling
+        )
+
     def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
         # - iterate through grammar for that part of speech
         # - produce a unit
@@ -176,6 +194,13 @@ class Language:
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
     #   - core idea is to store important data for display but only 
-    def store(self, word, definition, spelling, change, exponent_id):
-        self.dictionary.add()
+    def store(self, word="", definition="", spelling="", change="", exponent_id=None):
+        """Pass word entry components through to the dictionary for storage"""
+        return self.dictionary.add(
+            sound=word,
+            spelling=spelling,
+            change=change,
+            definition=definition,
+            exponent_id=exponent_id
+        )
     

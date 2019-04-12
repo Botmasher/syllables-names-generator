@@ -95,29 +95,32 @@ class Dictionary():
             return
         return self.dictionary[headword][entry_index]['definition']
 
-    def add(self, spelling="", sound="", definition="", sound_change=""):
+    def add(self, sound="", spelling="", change=None, definition=None, exponent=None):
         """Create a dictionary entry and list it under the spelled headword"""
-        if not (type(spelling) is str and len(spelling) > 0):
-            print ("Dictionary add failed - invalid spelling {0}".format(spelling))
+        # expect both valid spelling and phones
+        if not (sound and spelling and isinstance(sound, str) and isinstance(spelling, str)):
+            print (f"Dictionary add failed - expected to store both spelling and sound")
             return
 
         # create an entry
         headword = spelling
-        # NOTE: keys created here are accessed throughout class - account for this if change
+        # NOTE: keys created here are accessed throughout class
         entry = {
+            # representation of entry in letters
             'spelling': spelling,
-            'definition': definition if type(definition) is str else "",
-            # underlying phonetic representation
-            'sound': sound if type(sound) is str else "",
-            # phonetic representation after sound changes applied
-            'change': sound_change if type(sound_change) is str else ""
+            # representation of entry in sounds
+            'sound': sound,
+            # sound representation after sound changes applied
+            'change': change if isinstance(change, str) else "",
+            # passed-in definition
+            'definition': definition if isinstance(definition, str) else "",
+            # reference to exponent id for grammatical entry
+            'exponent': exponent
         }
         # structure lists of entries (homographs) per spelling
-        if not self.is_word(headword):
-            self.dictionary[headword] = []
-        self.dictionary[headword].append(entry)
-        # return all entries - allow caller to see context and calculate index)
-        return self.lookup(headword)
+        self.dictionary.setdefault(headword, []).append(entry)
+        # return entry lookup format
+        return (headword, len(self.dictionary[headword])-1)
 
     def update(self, headword, entry_index=0, sound="", definition="", sound_change=""):
         """Update any attributes of one entry aside from its spelling"""
@@ -130,9 +133,10 @@ class Dictionary():
             'spelling': entry['spelling'],
             'definition': definition if definition else entry['definition'],
             'sound': sound if sound else entry['sound'],
-            'change': sound_change if sound_change else entry['change']
+            'change': sound_change if sound_change else entry['change'],
+            'exponent': entry['exponent']
         }
-        return self.lookup(headword, entry_index=entry_index)
+        return (headword, entry_index)
 
     def update_spelling(self, headword, new_spelling, entry_index=0):
         """Update the spelling of a single entry (not its headword) and move it under the appropriate headword"""
@@ -143,21 +147,21 @@ class Dictionary():
         old_entry = self.lookup(headword)
         self.remove_entry(headword, entry_index=entry_index)
         # add the new entry
-        self.add(
+        return self.add(
             spelling=new_spelling,
             sound=old_entry['sound'],
+            change=old_entry['change'],
             definition=old_entry['definition'],
-            sound_change=old_entry['change']
+            exponent=old_entry['exponent']
         )
-        return self.lookup(new_spelling)
 
     def redefine(self, headword, entry_index=0, definition=""):
         """Change the definition of one entry under a spelled headword"""
         if not self.is_entry(headword, index=entry_index):
-            print("Dictionary redefine failed - invalid headword {0}".format(headword))
+            print(f"Dictionary redefine failed - invalid entry {headword}({entry_index})")
             return
-        if type(definition) is not str:
-            print("Dictionary redefine failed - invalid definition {0}".format(definition))
+        if not isinstance(definition, str):
+            print(f"Dictionary redefine failed - invalid definition {definition}")
             return
         self.dictionary[headword][entry_index]['definition'] = definition
         return self.lookup(headword, entry_index=entry_index)
