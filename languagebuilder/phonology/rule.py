@@ -48,8 +48,8 @@ class Rule:
 
     def set_rule(self, source, target, environment):
         """Internal method for setting all rule attributes"""
-        self.source = source
-        self.target = target
+        self.source = [source] if isinstance(source, str) else source
+        self.target = [target] if isinstance(target, str) else target
         self.environment = environment
         return self.get()
 

@@ -20,29 +20,30 @@ class Dictionary():
         return self.is_word(word) and index < len(self.dictionary[word])
 
     # TODO optimize search time - currently exhaustive through all entries no matter what
-    def search(self, keywords=[], max_results=20):
+    def search(self, keywords, max_results=20):
         """Search entry definitions for keyword matches"""
-        if not keywords or type(keywords) not in (list, str):
-            print("Dictionary search failed - expected keywords")
+        if not keywords or not isinstance(keywords, (list, tuple, str)):
+            print("Dictionary search failed - expected keywords/definition to search for")
             return
+        
+        # ensure keywords are a traversable sequence
+        keywords = keywords.split() if isinstance(keywords, str) else keywords
+
         scored_matches = []   # list of (headword, entry_index, keywords_score) for relevant matches
         for headword in self.dictionary:
-            for entry_index in self.dictionary[headword]:
+            for entry_index, entry in enumerate(self.dictionary[headword]):
                 # definitions are stored under headword entries inside the dictionary
-                definition = self.dictionary[headword][entry_index]['definition']
+                definition = entry['definition']
                 # keep track of keyword matches
                 keywords_score = 0
                 # simple match - look for single string within definition
-                if type(keywords) is str:
+                if isinstance(keywords, str):
                     if keywords in definition:
                         keywords_score = 1
                         scored_matches.append((headword, entry_index, keywords_score))
                     continue
                 # list match - determine how close the match is
                 for keyword in keywords:
-                    # if type(keyword) is not str:
-                    #     print("Dictionary search failed - keywords list contains non-string keyword {0}".format(keyword))
-                    #     return
                     if keyword in definition:
                         keywords_score += 1
                 #  entry if relevant and move to next entry

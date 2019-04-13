@@ -31,7 +31,7 @@ class Rules():
     def add(self, rule):
         """Add one rule to the rules"""
         if not self.is_rule(rule):
-            print("Rules add failed - invalid rule {0}".format(rule))
+            print(f"Rules add failed - invalid rule {rule}")
             return
         rule_id = uuid.uuid4()
         self.rules[rule_id] = rule

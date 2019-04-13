@@ -85,7 +85,7 @@ class Language:
     #   - otherwise must pass language/dictionary down to phonology to store
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, length=None, definition="", spell_after_change=False, pre=False, post=False, bound=False, properties=None, word_class=None):
+    def generate(self, length=1, definition="", spell_after_change=True, pre=False, post=False, bound=False, properties=None, word_class=None):
         # choose a random number of syllables if no syllable count supplied
         if not length:
             length = random.randrange(1, 5)
@@ -101,7 +101,7 @@ class Language:
 
         # generate the created phonemes in syllables
         word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
-
+        
         # add as grammatical word
         if pre or post:
             # determine word to attach before or after
@@ -157,34 +157,66 @@ class Language:
             )
         
         # Store and return a base word entry
-
-        # respell word using ipa produced from sound changes
-        if spell_after_change:
-            spelling = "".join(self.phonology.spell(word['change']))
-        # or maintain original pre-change spelling spelling
-        else:
-            spelling = word['spelling']
-        
         # store created word or word piece and return lookup info
         return self.store(
             word=word['sound'],
             change=word['change'],
             definition=definition.strip(),
-            spelling=spelling
+            spelling=word['spelling']
         )
 
-    def attach(self, word=None, definition=None, entry_index=0, properties=None, word_classes=None):
+    def translate(self, definition, properties="", word_class=""):
+        """Attempt to render a single base plus grammatical properties
+        in the target language"""
+        words = self.dictionary.search(definition)
+        if not words:
+            print(f"Language failed to translate - no word for {definition}")
+            return
+        return self.attach(
+            base=words[0][0],
+            entry_index=words[0][1],
+            properties=properties,
+            word_classes=word_class
+        )
+
+    def attach(self, base=None, entry_index=0, properties=None, word_classes=None, spell_after_change=True):
+        """Attach grammatical pieces around a base headword. Look up the base in the
+        language's dictionary and use added exponents from the language's grammar."""
         # - iterate through grammar for that part of speech
         # - produce a unit
         # - or produce a table of all possible forms
         # - store the unit in the corpus
     
-        # TODO: lookup by definition or headword
         # TODO: store word classes in dictionary
-        definition and self.dictionary.search
-        word and self.dictionary.lookup(headword=word, entry_index=entry_index)
-        # TODO: build up around found word
-        self.grammar.build_unit(word, properties, word_classes)
+        
+        # locate headword entry for base
+        base_entry = self.dictionary.lookup(headword=base, entry_index=entry_index)[0]
+        base_sounds = base_entry['sound']
+
+        # compute spelling, underlying sounds and changed sounds
+        unit_sounds = self.grammar.build_unit(base_sounds, properties, word_classes)
+        unit_change = self.phonology.apply_rules(unit_sounds)
+        if spell_after_change:
+            unit_spelling = self.phonology.spell(unit_change, unit_sounds)
+        else:
+            unit_spelling = self.phonology.spell(unit_sounds)
+        
+        # unable to spell unit
+        if not unit_spelling:
+            raise ValueError(f"Language attach failed to spell unit - missing letters for built sounds {unit_sounds}")
+        
+        # format entry for built grammatical unit
+        # TODO: vet properties and pos
+        return {
+            'sounds': unit_sounds,
+            'change': "".join(unit_change),
+            'spelling': "".join(unit_spelling),
+            'semantics': {
+                'base': base_entry['definition'],
+                'properties': properties,
+                'word_classes': word_classes
+            }
+        }
 
     # TODO: generate and store examples in either dictionary or corpus
     #   - take in a definition
@@ -201,6 +233,6 @@ class Language:
             spelling=spelling,
             change=change,
             definition=definition,
-            exponent_id=exponent_id
+            exponent=exponent_id
         )
     

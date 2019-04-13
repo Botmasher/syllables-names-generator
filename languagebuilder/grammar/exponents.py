@@ -59,19 +59,22 @@ class Exponents:
     # }
     def add(self, pre="", post="", bound=True, properties=None, pos=None):
         """Add one grammatical exponent to the grammar"""
-        if not ((pre or post) and (isinstance(pre, str) and isinstance(post, str))):
+        # ensure either valid pre or post
+        if not (pre or post):
             print("Exponents.add failed - expected pre or post exponent string")
             return
 
-        if not isinstance(properties, dict):
-            print("Exponents.add failed - expected properties dict")
+        # vet and check provided grammatical properties
+        parsed_properties = self.grammar.parse_properties(properties) if isinstance(properties, str) else properties
+        if not parsed_properties or not isinstance(parsed_properties, dict):
+            print("Exponents.add failed - expected valid properties map or string")
             return
 
         # collect valid word classes to include or exclude when property is applied
         recognized_word_classes = self.grammar.word_classes.filter(pos)
 
         # vet the categories and values of provided properties
-        recognized_properties = self.grammar.properties.filter(properties)
+        recognized_properties = self.grammar.properties.filter(parsed_properties)
         
         # back out of add if no recognized properties provided by exponent
         if not recognized_properties:

@@ -64,6 +64,19 @@ class Phonology:
         """Delete a rule from the phonological rules collection"""
         return self.rules.remove(rule_id)
 
+    # Syllable methods to stay consistent with rule and sound management at this level
+    def add_syllable(self, syllable_structure):
+        """Passthrough method for Syllables add"""
+        return self.syllables.add(syllable_structure)
+    #
+    def update_syllable(self, syllable_id, syllable_structure):
+        """Passthrough method for Syllables update"""
+        return self.syllables.update(syllable_id, syllable_structure)
+    #
+    def remove_syllable(self, syllable_id):
+        """Passthrough method for Syllables remove"""
+        return self.syllables.remove(syllable_id)
+
     # IPA methods checking both phonology and phonetics
     def has_sound(self, ipa):
         """Check that fully-featured sound exists both in phonemes and phonetics"""
@@ -106,10 +119,10 @@ class Phonology:
         if not isinstance(ipa_letters_map, dict):
             print(f"Phonology add_sounds failed - expected dict not {type(ipa_letters_map)}")
             return
-        sounds = {}
+        sounds = []
         for ipa, letters in ipa_letters_map.items():
             added_sound = self.add_sound(ipa, letters=letters)
-            sounds.update(added_sound)
+            sounds.append(added_sound)
         return sounds
     #
     def update_sound(self, ipa, letters=None, weight=None, new_ipa=None):
@@ -423,10 +436,10 @@ class Phonology:
             # find a valid spellable phoneme or fallback
             if self.phonemes.has(phoneme):
                 spelled_phoneme = phoneme
-            elif self.phonemes.has(fallback_phonemes[i]):
+            elif fallback_phonemes and self.phonemes.has(fallback_phonemes[i]):
                 spelled_phoneme = fallback_phonemes[i]
             else:
-                print(f"Phonology could not spell unrecognized phoneme {phoneme}")
+                print(f"Phonology failed to spell unrecognized {phoneme} or find a fallback sound.")
                 return
             
             # choose a letter from possible representations

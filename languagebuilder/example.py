@@ -85,10 +85,9 @@ print(my_language.phonetics.get_features('ts'))
 print(my_language.phonetics.get_features('β'))
 
 # TODO: weight syllables for frequency during generation, like CV > V
-my_language.phonology.add_syllable('CVC')
-my_language.phonology.add_syllable('VC')
-my_language.phonology.add_syllable('CV')
-my_language.phonology.print_syllables()
+my_language.phonology.syllables.add('CVC')
+my_language.phonology.syllables.add('VC')
+my_language.phonology.syllables.add('CV')
 # TODO: add word shapes, like initial VCV but not mid CVVCV
 
 ## TEST: run rules (independent of above features, inventory, lang)
@@ -106,7 +105,7 @@ print(my_language.phonology.apply_rules("katta"))       # expected: > "katta"
 print(my_language.phonology.apply_rules("akatakatta"))  # expected: > "agadagatta" > "aɣaaɣatta"
 
 ## TEST: build word root
-word_entry = my_language.phonology.build_word(length=2, definition="camel")
+word_entry = my_language.generate(length=2, definition="camel")
 print(word_entry)
 
 ## TEST: add exponents and build units
