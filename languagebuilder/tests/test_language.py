@@ -254,15 +254,16 @@ class LanguageWords(LanguageFixture):
 
     def test_spell_word(self):
         word = self.language.generate(2)
-        spelling = self.language.spell((word, 0), post_change=True)
+        matches = self.language.dictionary.search(spelling=word[0])
         self.assertTrue(
-            isinstance(spelling, str) and len(str) > 1,
+            matches and word == matches[0],
             "failed to spell a newly generated word"
         )
-
+    
     def test_spell_unit(self):
         root = self.language.generate(2)
         self.language.attach(root, word_class="verb", properties="imperfective future")
+        
         # TODO: find unit entry in corpus
         spelling = self.language.spell(corpus_unit, post_change=True)
         self.assertTrue(
@@ -272,16 +273,16 @@ class LanguageWords(LanguageFixture):
     
     def test_lookup_word(self):
         word = self.language.generate(2, "cat")
-        words = self.language.find(definition="cat")
+        words = self.language.dictionary.lookup(*word)
         self.assertEqual(
-            words[0],
-            word,
+            words[0]['spelling'],
+            word[0],
             "failed to look up a generated word"
         )
     
     def test_define_word(self):
         word = self.language.generate(2, "dog")
-        definition = self.language.define(word)
+        definition = self.language.dictionary.define(*word)
         self.assertEqual(
             definition,
             "dog",
@@ -292,19 +293,18 @@ class LanguageWords(LanguageFixture):
         word_0 = self.language.generate(2, "round")
         word_1 = self.language.generate(2, "round table")
         word_2 = self.language.generate(2, "table")
-        results = self.language.search("round")
+        results = self.language.dictionary.search_definitions("round")
         self.assertTrue(
             len(results) == 2 and word_0 in results and word_1 in results,
-            "failed to search for generated words"
+            "failed to find generated words in a keyword search"
         )   
     
-    def test_read_grammatical_description(self):
-        # from properties and word classes
-        descriptions = self.language.describe("-ta")
+    def test_read_grammatical_definition(self):
+        definitions = self.language.dictionary.define("-ta")
         self.assertEqual(
-            descriptions[0],
+            definitions[0],
             "suffix for imperfect aspect future tense verbs",
-            "failed to describe a grammatical piece"
+            "failed to create a definition for a grammatical piece"
         )
     
 

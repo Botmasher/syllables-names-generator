@@ -16,18 +16,21 @@ import random
 #   - instead could have update functions through language
 #       - these manage both storage and manipulation
 
-# Shape of stored language data:
+# Shape of stored language data
+# NOTE: look up using ('word', entry_index)
 # dictionary : {
-#   ("word", 0): {          # entry headword, index
-#       'phones': "",       # phonemes generated for the word
-#       'change': "",       # phones after sound change rules applied
-#       'spelling': "",     # letters after spelling applied
-#       'rules': [],        # list of ids for sound change rules applied
-#       'word_class': "",   # part of speech used for word grammar
-#       'definition': "",   # user-inputted string defining the word (built automatically for exponents)
-#       'tags': []          # semantic tags for searching for the word
-#       'exponent': ""      # id pointing to attributes if grammatical piece
-#   },
+#   'word': [
+#       {
+#           'phones': "",       # phonemes generated for the word
+#           'change': "",       # phones after sound change rules applied
+#           'spelling': "",     # letters after spelling applied
+#           'rules': [],        # list of ids for sound change rules applied
+#           'word_class': "",   # part of speech used for word grammar
+#           'definition': "",   # user-inputted string defining the word (built automatically for exponents)
+#           'tags': []          # semantic tags for searching for the word
+#           'exponent': ""      # id pointing to attributes if grammatical piece
+#       },
+#   ]
 #   ...
 # }
 # 
