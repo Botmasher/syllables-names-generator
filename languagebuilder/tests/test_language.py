@@ -165,7 +165,7 @@ class LanguageWords(LanguageFixture):
         this_class.language.phonology.syllables.add("CV")
         this_class.language.phonology.add_rule("stop", "fricative", "V_V")
         this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "_")
-
+        
         # set up grammar
         this_class.language.grammar.properties.add("tense", "future")
         this_class.language.grammar.properties.add("tense", "nonfuture")
@@ -186,19 +186,19 @@ class LanguageWords(LanguageFixture):
         #   - word classes, properties, exponents (including ordering)
 
     def test_generate_root_word(self):
-        root_word = self.language.generate(syllables=4, word_class="verb")
+        root_word = self.language.generate(length=4, word_class="verb")[0]
         self.assertTrue(
-            isinstance(root_word, str) and len(root_word) == 8,
+            isinstance(root_word, str) and len(root_word) >= 8,
             "failed to generate a new root word in the language"
         )
 
     def test_generate_grammatical_word(self):
         self.language.grammar.properties.add("category", "grammeme")
         affix = self.language.generate(
+            length=1,
             pre=False,
             post=True,
             bound=True,
-            syllables=1,
             word_class="verb",
             properties="grammeme"
         )
@@ -212,8 +212,8 @@ class LanguageWords(LanguageFixture):
         root = self.language.generate(2)
         unit = self.language.attach(
             root,
-            word_class="verb",
-            properties="imperfective future"
+            properties="imperfective future",
+            word_classes="verb"
         )
         self.assertEqual(
             unit,
@@ -223,7 +223,11 @@ class LanguageWords(LanguageFixture):
 
     def test_build_unit(self):
         root = self.language.generate(2)
-        unit = self.language.attach(root, word_class="verb", properties="imperfective future")
+        unit = self.language.attach(
+            root,
+            properties="imperfective future",
+            word_classes="verb"
+        )
         self.assertEqual(
             unit,
             f"{root}-n",
@@ -231,7 +235,7 @@ class LanguageWords(LanguageFixture):
         )
 
     def test_apply_sound_changes(self):
-        changed_sounds = self.language.change_sounds("paputaki")
+        changed_sounds = self.language.phonology.apply_rules("paputaki")
         self.assertEqual(
             changed_sounds,
             "pafuθaxi",
@@ -242,9 +246,8 @@ class LanguageWords(LanguageFixture):
         root = "ta"
         unit = self.language.attach(
             root,
-            word_class="verb",
-            properties="imperfective future",
-            change_boundaries=True
+            word_classes="verb",
+            properties="imperfective future"
         )
         self.assertEqual(
             unit,
@@ -262,12 +265,9 @@ class LanguageWords(LanguageFixture):
     
     def test_spell_unit(self):
         root = self.language.generate(2)
-        self.language.attach(root, word_class="verb", properties="imperfective future")
-        
-        # TODO: find unit entry in corpus
-        spelling = self.language.spell(corpus_unit, post_change=True)
+        unit_entry = self.language.attach(*root, word_classes="verb", properties="imperfective future")
         self.assertTrue(
-            isinstance(spelling, str) and len(str) > 1,
+            unit_entry.get('spelling') and root[0] in unit_entry['spelling'],
             "failed to spell a newly generated unit"
         )
     
@@ -292,8 +292,8 @@ class LanguageWords(LanguageFixture):
     def test_search_word(self):
         word_0 = self.language.generate(2, "round")
         word_1 = self.language.generate(2, "round table")
-        word_2 = self.language.generate(2, "table")
-        results = self.language.dictionary.search_definitions("round")
+        self.language.generate(2, "table")
+        results = self.language.dictionary.search(keywords="round")
         self.assertTrue(
             len(results) == 2 and word_0 in results and word_1 in results,
             "failed to find generated words in a keyword search"

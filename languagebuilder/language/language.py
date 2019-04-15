@@ -2,7 +2,12 @@ from ..grammar.grammar import Grammar
 from ..phonetics.phonetics import Phonetics
 from ..phonology.phonology import Phonology
 from ..lexicon.dictionary import Dictionary
+from ..lexicon.corpus import Corpus
 import random
+
+# TODO: Accentuation, suprasegmentals
+
+# TODO: consider also storing bound flag for bases
 
 # NOTE: throughout the code "ipa" (usu uncaps) denotes any stored phonetic symbols
 # associated with a set of features in a language
@@ -74,6 +79,8 @@ class Language:
         self.phonology = Phonology(self.phonetics)
         # words with ipa, morphology, definition
         self.dictionary = Dictionary()
+        # built units with grammar attached
+        self.corpus = Corpus()
 
     def rename(self, name="", display_name=""):
         """Set the id name or display name for the language"""
@@ -197,7 +204,11 @@ class Language:
         base_sounds = base_entry['sound']
 
         # compute spelling, underlying sounds and changed sounds
-        unit_sounds = self.grammar.build_unit(base_sounds, properties, word_classes)
+        unit_sounds = self.grammar.build_unit(
+            base_sounds,
+            properties=properties,
+            word_classes=word_classes
+        )
         unit_change = self.phonology.apply_rules(unit_sounds)
         if spell_after_change:
             unit_spelling = self.phonology.spell(unit_change, unit_sounds)
@@ -207,19 +218,21 @@ class Language:
         # unable to spell unit
         if not unit_spelling:
             raise ValueError(f"Language attach failed to spell unit - missing letters for built sounds {unit_sounds}")
-        
-        # format entry for built grammatical unit
+
+        # TODO: get out the exponents used to build the unit
+        #       - this way corpus can store then and their properties can be read later
+        #       - alternatively store semantics with base definition, properties, word_classes
+        exponents = []
+
+        # format and store entry for built grammatical unit
         # TODO: vet properties and pos
-        return {
-            'sounds': unit_sounds,
-            'change': "".join(unit_change),
-            'spelling': "".join(unit_spelling),
-            'semantics': {
-                'base': base_entry['definition'],
-                'properties': properties,
-                'word_classes': word_classes
-            }
-        }
+        return self.corpus.add(
+            sound=unit_sounds,
+            change="".join(unit_change),
+            spelling="".join(unit_spelling),
+            definition=base_entry['definition'],
+            exponents=exponents
+        )
 
     # TODO: generate and store examples in either dictionary or corpus
     #   - take in a definition
