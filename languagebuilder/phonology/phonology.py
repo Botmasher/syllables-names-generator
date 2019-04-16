@@ -130,7 +130,12 @@ class Phonology:
         if new_ipa and not self.phonetics.has_ipa(new_ipa):
             print(f"Phonology update_sound failed - invalid new ipa symbol {new_ipa}")
             return
-        return self.update_sound(ipa, letters=letters, weight=weight, new_ipa=new_ipa)
+        return self.phonemes.update(
+            ipa,
+            letters=letters,
+            weight=weight,
+            new_ipa=new_ipa
+        )
     #
     def remove_sound(self, ipa):
         """Passthrough method for removing a single phoneme from the inventory"""

@@ -69,7 +69,6 @@ class Dictionary():
                 #  entry if relevant and move to next entry
                 if keywords_score:
                     scored_matches.append((headword, entry_index, keywords_score))
-                    count_results += 1
 
                 # stop searching when max results found
                 if len(scored_matches) >= max_results:

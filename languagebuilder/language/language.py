@@ -114,9 +114,10 @@ class Language:
         
         # add as grammatical word
         if pre or post:
+            empty_entry = {'spelling': "", 'sound': "", 'change': ""}
             # determine word to attach before or after
-            pre_word = word if pre else ""
-            post_word = word if post else ""
+            pre_word = word if pre else empty_entry
+            post_word = word if post else empty_entry
             # generate a second word piece for circum material
             if pre and post:
                 post_word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
@@ -129,10 +130,10 @@ class Language:
                 pos=word_class
             )
             # store sound changes and spelling for both grammatical pieces
-            pre_change = pre_word['change'] if pre else ""
-            post_change = post_word['change'] if post else ""
-            pre_spelling = pre_word['spelling'] if pre else ""
-            post_spelling = post_word['spelling'] if post else ""
+            pre_change = pre_word['change']
+            post_change = post_word['change']
+            pre_spelling = pre_word['spelling']
+            post_spelling = post_word['spelling']
             # determine text linkers for formatted dictionary storage
             grammatical_forms = {
                 (True, True, True): ("circumfix", "- -"),
@@ -197,6 +198,10 @@ class Language:
         # - or produce a table of all possible forms
         # - store the unit in the corpus
     
+        if not self.dictionary.is_word(base):
+            print(f"Language attach failed - unrecognized base word {base}")
+            return
+
         # TODO: store word classes in dictionary
         
         # locate headword entry for base

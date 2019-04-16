@@ -107,7 +107,7 @@ class Grammar:
             # add category term to string
             formatted_properties += f" {category}{delimiter}"
         # trim the final delimiter and send back pretty string
-        return formatted_properties.trim(delimiter)
+        return formatted_properties.strip(delimiter)
 
     def parse_properties(self, properties_text):
         """Turn a string of grammatical terms into a map of properties"""

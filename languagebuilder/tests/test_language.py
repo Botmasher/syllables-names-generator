@@ -175,11 +175,9 @@ class LanguageWords(LanguageFixture):
         this_class.language.grammar.properties.add("number", "plural")
         this_class.language.grammar.word_classes.add("noun")
         this_class.language.grammar.word_classes.add("verb")
-        this_class.language.grammar.exponents.add(post="-ta", properties="future perfective", pos="verb")
-        this_class.language.grammar.exponents.add(post="-ka", properties="future imperfective", pos="verb")
-        this_class.language.grammar.exponents.add(post="-fa", properties="nonfuture", pos="verb")
-        this_class.language.grammar.exponents.add(pre="0-", properties="singular", pos="noun")
-        this_class.language.grammar.exponents.add(pre="pa-", properties="plural", pos="noun")
+        this_class.language.grammar.exponents.add(post="ta", properties="future perfective", pos="verb")
+        this_class.language.grammar.exponents.add(post="ka", properties="future imperfective", pos="verb")
+        this_class.language.grammar.exponents.add(post="fa", properties="nonfuture", pos="verb")
         
         # TODO: sounds and grammar
         #   - phonetics, inventory, syllables
@@ -202,22 +200,22 @@ class LanguageWords(LanguageFixture):
             word_class="verb",
             properties="grammeme"
         )
-        self.assertNotIn(
-            self.language.grammar.exponents.find(post=affix['post']),
-            [[], (), None],
+        affix_entry = self.language.dictionary.lookup(*affix)
+        self.assertTrue(
+            'sound' in affix_entry and affix_entry['spelling'] == affix[0],
             "failed to generate a new grammatical word in the language"
         )
         
     def test_apply_grammar(self):
         root = self.language.generate(2)
         unit = self.language.attach(
-            root,
+            *root,
             properties="imperfective future",
             word_classes="verb"
         )
         self.assertEqual(
             unit,
-            f"{root}-n",
+            f"{root}ka",
             "failed to generate a new root + grammatical unit in the language"
         )
 
@@ -300,11 +298,12 @@ class LanguageWords(LanguageFixture):
         )   
     
     def test_read_grammatical_definition(self):
-        definitions = self.language.dictionary.define("-ta")
+        entry = self.language.generate(post=True, bound=True, properties="plural")
+        definition = self.language.dictionary.search(entry)
         self.assertEqual(
-            definitions[0],
+            definition,
             "suffix for imperfect aspect future tense verbs",
-            "failed to create a definition for a grammatical piece"
+            f"failed to create a definition for a grammatical piece defined {definition}"
         )
     
 
