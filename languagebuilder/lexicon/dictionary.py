@@ -77,7 +77,9 @@ class Dictionary():
                 break
 
         # hand back matches sorted by keywords score (third element in tuple)
-        return sorted(scored_matches, key=lambda l: l[2])
+        sorted_matches = sorted(scored_matches, key=lambda l: l[2])
+        # strip weights and return (headword,entry_index) lookup pairs
+        return [(match[0], match[1]) for match in sorted_matches]
 
     def _search_sounds(self, ipa="", max_results=10, sound_change=False):
         """Search for headword entries that have the specified pronunciation"""
@@ -121,9 +123,9 @@ class Dictionary():
     def lookup(self, headword, entry_index=None):
         """Read all entries (default) or one indexed entry for a spelled word"""
         if not self.is_word(headword):
-            print ("Dictionary lookup failed - invalid headword {0}".format(headword))
+            print (f"Dictionary lookup failed - unknown or invalid headword {headword}")
             return
-        if not entry_index:
+        if entry_index is None:
             return self.dictionary[headword]
         return self.dictionary[headword][entry_index]
 

@@ -154,7 +154,7 @@ class Language:
             formatted_word = f"{pre_word}{spacing}{post_word}"
             formatted_change = f"{pre_change}{spacing}{post_change}"
             # format definition
-            formatted_definition = f"{grammatical_form} for a {self.grammar.pretty_properties(properties)}{(f'', f' {word_class}')[not word_class]}"
+            formatted_definition = f"{grammatical_form} for {self.grammar.pretty_properties(properties)}{(f' {word_class}s', f'')[not word_class]}"
             # format the word spelling (before/after sound changes)
             formatted_spelling = f"{pre_spelling}{spacing}{post_spelling}"
             
@@ -190,7 +190,7 @@ class Language:
             word_classes=word_class
         )
 
-    def attach(self, base=None, entry_index=0, properties=None, word_classes=None, spell_after_change=True):
+    def attach(self, base="", entry_index=0, properties=None, word_classes=None, lookup=True, spell_after_change=True):
         """Attach grammatical pieces around a base headword. Look up the base in the
         language's dictionary and use added exponents from the language's grammar."""
         # - iterate through grammar for that part of speech
@@ -198,15 +198,22 @@ class Language:
         # - or produce a table of all possible forms
         # - store the unit in the corpus
     
-        if not self.dictionary.is_word(base):
+        if lookup and not self.dictionary.is_word(base):
             print(f"Language attach failed - unrecognized base word {base}")
             return
 
         # TODO: store word classes in dictionary
         
         # locate headword entry for base
-        base_entry = self.dictionary.lookup(headword=base, entry_index=entry_index)[0]
-        base_sounds = base_entry['sound']
+        if lookup:
+            base_entry = self.dictionary.lookup(headword=base, entry_index=entry_index)
+            base_sounds = base_entry['sound']
+            base_definition = base_entry['definition']
+        # use given one-off base
+        # TODO: consider definitions
+        else:
+            base_sounds = base
+            base_definition = "(ad hoc base)"
 
         # compute spelling, underlying sounds and changed sounds
         unit_sounds = self.grammar.build_unit(
@@ -235,7 +242,7 @@ class Language:
             sound=unit_sounds,
             change="".join(unit_change),
             spelling="".join(unit_spelling),
-            definition=base_entry['definition'],
+            definition=base_definition,
             exponents=exponents
         )
 

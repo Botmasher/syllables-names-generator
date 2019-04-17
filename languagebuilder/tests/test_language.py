@@ -43,9 +43,9 @@ class LanguageSounds(LanguageFixture):
     def test_update_sound(self):
         self.language.phonetics.add("k", ["voiceless", "velar", "stop", "consonant"])
         self.language.phonology.add_sound("k", ["q"])
-        self.language.phonology.update_sound("k", letters=["qh"])
+        self.language.phonology.update_sound("k", letters=["q", "qh"])
         self.assertIn(
-            "q",
+            "qh",
             self.language.phonology.get_sound_letters("k"),
             "failed to update properties for a phoneme"
         )
@@ -207,31 +207,34 @@ class LanguageWords(LanguageFixture):
         )
         
     def test_apply_grammar(self):
-        root = self.language.generate(2)
+        base = self.language.generate(2)
+        base_entry = self.language.dictionary.lookup(*base)
         unit = self.language.attach(
-            *root,
+            *base,
             properties="imperfective future",
             word_classes="verb"
         )
         self.assertEqual(
-            unit,
-            f"{root}ka",
+            unit['sound'],
+            f"{base_entry['sound']}ka",
             "failed to generate a new root + grammatical unit in the language"
         )
 
     def test_build_unit(self):
-        root = self.language.generate(2)
+        base = self.language.generate(2)
+        base_entry = self.language.dictionary.lookup(*base)
         unit = self.language.attach(
-            root,
+            *base,
             properties="imperfective future",
             word_classes="verb"
         )
         self.assertEqual(
-            unit,
-            f"{root}-n",
+            unit['sound'],
+            f"{base_entry['sound']}ka",
             "failed to generate a new root + grammatical unit in the language"
         )
 
+    # TODO: work on rule ordering
     def test_apply_sound_changes(self):
         changed_sounds = self.language.phonology.apply_rules("paputaki")
         self.assertEqual(
@@ -241,14 +244,14 @@ class LanguageWords(LanguageFixture):
         )
     
     def test_attach_and_sound_change(self):
-        root = "ta"
         unit = self.language.attach(
-            root,
+            "ta",
+            lookup=False,
             word_classes="verb",
             properties="imperfective future"
         )
         self.assertEqual(
-            unit,
+            unit['change'],
             "taxa",
             "failed to build a grammatical unit and change sounds across boundaries"
         )
@@ -271,9 +274,9 @@ class LanguageWords(LanguageFixture):
     
     def test_lookup_word(self):
         word = self.language.generate(2, "cat")
-        words = self.language.dictionary.lookup(*word)
+        word_entry = self.language.dictionary.lookup(*word)
         self.assertEqual(
-            words[0]['spelling'],
+            word_entry['spelling'],
             word[0],
             "failed to look up a generated word"
         )
@@ -288,22 +291,22 @@ class LanguageWords(LanguageFixture):
         )        
     
     def test_search_word(self):
-        word_0 = self.language.generate(2, "round")
-        word_1 = self.language.generate(2, "round table")
-        self.language.generate(2, "table")
+        word_0 = self.language.generate(2, definition="round")
+        word_1 = self.language.generate(2, definition="round table")
+        self.language.generate(2, definition="table")
         results = self.language.dictionary.search(keywords="round")
         self.assertTrue(
             len(results) == 2 and word_0 in results and word_1 in results,
-            "failed to find generated words in a keyword search"
+            f"failed to find generated words in a keyword search: found {results}"
         )   
     
     def test_read_grammatical_definition(self):
-        entry = self.language.generate(post=True, bound=True, properties="plural")
-        definition = self.language.dictionary.search(entry)
+        headword = self.language.generate(post=True, bound=True, properties="imperfective future", word_class="verb")
+        definition = self.language.dictionary.lookup(*headword)['definition']
         self.assertEqual(
             definition,
-            "suffix for imperfect aspect future tense verbs",
-            f"failed to create a definition for a grammatical piece defined {definition}"
+            "suffix for imperfective aspect, future tense verbs",
+            "failed to create a definition for a grammatical piece"
         )
     
 
