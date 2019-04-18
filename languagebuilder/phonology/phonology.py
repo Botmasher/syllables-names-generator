@@ -5,6 +5,7 @@ from ..tools.collector import Collector
 from .syllables import Syllables
 from .environment import Environment
 from .rule import Rule
+from .rules import Rules
 from .ruletracker import RuleTracker
 # for sound, letter and syllable generation
 import random
@@ -14,7 +15,6 @@ import random
 #   - move .add, .update, .remove to Phonemes, Rules, Environments, Syllables
 #   - inject classes here
 
-# TODO: comment methods
 class Phonology:
     def __init__(self, phonetics):
         # phonetic mapping between ipa and features
@@ -23,7 +23,7 @@ class Phonology:
         self.phonemes = Phonemes()
         self.environments = Collector(accepted_types=['Environment'])
         self.syllables = Syllables(self)    # reference phonology for feature checking
-        self.rules = Collector(accepted_types=['Rule'])
+        self.rules = Rules()
 
     # inventory now managed through Phonemes (letters <> ipa) and Features (features <> ipa) instead of previous Inventory class
     def inventory(self):
@@ -361,7 +361,7 @@ class Phonology:
         return new_ipa_sequence
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, apply_rules=True, spell_after_change=False):
+    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True):
         """Form a word following the defined inventory and syllable structure"""
         # form a list of possible syllables to choose from
         syllables = self.syllables.get()
