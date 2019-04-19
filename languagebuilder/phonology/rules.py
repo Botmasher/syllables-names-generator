@@ -7,10 +7,88 @@ class Rules():
         self.rules = {}     # map of rule objects
         self.order = []     # ids sequence representing rule order or chronology
 
-    # TODO: retire method once Rule is constructed internally
-    def is_rule(self, rule):
-        """Check if the object is a Rule instance"""
-        return type(rule).__name__ == 'Rule'
+    def has(self, rule_id):
+        """Check if the rule exists in stored rules"""
+        return rule_id in self.rules
+
+    def get(self, rule_id=None, ordered=True):
+        """Read the value for one stored rule, or all if no id passed in"""
+        # fetch all if no rule id given
+        if not rule_id:
+            # order or unordered rule objects
+            rules = self.rules if not ordered else {
+                r: self.rules[r] for r in self.order
+            }
+            return rules
+        # rule does not exist in rules store
+        if not self.has(rule_id):
+            print(f"Rules get failed - invalid rule_id: {rule_id}")
+            return
+        # found rule
+        return self.rules[rule_id]
+
+    def get_pretty(self, rule_id, use_notation=False):
+        """Format rule into a human readable statement."""
+        # check for valid rule
+        rule = self.rules.get(rule_id)
+        if not rule:
+            print(f"Rules get_pretty format failed - invalid rule_id {rule_id}")
+            return
+        # format the rule into human readable text
+        text = "{0} -> {1} / {2}" if use_notation else "Change {0} to {1} when it's {2}"
+        return text.format(
+            rule['source'],
+            rule['target'],
+            rule['environment'].get_pretty(use_notation=use_notation)
+        )
+    
+    # TODO: take source, target, environment
+    def add(self, source=None, target=None, environment=None):
+        """Add one rule to the rules and its id to the rule orders"""
+        if not (isinstance(source, str) and isinstance(target, str) and type(environment).__name__ == "Environment"):
+            print(f"Rules add failed - invalid rule source, target or environment")
+            return
+        # store the rule 
+        rule_id = uuid.uuid4()
+        self.rules[rule_id] = {
+            'source': source,
+            'target': target,
+            'environment': environment
+        }
+        # add as latest to rule ordering
+        self.order.append(rule_id)
+        # send back key identifying rule
+        return rule_id
+
+    def update(self, rule_id, source=None, target=None, environment=None):
+        """Modify an existing rule"""
+        # original and updated rule attributes
+        rule = self.rules[rule_id]
+        mod_rule = {
+            'source': source,
+            'target': target,
+            'environment': environment
+        }
+        # modify the rule
+        self.rules[rule_id] = {
+            **rule,
+            **{
+                k: v for k, v in mod_rule.items()
+                if v is not None
+            }
+        }
+        return rule_id
+
+    def remove(self, rule_id):
+        """Remove one rule from the rules"""
+        if not self.has(rule_id):
+            print(f"Rules remove failed - invalid rule_id: {rule_id}")
+            return
+        # remove rule object from rules map and id from ordering
+        rule = self.rules.pop(rule_id)
+        i = self.order.index(rule_id)
+        self.order.pop(i)
+        return rule
 
     def order_swap(self, rule_a, rule_b):
         """Switch the ordering position of two rule ids so that they
@@ -62,65 +140,3 @@ class Rules():
                 self.order.pop(original_i + 1)
             return True
         return False
-
-    def has(self, rule_id):
-        """Check if the rule exists in stored rules"""
-        return rule_id in self.rules
-
-    def get(self, rule_id=None, ordered=True):
-        """Read the value for one stored rule, or all if no id passed in"""
-        # fetch all if no rule id given
-        if not rule_id:
-            # order or unordered rule objects
-            rules = self.rules if not ordered else {
-                r: self.rules[r] for r in self.order
-            }
-            return rules
-        # rule does not exist in rules store
-        if not self.has(rule_id):
-            print(f"Rules get failed - invalid rule_id: {rule_id}")
-            return
-        # found rule
-        return self.rules[rule_id]
-
-    # TODO: take source, target, environment
-    def add(self, rule, order=None):
-        """Add one rule to the rules"""
-        if not self.is_rule(rule):
-            print(f"Rules add failed - invalid rule_id: {rule}")
-            return
-        # store the rule 
-        rule_id = uuid.uuid4()
-        self.rules[rule_id] = rule
-        # add as latest to rule ordering
-        self.order.append(rule_id)
-        # send back key identifying rule
-        return rule_id
-
-    # TODO: take rule attributes not just entire reassignment
-    def update(self, rule_id, rule):
-        """Modify an existing rule"""
-        if not self.is_rule(rule):
-            print(f"Rules update failed - invalid rule {rule}")
-            return
-        # modify the rule
-        self.rules[rule_id] = rule
-        return rule_id
-
-    def remove(self, rule_id):
-        """Remove one rule from the rules"""
-        if not self.has(rule_id):
-            print(f"Rules remove failed - invalid rule_id: {rule_id}")
-            return
-        # remove rule object from rules map and id from ordering
-        rule = self.rules.pop(rule_id)
-        self.order.pop(rule_id)
-        return rule
-
-    # def clear(self):
-    #     """Reset the rules store"""
-    #     rules_cache = self.rules
-    #     self.rules = {}
-    #     def read_cache():
-    #         return rules_cache
-    #     return read_cache

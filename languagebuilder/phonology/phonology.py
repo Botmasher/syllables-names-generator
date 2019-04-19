@@ -33,15 +33,16 @@ class Phonology:
     # Rules
     def add_rule(self, source, target, environment_structure):
         """Add one rule to the phonological rules"""
+        # create the environment
         environment = Environment(structure=environment_structure)
         if not environment.get():
             print("Phonology add_rule failed - invalid or empty environment {0}".format(environment))
             return
-        rule = Rule(source=source, target=target, environment=environment)
-        if not rule.get():
-            print("Phonology add_rule failed - invalid rule {0}".format(rule))
+        # create and store the rule
+        rule_id = self.rules.add(source, target, environment)
+        if not rule_id:
+            print("Phonology add_rule failed - invalid source, target or environment")
             return
-        rule_id = self.rules.add(rule)
         return rule_id
 
     def get_rule(self, rule_id, pretty_print=False):

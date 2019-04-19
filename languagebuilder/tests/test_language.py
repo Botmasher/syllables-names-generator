@@ -164,7 +164,10 @@ class LanguageWords(LanguageFixture):
         })
         this_class.language.phonology.syllables.add("CV")
         this_class.language.phonology.add_rule("stop", "fricative", "V_V")
-        this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "_")
+        
+        # TODO: troubleshoot first of these rule formations applies, second does not
+        this_class.language.phonology.add_rule("bilabial", "labiodental", "_")
+        #this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
         
         # set up grammar
         this_class.language.grammar.properties.add("tense", "future")
@@ -237,10 +240,12 @@ class LanguageWords(LanguageFixture):
     # TODO: work on rule ordering
     def test_apply_sound_changes(self):
         changed_sounds = self.language.phonology.apply_rules("paputaki")
+        rule_a = self.language.phonology.rules.get(self.language.phonology.rules.order[0]).get_pretty()
+        rule_b = self.language.phonology.rules.get(self.language.phonology.rules.order[1]).get_pretty()
         self.assertEqual(
-            changed_sounds,
+            "".join(changed_sounds),
             "pafuθaxi",
-            "failed to change sounds following sound rules in the language"
+            f"failed to change sounds following sound rules in the language, rules are: {rule_a}, {rule_b}"
         )
     
     def test_attach_and_sound_change(self):
