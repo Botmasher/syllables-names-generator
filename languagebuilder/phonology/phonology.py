@@ -38,8 +38,17 @@ class Phonology:
         if not environment.get():
             print("Phonology add_rule failed - invalid or empty environment {0}".format(environment))
             return
+        
+        # filter features sequences
+        vetted_source = self.phonetics.parse_features(source)
+        vetted_target = self.phonetics.parse_features(target)
+
+        if not vetted_source or vetted_target:
+            print(f"Phonology add_rule failed - invalid features lists {vetted_source} or {vetted_target}")
+            return
+
         # create and store the rule
-        rule_id = self.rules.add(source, target, environment)
+        rule_id = self.rules.add(vetted_source, vetted_target, environment)
         if not rule_id:
             print("Phonology add_rule failed - invalid source, target or environment")
             return
@@ -244,7 +253,7 @@ class Phonology:
                 # - track checked while iterating through rest of ipa_string
                 # - tracker only tracks as long as environment matches
                 # - zeroth nonmatches screened
-                rule_tracker.track(rule, sound_features)
+                rule_tracker.track(rule_id, rule['environment'], sound_features)
                 # NOTE: your count for successful track is 0, compared to len
                 # - below will recheck for 0th match.
                 # - problem: what if the first is a slot match? not storing source and index here
@@ -277,10 +286,14 @@ class Phonology:
 
                 # the rule being matched by this track
                 # one rule may be associated with multiple (even overlapping) tracks within a sound symbols string
-                rule = track['rule']
+                rule = self.rules.get(track['rule'])
+
+                # skip tracked rules with invalid ids
+                if not rule:
+                    continue
 
                 # current location in environment symbol is tested against
-                environment_slot_features = rule.get_environment().get_structure()[track['count']]
+                environment_slot_features = rule['environment'].get_structure()[track['count']]
 
                 # log this attempt to fit symbol into rule environment
                 print(f"Applying rule: {rule.get_pretty()}")
@@ -290,7 +303,7 @@ class Phonology:
                 did_keep_tracking = False
 
                 # environment source match - store sound to change and keep tracking
-                if rule_tracker.is_source_slot_match(sound_features, environment_slot_features, rule.get_source()):
+                if rule_tracker.is_source_slot_match(sound_features, environment_slot_features, rule['source']):
                     rule_tracker.set_source_match(track_id, source=symbol, index=word_index)
                     did_keep_tracking = True
                 # surrounding environment match - keep tracking
@@ -334,7 +347,8 @@ class Phonology:
             # get the sound to change
             index_to_change = successful_track['index']
             ipa_to_change = new_ipa_sequence[index_to_change]
-            applied_rule = successful_track['rule']
+            applied_rule_id = successful_track['rule']
+            applied_rule = self.rules.get(applied_rule_id)
             
             # NOTE: tracker ['source'] is in this loop the original sound
             # before any changes were layered
@@ -342,14 +356,14 @@ class Phonology:
             
             # verify sound to change has not been updated to fall outside of rule
             features_to_change = self.phonetics.get_features(ipa_to_change)
-            if not rule_tracker.is_features_submatch(applied_rule.get_source(), features_to_change):
+            if not rule_tracker.is_features_submatch(applied_rule['source'], features_to_change):
                 continue
 
             # perform the sound change
             changed_ipa = self.change_symbol(
-                applied_rule.get_source(),  # rule source features that were matched
-                applied_rule.get_target(),  # rule target features to transform sound
-                ipa_to_change               # the matched sound to change
+                applied_rule['source'],  # rule source features that were matched
+                applied_rule['target'],  # rule target features to transform sound
+                ipa_to_change            # the matched sound to change
             )
             print("source ipa: " + ipa_to_change)
             print("updated ipa: " + changed_ipa)

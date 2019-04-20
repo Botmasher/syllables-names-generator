@@ -32,6 +32,24 @@ class Phonetics:
         """Check if the feature exists in the features map"""
         return isinstance(feature, str) and feature in self.features
 
+    # Parse features input
+    def parse_features(self, features_input):
+        # turn features string into features sequence
+        if isinstance(features_input, str):
+            features_input = features_input.split()
+        
+        # verify raw feature input
+        if not isinstance(features_input, (list, tuple)):
+            print(f"Phonetics parse features failed - invalid raw feature sequence {features_input}")
+            return
+
+        # filter down to list of recognized phonetic features
+        parsed_features = list(filter(
+            lambda x: self.has_feature(x.lower().strip()),
+            features_input
+        ))
+        return parsed_features
+
     def map_by_features(self):
         """Read the ipa-per-features map"""
         return self.features

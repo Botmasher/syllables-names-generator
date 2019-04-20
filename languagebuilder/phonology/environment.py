@@ -1,6 +1,6 @@
 # TODO store environments in rules
 class Environment:
-    def __init__(self, structure=[]):
+    def __init__(self, structure=None):
         self.set_structure(structure)
 
     def is_structure(self, structure):

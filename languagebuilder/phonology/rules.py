@@ -42,17 +42,28 @@ class Rules():
             rule['environment'].get_pretty(use_notation=use_notation)
         )
     
-    # TODO: take source, target, environment
+    # TODO: Expect vetted parsed features lists here
     def add(self, source=None, target=None, environment=None):
         """Add one rule to the rules and its id to the rule orders"""
-        if not (isinstance(source, str) and isinstance(target, str) and type(environment).__name__ == "Environment"):
-            print(f"Rules add failed - invalid rule source, target or environment")
+        # verify environment
+        if type(environment).__name__ != "Environment":
+            print(f"Rules add failed - invalid rule environment")
             return
+        
+        # verify source and target sequences
+        if not isinstance((source, target), (list, list)):
+            print(f"Rules add failed - invalid lists for source {source} or target {target}")
+            return
+        
+        # turn source and target into sequence of features
+        source_features = []
+        target_features = []
+
         # store the rule 
         rule_id = uuid.uuid4()
         self.rules[rule_id] = {
-            'source': source,
-            'target': target,
+            'source': source_features,
+            'target': target_features,
             'environment': environment
         }
         # add as latest to rule ordering

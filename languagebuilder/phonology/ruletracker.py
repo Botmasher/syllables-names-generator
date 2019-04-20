@@ -8,34 +8,35 @@ class RuleTracker():
     def __init__(self):
         self.tracker = {}
 
-    def track(self, rule, sound_features):
+    def track(self, rule_id, environment, sound_features):
         """Add ongoing rule environment slot match check to the rules application tracker"""
-        # compare first environment slot to see if current symbol fits
-        rule_environment = rule.get_environment().get_structure()
-
-        if not rule_environment:
-            print(f"RuleTracker failed to track rule without environment - {rule}")
+        # check for valid environment sequence
+        environment_structure = environment.get_structure()
+        if not environment_structure:
+            print(f"RuleTracker failed to track rule - invalid environment {environment}")
             return
 
-        print(f"RuleTracker will track rule if sound fits {rule_environment[0]}")
+        print(f"RuleTracker will track rule if sound fits {environment_structure[0]}")
         
-        environment_slot = rule_environment[0]
+        # compare first environment slot to see if current symbol fits
+        environment_slot = environment[0]
         if not self.is_features_submatch(environment_slot, sound_features):
             print("RuleTracker failed to track - sound {0} did not match environment slot {1}".format(sound_features, environment_slot))
             return
+        
         # create a new track
         track_id = uuid.uuid4()
         self.tracker[track_id] = {
             # the current slot being evaluated for sound matches
             'count': 0,
             # the total number of slots to match before applying rule
-            'length': len(rule_environment),
+            'length': len(environment_structure),
              # identified sounds to change
             'source': '',
             # index of identified sound to change
             'index': None,
             # rule object defining environment and change
-            'rule': rule
+            'rule': rule_id
         }
         print("RuleTracker started tracking")
         return track_id
