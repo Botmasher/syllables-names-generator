@@ -8,18 +8,18 @@ class RuleTracker():
     def __init__(self):
         self.tracker = {}
 
-    def track(self, rule_id, environment, sound_features):
+    def track(self, rule_id, environment_structure, sound_features):
         """Add ongoing rule environment slot match check to the rules application tracker"""
         # check for valid environment sequence
-        environment_structure = environment.get_structure()
+        environment_structure
         if not environment_structure:
-            print(f"RuleTracker failed to track rule - invalid environment {environment}")
+            print(f"RuleTracker failed to track rule - invalid environment {environment_structure}")
             return
 
         print(f"RuleTracker will track rule if sound fits {environment_structure[0]}")
         
         # compare first environment slot to see if current symbol fits
-        environment_slot = environment[0]
+        environment_slot = environment_structure[0]
         if not self.is_features_submatch(environment_slot, sound_features):
             print("RuleTracker failed to track - sound {0} did not match environment slot {1}".format(sound_features, environment_slot))
             return

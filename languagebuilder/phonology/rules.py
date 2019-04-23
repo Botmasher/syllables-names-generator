@@ -7,6 +7,8 @@ class Rules():
         self.rules = {}     # map of rule objects
         self.order = []     # ids sequence representing rule order or chronology
 
+    # Rule objects cruds and checks
+
     def has(self, rule_id):
         """Check if the rule exists in stored rules"""
         return rule_id in self.rules
@@ -39,32 +41,33 @@ class Rules():
         return text.format(
             rule['source'],
             rule['target'],
-            rule['environment'].get_pretty(use_notation=use_notation)
+            self.pretty_environment(rule['environment'], use_notation=use_notation)
         )
-    
+
     # TODO: Expect vetted parsed features lists here
     def add(self, source=None, target=None, environment=None):
         """Add one rule to the rules and its id to the rule orders"""
-        # verify environment
-        if type(environment).__name__ != "Environment":
-            print(f"Rules add failed - invalid rule environment")
+        # create and verify environment structure
+        environment_structure = self.structure_environment(environment)
+        if not environment_structure:
+            print(f"Rules add failed - invalid environment structure {environment}")
             return
-        
+
         # verify source and target sequences
-        if not isinstance((source, target), (list, list)):
+        if not isinstance(source, list) or not isinstance(target, list):
             print(f"Rules add failed - invalid lists for source {source} or target {target}")
             return
-        
-        # turn source and target into sequence of features
-        source_features = []
-        target_features = []
+
+        # TODO: check that source and target features are valid
+        #   - handled at the Phonology level
+        #   - do you also want to tie Phonetics into Rules to perform the check?
 
         # store the rule 
         rule_id = uuid.uuid4()
         self.rules[rule_id] = {
-            'source': source_features,
-            'target': target_features,
-            'environment': environment
+            'source': source,
+            'target': target,
+            'environment': environment_structure
         }
         # add as latest to rule ordering
         self.order.append(rule_id)
@@ -100,6 +103,87 @@ class Rules():
         i = self.order.index(rule_id)
         self.order.pop(i)
         return rule
+    
+
+    # Manage environments
+
+    # TODO: allow more complex environments including specific consonant/vowel features
+    def structure_environment(self, environment_structure):
+        """Create an environment structure from a features list or string"""
+        # parse short strings like 'C_C'
+        if isinstance(environment_structure, str):
+            parsed_structure = []
+            short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_", '#': "#"}
+            for symbol in environment_structure:
+                if symbol in short_symbols.keys():
+                    parsed_structure.append(short_symbols[symbol])
+                else:
+                    print(f"Rules failed to set environment - unknown structure symbol {symbol}")
+                    return
+        # store environment elements as list
+        if not self.is_environment(parsed_structure):
+            raise ValueError(f"Rules failed to set environment with invalid structure {parsed_structure}")
+        return parsed_structure
+
+    def is_environment(self, environment_structure):
+        """Check for valid rule environment structure list including one open slot"""
+        if isinstance(environment_structure, list) and environment_structure.count('_') == 1:
+            return True
+        return False
+
+    def pretty_environment(self, environment_structure, use_notation=False):
+        """Format environment structure as human readable text"""
+        body_text = ""
+        intro_text = ""
+
+        for i in range(len(environment_structure)):
+            slot = environment_structure[i]
+            # notation
+            if use_notation:
+                slot_txt = ""
+                if 'consonant' in slot:
+                    slot_txt += "C"
+                elif 'vowel' in slot:
+                    slot_txt += "V"
+                elif slot == '_':
+                    slot_txt += "_"
+                elif slot == '#':
+                    slot_txt += "#"
+                features = [f"+{feature}" for feature in slot if feature not in ('consonant', 'vowel')]
+                if features:
+                    body += "{0}({1})".format(slot_txt, ",".join(features))
+                else:
+                    body += f"{slot_txt}"
+                continue
+            # verbose
+            line = ""
+            if isinstance(slot, list):
+                line += "an " if slot[0][0].lower() in ['a', 'e', 'i', 'o', 'u'] else "a "
+                for feature in slot:
+                    line += f"{feature}, "
+            elif isinstance(slot, str):
+                if slot == "_":
+                    if i == 0:
+                        intro_text += "before "
+                    elif i == len(environment_structure) - 1:
+                        intro_text += "after "
+                    else:
+                        intro_text += "between "
+                        body_text = body_text[:-2] if body_text.endswith(", ") else body_text
+                        line += " and "
+                elif slot == "#":
+                    line += "a word break "
+                else:
+                    line += f"a {slot}"
+            else:
+                pass
+            body_text += line
+        if body_text[(len(body_text)-2):] == ", ":
+            body_text = body_text[:-2]
+        return f"{intro_text}{body_text}"
+
+
+    # Manage rule order sequence list
 
     def order_swap(self, rule_a, rule_b):
         """Switch the ordering position of two rule ids so that they

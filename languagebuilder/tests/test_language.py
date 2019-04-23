@@ -237,11 +237,12 @@ class LanguageWords(LanguageFixture):
             "failed to generate a new root + grammatical unit in the language"
         )
 
-    # TODO: work on rule ordering
+    # TODO: fix both rules not applying to feed p > ph > f
+    # TODO: test_spell_word also failing 1/15 times
     def test_apply_sound_changes(self):
         changed_sounds = self.language.phonology.apply_rules("paputaki")
-        rule_a = self.language.phonology.rules.get(self.language.phonology.rules.order[0]).get_pretty()
-        rule_b = self.language.phonology.rules.get(self.language.phonology.rules.order[1]).get_pretty()
+        rule_a = self.language.phonology.rules.get_pretty(self.language.phonology.rules.order[0])
+        rule_b = self.language.phonology.rules.get_pretty(self.language.phonology.rules.order[1])
         self.assertEqual(
             "".join(changed_sounds),
             "pafuθaxi",

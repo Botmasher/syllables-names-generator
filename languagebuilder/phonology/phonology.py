@@ -1,12 +1,14 @@
 # collection management
 from .phonemes import Phonemes
-from ..tools.collector import Collector
-# objects collected
 from .syllables import Syllables
-from .environment import Environment
-from .rule import Rule
 from .rules import Rules
 from .ruletracker import RuleTracker
+
+# NOTE: objects previously collected but now handled through Rules
+#from ..tools.collector import Collector
+#from .rule import Rule
+#from .environment import Environment
+
 # for sound, letter and syllable generation
 import random
 
@@ -21,8 +23,12 @@ class Phonology:
         self.phonetics = phonetics
         # collections for this inventory
         self.phonemes = Phonemes()
-        self.environments = Collector(accepted_types=['Environment'])
+
+        # TODO: check Phonetics here and pass crud to Syllables for consistency
+        #   - already done with add_sound (for Phonemes), add_rule (for Rules)
+        #   - the Language checks Phonetics but the injected classes remain decoupled
         self.syllables = Syllables(self)    # reference phonology for feature checking
+
         self.rules = Rules()
 
     # inventory now managed through Phonemes (letters <> ipa) and Features (features <> ipa) instead of previous Inventory class
@@ -33,22 +39,25 @@ class Phonology:
     # Rules
     def add_rule(self, source, target, environment_structure):
         """Add one rule to the phonological rules"""
+        # NOTE: environment now handled from within Rules
         # create the environment
-        environment = Environment(structure=environment_structure)
-        if not environment.get():
-            print("Phonology add_rule failed - invalid or empty environment {0}".format(environment))
-            return
+        # environment = Environment(structure=environment_structure)
+        # if not environment.get():
+        #     print(f"Phonology add_rule failed - invalid environment structure {environment_structure}")
+        #     return
         
         # filter features sequences
         vetted_source = self.phonetics.parse_features(source)
         vetted_target = self.phonetics.parse_features(target)
+        print("Adding Rule - vetted source: ", vetted_source)
+        print("Adding Rule - vetted target: ", vetted_target)
 
-        if not vetted_source or vetted_target:
-            print(f"Phonology add_rule failed - invalid features lists {vetted_source} or {vetted_target}")
+        if not (vetted_source and vetted_target):
+            print(f"Phonology add_rule failed - invalid features lists for source {vetted_source} or target {vetted_target}")
             return
 
         # create and store the rule
-        rule_id = self.rules.add(vetted_source, vetted_target, environment)
+        rule_id = self.rules.add(vetted_source, vetted_target, environment_structure)
         if not rule_id:
             print("Phonology add_rule failed - invalid source, target or environment")
             return
@@ -62,7 +71,7 @@ class Phonology:
             print(f"Phonology get_rule failed - unknown rule {rule_id}")
         # format the rule in human readable text instead
         if pretty_print:
-            return rule.get_pretty()
+            return self.rules.get_pretty(rule_id)
         # send back the rule object
         return rule
 
@@ -293,10 +302,10 @@ class Phonology:
                     continue
 
                 # current location in environment symbol is tested against
-                environment_slot_features = rule['environment'].get_structure()[track['count']]
+                environment_slot_features = rule['environment'][track['count']]
 
                 # log this attempt to fit symbol into rule environment
-                print(f"Applying rule: {rule.get_pretty()}")
+                print(f"Applying rule: {self.rules.get_pretty(rule_id)}")
                 print(f"Looking for environment matching {environment_slot_features}")
 
                 # flag to check if rule track fails to match sound to slot

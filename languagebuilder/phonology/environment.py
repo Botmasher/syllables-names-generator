@@ -14,11 +14,6 @@ class Environment:
     def get_structure(self):
         return self.structure
 
-    def _clip_comma(self, text):
-        if len(text) > 2 and text[-2:] == ", ":
-            text = text[:-2]
-        return text
-
     def get_pretty(self, use_notation=False):
         """Format environment structure as human readable text"""
         body_text = ""
@@ -57,7 +52,7 @@ class Environment:
                         intro_text += "after "
                     else:
                         intro_text += "between "
-                        body_text = self._clip_comma(body_text)
+                        body_text = body_text[:-2] if body_text.endswith(", ") else body_text
                         line += " and "
                 elif slot == "#":
                     line += "a word break "

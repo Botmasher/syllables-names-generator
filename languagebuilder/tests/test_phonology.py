@@ -135,14 +135,14 @@ class PhonologyWords(PhonologyFixture):
         )
 
     def test_add_rule(self):
-        rule_id = self.phonology.add_rule(['vowel'], ['vowel'], "V")
+        rule_id = self.phonology.add_rule(['vowel'], ['vowel'], "_")
         self.assertTrue(
             self.phonology.has_rule(rule_id),
             "could not add one sound change rule to the rules"
         )
     
     def test_remove_rule(self):
-        rule_id = self.phonology.add_rule(['vowel'], ['vowel'], "V")
+        rule_id = self.phonology.add_rule(['vowel'], ['vowel'], "_")
         self.phonology.remove_rule(rule_id)
         self.assertFalse(
             self.phonology.has_rule(rule_id),
