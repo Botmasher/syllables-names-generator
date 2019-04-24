@@ -165,8 +165,8 @@ class LanguageWords(LanguageFixture):
         this_class.language.phonology.syllables.add("CV")
         this_class.language.phonology.add_rule("stop", "fricative", "V_V")
         
-        # TODO: troubleshoot first of these rule formations applies, second does not
-        this_class.language.phonology.add_rule("bilabial", "labiodental", "_")
+        # TODO: troubleshoot this rule formation not applying
+        this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
         #this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
         
         # set up grammar
@@ -265,8 +265,9 @@ class LanguageWords(LanguageFixture):
     def test_spell_word(self):
         word = self.language.generate(2)
         matches = self.language.dictionary.search(spelling=word[0])
-        self.assertTrue(
-            matches and word == matches[0],
+        self.assertIn(
+            word,
+            matches,
             "failed to spell a newly generated word"
         )
     

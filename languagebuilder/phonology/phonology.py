@@ -222,14 +222,21 @@ class Phonology:
     # TODO: interact with lexicon storage, adding phonetic word and sound change alongside spelling and definition
     #   - store tracks or store the changed symbols list alongside word in lexicon
 
-    def apply_rules(self, ipa_string):
-        """Change a phonetic word's sounds applying every sound change rule"""
+    def apply_rule(self, ipa_sequence, rule_id):
+        """Change a word's sounds applying one sound change rule"""
+        if not isinstance(ipa_sequence, (str, list, tuple)):
+            print(f"Phonology apply_rule failed - expected ipa string or list not {ipa_sequence}")
+            return
+
         # store tracks for each possible rule application
+        # TODO: consider if this is one instance per rule only
+        #   - originally instantiated in apply_rules
+        #   - how to track individual tracks across all rules given feeding?
         rule_tracker = RuleTracker()
 
-        print(f"\nApplying rules to {ipa_string}")
         # set of word sounds
-        word_sounds = set([c for c in ipa_string])
+        word_sounds = set([c for c in ipa_sequence])
+        
         # features for all sounds in the word
         word_features = {
             ipa: self.phonetics.get_features(ipa)
@@ -239,34 +246,36 @@ class Phonology:
         # collect each track of rules that applies within the word ipa
         successful_tracks = []
 
-        # store local rules map to search for rule matches
-        rules = self.rules.get()
+        # fetch the rule object
+        rule = self.rules.get(rule_id)
+        if not rule:
+            print(f"Phonology apply_rule failed - invalid rule_id {rule_id}")
+            return
 
         # look through features and find environment matches for each step of every rule
         # use with self.rule_tracker and methods, full matches and strategy commented above to handle overlaps
-        for word_index in range(len(ipa_string)):
-            symbol = ipa_string[word_index]
+        for word_index in range(len(ipa_sequence)):
+            symbol = ipa_sequence[word_index]
             try:
                 sound_features = word_features[symbol]
             except:
-                print("Did not find features for symbol {0}".format(symbol))
+                print(f"Did not find features for symbol {symbol}")
                 continue
-            print("Evaluating the current sound: {0}".format(sound_features))
+            print(f"Evaluating the current sound: {sound_features}")
 
             # (1) Rules Loop: do any new rules start to match at this symbol? Track them.
             # check if any new rule applications can be tracked
-            for rule_id in rules:
-                rule = rules[rule_id]
-                print(f"Checking to see if rule {rule_id} starts applying here")
-                # start tracking for full environment match
-                # - track checked while iterating through rest of ipa_string
-                # - tracker only tracks as long as environment matches
-                # - zeroth nonmatches screened
-                rule_tracker.track(rule_id, rule['environment'], sound_features)
-                # NOTE: your count for successful track is 0, compared to len
-                # - below will recheck for 0th match.
-                # - problem: what if the first is a slot match? not storing source and index here
-                # - solution: maybe let it do that extra check here then more detailed there
+
+            print(f"Checking to see if rule {rule_id} starts applying here")
+            # start tracking for full environment match
+            # - track checked while iterating through rest of ipa_string
+            # - tracker only tracks as long as environment matches
+            # - zeroth nonmatches screened
+            rule_tracker.track(rule_id, rule['environment'], sound_features)
+            # NOTE: your count for successful track is 0, compared to len
+            # - below will recheck for 0th match.
+            # - problem: what if the first is a slot match? not storing source and index here
+            # - solution: maybe let it do that extra check here then more detailed there
 
             # (2) Tracks Loop: do any tracked applications ("tracks") continue to match?
             # - Untrack them if they do not
@@ -346,7 +355,7 @@ class Phonology:
             [rule_tracker.untrack(track_id) for track_id in tracks_to_pop]
 
         # prepare an ipa representation of the word to update as rule applied
-        new_ipa_sequence = list(ipa_string)
+        new_ipa_sequence = list(ipa_sequence)
 
         # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
         #
@@ -383,6 +392,21 @@ class Phonology:
         # send back the list of sequences with sounds changed
         print(f"Finished applying rules to create new sequence: {new_ipa_sequence}")
         return new_ipa_sequence
+
+    def apply_rules(self, ipa_sequence):
+        """Change a word's sounds applying every sound change rule. This feeds the
+        result of each rule application to the next rule as sorted in Rules.order"""
+
+        # set up the word
+        print(f"\nApplying rules to {ipa_sequence}")
+        new_ipa_sequence = [character for character in ipa_sequence]
+
+        # traverse local rules map searching for and applying rule matches
+        for rule_id in self.rules.get():
+            new_ipa_sequence = self.apply_rule(new_ipa_sequence, rule_id)
+
+        # return the changed sequence fed through all rules
+        return "".join(new_ipa_sequence)
 
     # TODO add affixes, apply rules and store word letters and symbols
     def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True):
