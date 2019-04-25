@@ -176,6 +176,29 @@ class Language:
             spelling=word['spelling']
         )
 
+    def add_grammar(self, entry_headword, entry_index, pre=False, post=False, bound=False, properties="", word_classes=""):
+        """Add grammatical data to an existing stored entry"""
+        if not self.dictionary.lookup(entry_headword, entry_index):
+            print(f"Language add_grammar could not grammaticalize invalid entry {entry_headword}({entry_index})")
+            return
+        vetted_properties = self.grammar.parse_properties(properties)
+        vetted_word_classes = self.grammar.parse_word_classes(word_classes)
+        
+        exponent_id = self.grammar.exponents.add(
+            pre=pre,
+            post=post,
+            bound=bound,
+            properties=vetted_properties,
+            pos=vetted_word_classes
+        )
+
+        # TODO: abstract grammar definition creation from .generate 
+        self.dictionary.update(
+            #definition=self.dictionary.define(),
+            exponent=exponent_id
+        )
+        return self.dictionary.lookup(entry_headword, entry_index)
+
     def translate(self, definition, properties="", word_class=""):
         """Attempt to render a single base plus grammatical properties
         in the target language"""

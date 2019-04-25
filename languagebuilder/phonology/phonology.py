@@ -3,14 +3,10 @@ from .phonemes import Phonemes
 from .syllables import Syllables
 from .rules import Rules
 from .ruletracker import RuleTracker
-
-# NOTE: objects previously collected but now handled through Rules
-#from ..tools.collector import Collector
-#from .rule import Rule
-#from .environment import Environment
-
 # for sound, letter and syllable generation
 import random
+
+# TODO: accentuation/suprasegmentals here and in Phonetics 
 
 # TODO: handle actions in dedicated collections classes
 #   - create classes for Environments, Syllables

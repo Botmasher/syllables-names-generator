@@ -190,3 +190,28 @@ my_language.grammar.exponents.add(post="(eclipsed both -s & -er)", bound=False, 
 print(my_language.grammar.build_unit("heal", properties="doer plural"))
 
 # TODO: compounding (plus or minus exponents)
+
+# Generate many words - added to original example above
+definitions = [
+    ("camel", 2),
+    ("dog", 2),
+    ("cat", 2),
+    ("house", 2),
+    ("bridge", 1),
+    ("water", 1),
+    ("person", 2),
+    ("star", 3),
+    ("ocean", 2),
+    ("mountain", 2),
+    ("in, on, among", 1),
+    ("with (comitative)", 1),
+    ("with (instrumental)", 1)
+]
+for word_params in definitions:
+    my_language.generate(
+        definition = word_params[0],
+        length = word_params[1]
+    )
+search_results = my_language.dictionary.search(keywords="comitative")
+
+# TODO: add grammar to an existing entry like here "comitative" after the fact

@@ -58,6 +58,14 @@ class PhoneticsAddUpdateDelete(PhoneticsFixture):
             "failed to change a symbol's name"
         )
 
+    def test_parse_features(self):
+        features = self.phonetics.parse_features("updatable keepable feature")
+        self.assertEqual(
+            set(features),
+            {'updatable', 'keepable', 'feature'},
+            "failed to parse a string into a list of valid features"
+        )
+
     def test_update_features(self):
         self.phonetics.update_feature("updatable", "updated")
         self.assertTrue(

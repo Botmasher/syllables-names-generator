@@ -164,10 +164,7 @@ class LanguageWords(LanguageFixture):
         })
         this_class.language.phonology.syllables.add("CV")
         this_class.language.phonology.add_rule("stop", "fricative", "V_V")
-        
-        # TODO: troubleshoot this rule formation not applying
         this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
-        #this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
         
         # set up grammar
         this_class.language.grammar.properties.add("tense", "future")
@@ -237,16 +234,12 @@ class LanguageWords(LanguageFixture):
             "failed to generate a new root + grammatical unit in the language"
         )
 
-    # TODO: fix both rules not applying to feed p > ph > f
-    # TODO: test_spell_word also failing 1/15 times
     def test_apply_sound_changes(self):
         changed_sounds = self.language.phonology.apply_rules("paputaki")
-        rule_a = self.language.phonology.rules.get_pretty(self.language.phonology.rules.order[0])
-        rule_b = self.language.phonology.rules.get_pretty(self.language.phonology.rules.order[1])
         self.assertEqual(
             "".join(changed_sounds),
             "pafuθaxi",
-            f"failed to change sounds following sound rules in the language, rules are: {rule_a}, {rule_b}"
+            f"failed to change sounds following ordered sound rules in the language"
         )
     
     def test_attach_and_sound_change(self):
@@ -315,6 +308,4 @@ class LanguageWords(LanguageFixture):
             "suffix for imperfective aspect, future tense verbs",
             "failed to create a definition for a grammatical piece"
         )
-    
-
     
