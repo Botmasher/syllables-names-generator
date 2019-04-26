@@ -212,6 +212,30 @@ for word_params in definitions:
         definition = word_params[0],
         length = word_params[1]
     )
-search_results = my_language.dictionary.search(keywords="comitative")
+my_language.grammar.properties.add("case", "instrumental")
+my_language.grammar.properties.add("case", "comitative")
+search_results = my_language.dictionary.search(keywords="instrumental")
+entry = my_language.dictionary.lookup(*search_results[0])
+print(entry)
 
-# TODO: add grammar to an existing entry like here "comitative" after the fact
+my_language.add_grammar(
+    *search_results[0],
+    post=entry['sound'],
+    properties="instrumental comitative",
+    bound=False
+)
+
+search_results = my_language.dictionary.search(keywords="instrumental")
+entry = my_language.dictionary.lookup(*search_results[0])
+print(entry)
+
+# TODO: troubleshoot odd rare misspelling issue
+#   File "language-builder/languagebuilder/example.py", line 213, in <module>
+#     length = word_params[1]
+#   File "language-builder/languagebuilder/language/language.py", line 113, in generate
+#     word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
+#   File "language-builder/languagebuilder/phonology/phonology.py", line 456, in build_word
+#     word_spelling = self.spell(word_changed, word_ipa) if spell_after_change else self.spell(word_ipa)
+#   File "language-builder/languagebuilder/phonology/phonology.py", line 488, in spell
+#     elif fallback_phonemes and self.phonemes.has(fallback_phonemes[i]):
+# IndexError: list index out of range

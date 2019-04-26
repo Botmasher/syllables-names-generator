@@ -109,15 +109,44 @@ class Grammar:
         # trim the final delimiter and send back pretty string
         return formatted_properties.strip(delimiter)
 
-    def parse_properties(self, properties_text):
-        """Turn a string of grammatical terms into a map of properties"""
+    def autodefine(self, exponent_id):
+        """Create a definition from properties and word classes of an existing exponent"""
+        # read exponent data
+        exponent = self.exponents.get(exponent_id)
+        # decide basic term to define form
+        grammatical_forms = {
+            (True, True, True): "circumfix",
+            (True, False, True): "prefix",
+            (True, False, False): "suffix",
+            (False, True, True): "circumposition",
+            (False, False, True): "preposition",
+            (False, False, False): "postposition"
+        }
+        is_bound = exponent['bound']
+        is_pre = bool(exponent['pre'])
+        is_post = bool(exponent['post'])
+        # structure the definition
+        grammatical_form = grammatical_forms[(is_bound, is_pre and is_post, is_pre)]
+        grammatical_definition = f"{grammatical_form} for {self.pretty_properties(exponent['properties'])}"
+        grammatical_definition += (", ".join(exponent['pos']), "")[not exponent['pos']]
+        return grammatical_definition
+
+    def parse_properties(self, properties):
+        """Turn a string or map of grammatical terms into a valid properties map"""
+        # TODO: more nuanced reading of dict objects
+        if isinstance(properties, dict):
+            if self.properties.is_properties_map(properties):
+                return properties
+            print(f"Grammar failed to parse properties - invalid or unrecognized properties in dict {properties}")
+            return
+
         # check the properties data structure
-        if not isinstance(properties_text, str):
-            print("Grammar failed to parse properties - expected a string not {0}".format(properties_text))
+        if not isinstance(properties, str):
+            print("Grammar failed to parse properties - expected a string not {0}".format(properties))
             return
 
         # create an ordered collection of grammatical terms
-        unidentified_terms = re.split(r"\W+", properties_text)
+        unidentified_terms = re.split(r"\W+", properties)
         
         # map of matching properties to fill out and return
         parsed_properties = {}

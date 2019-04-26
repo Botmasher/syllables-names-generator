@@ -144,9 +144,9 @@ class Language:
                 (False, False, False): ("postposition", "")
             }
             # basic term to define forms
-            grammatical_form = grammatical_forms[(bound, pre and post, pre)][0]
+            grammatical_form = grammatical_forms[(bound, pre and post, pre)]
             # concatenator to place before, between or after forms
-            spacing = grammatical_forms[(bound, pre and post, pre)][1]
+            spacing = grammatical_forms[(bound, pre and post, pre)]
             
             # TODO: use exponents to create a formatted properties and word class string
 
@@ -154,7 +154,7 @@ class Language:
             formatted_word = f"{pre_word}{spacing}{post_word}"
             formatted_change = f"{pre_change}{spacing}{post_change}"
             # format definition
-            formatted_definition = f"{grammatical_form} for {self.grammar.pretty_properties(properties)}{(f' {word_class}s', f'')[not word_class]}"
+            formatted_definition = self.grammar.autodefine(exponent_id)
             # format the word spelling (before/after sound changes)
             formatted_spelling = f"{pre_spelling}{spacing}{post_spelling}"
             
@@ -194,6 +194,8 @@ class Language:
 
         # TODO: abstract grammar definition creation from .generate 
         self.dictionary.update(
+            entry_headword,
+            entry_index,
             #definition=self.dictionary.define(),
             exponent=exponent_id
         )
