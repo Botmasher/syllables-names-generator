@@ -135,18 +135,18 @@ class Language:
             pre_spelling = pre_word['spelling']
             post_spelling = post_word['spelling']
             # determine text linkers for formatted dictionary storage
-            grammatical_forms = {
-                (True, True, True): ("circumfix", "- -"),
-                (True, False, True): ("prefix", "-"),
-                (True, False, False): ("suffix", "-"),
-                (False, True, True): ("circumposition", " ... "),
-                (False, False, True): ("preposition", ""),
-                (False, False, False): ("postposition", "")
+            grammatical_spacing = {
+                'circumfix': "- -",
+                'prefix': "-",
+                'suffix': "-",
+                'circumposition': " ... ",
+                'preposition': "",
+                'postposition': ""
             }
             # basic term to define forms
-            grammatical_form = grammatical_forms[(bound, pre and post, pre)]
+            grammatical_form = self.grammar.grammatical_form(pre, post, bound)
             # concatenator to place before, between or after forms
-            spacing = grammatical_forms[(bound, pre and post, pre)]
+            spacing = grammatical_spacing.get(grammatical_form, "")
             
             # TODO: use exponents to create a formatted properties and word class string
 
@@ -196,7 +196,7 @@ class Language:
         self.dictionary.update(
             entry_headword,
             entry_index,
-            #definition=self.dictionary.define(),
+            definition=self.grammar.autodefine(exponent_id),
             exponent=exponent_id
         )
         return self.dictionary.lookup(entry_headword, entry_index)

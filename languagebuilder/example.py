@@ -229,6 +229,13 @@ search_results = my_language.dictionary.search(keywords="instrumental")
 entry = my_language.dictionary.lookup(*search_results[0])
 print(entry)
 
+# TODO: check and refine exponent storage
+#   - examples (from corpus?) for entries in the dictionary
+#       - at least examples for the exponents since they're so out of context otherwise
+#   - definitions, are they really shaping up well? what about support for other langs?
+#       - already hardcoding terms like "preposition" in Grammar.autodefine despite abstracting "exponent" mechanics
+#   - searchability of terms with - or ... in the spelling (see Language.generate when pre/post material exists)
+
 # TODO: troubleshoot odd rare misspelling issue
 #   File "language-builder/languagebuilder/example.py", line 213, in <module>
 #     length = word_params[1]

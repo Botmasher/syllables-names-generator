@@ -109,24 +109,32 @@ class Grammar:
         # trim the final delimiter and send back pretty string
         return formatted_properties.strip(delimiter)
 
-    def autodefine(self, exponent_id):
-        """Create a definition from properties and word classes of an existing exponent"""
-        # read exponent data
-        exponent = self.exponents.get(exponent_id)
-        # decide basic term to define form
+    def grammatical_form(self, pre=False, post=False, bound=False):
+        """Map exponent characteristics to a string representing its general
+        grammatical form, such as preposition or prefix"""
+        # dict mapping bool args to terms
         grammatical_forms = {
             (True, True, True): "circumfix",
             (True, False, True): "prefix",
             (True, False, False): "suffix",
             (False, True, True): "circumposition",
             (False, False, True): "preposition",
-            (False, False, False): "postposition"
+            (False, True, False): "postposition",
+            (False, False, False): "unpositioned exponent"
         }
+        # look up the term
+        return grammatical_forms[pre, post, bound]
+
+    def autodefine(self, exponent_id):
+        """Create a definition from properties and word classes of an existing exponent"""
+        # read exponent data
+        exponent = self.exponents.get(exponent_id)
+        # decide basic term to define form
         is_bound = exponent['bound']
         is_pre = bool(exponent['pre'])
         is_post = bool(exponent['post'])
+        grammatical_form = self.grammatical_form(pre=is_pre, post=is_post, bound=is_bound)
         # structure the definition
-        grammatical_form = grammatical_forms[(is_bound, is_pre and is_post, is_pre)]
         grammatical_definition = f"{grammatical_form} for {self.pretty_properties(exponent['properties'])}"
         grammatical_definition += (", ".join(exponent['pos']), "")[not exponent['pos']]
         return grammatical_definition
