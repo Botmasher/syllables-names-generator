@@ -271,6 +271,24 @@ class Language:
             exponents=exponents
         )
 
+    def craft_examples(self, word_class):
+        """Build out exponent paradigm to store or showcase examples"""
+        if not word_class:
+            return
+        relevant_exponents = self.grammar.exponents.find(pos=word_class)
+        base = "asadafa"                # TODO: generate example root
+        base_definition = "rootword"    # TODO: generate example definition
+        paradigm = []
+        for exponent_id in relevant_exponents:
+            exponent = self.grammar.exponents.get(exponent_id)
+            pre = exponent['pre']
+            post = exponent['post']
+            space = "" if exponent['bound'] else " "        
+            example = f"{pre}{space}{base}{space}{post}"
+            example_definition = f"{base_definition} - {exponent['definition']}"
+            paradigm.append((example, example_definition))
+        return paradigm
+
     # TODO: generate and store examples in either dictionary or corpus
     #   - take in a definition
     #   - take in a word class
@@ -281,11 +299,14 @@ class Language:
     #   - core idea is to store important data for display but only 
     def store(self, word="", definition="", spelling="", change="", exponent_id=None):
         """Pass word entry components through to the dictionary for storage"""
+        word_class = self.grammar.exponents.get(exponent_id, {}).get('pos')
+        examples = self.craft_examples(word_class)
         return self.dictionary.add(
             sound=word,
             spelling=spelling,
             change=change,
             definition=definition,
-            exponent=exponent_id
+            exponent=exponent_id,
+            examples=examples
         )
     

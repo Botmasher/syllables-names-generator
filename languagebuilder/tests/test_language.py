@@ -301,11 +301,14 @@ class LanguageWords(LanguageFixture):
         )   
     
     def test_read_grammatical_definition(self):
-        headword = self.language.generate(post=True, bound=True, properties="imperfective future", word_class="verb")
+        headword = self.language.generate(pre=False, post=True, bound=True, properties="imperfective future", word_class="verb")
         definition = self.language.dictionary.lookup(*headword)['definition']
+        exponent_id = self.language.dictionary.lookup(*headword)['exponent']
+        exponent_pos = self.language.grammar.exponents.get(exponent_id)['pos']
+        exponent_properties = self.language.grammar.exponents.get(exponent_id)['properties']
         self.assertEqual(
             definition,
             "suffix for imperfective aspect, future tense verbs",
-            "failed to create a definition for a grammatical piece"
+            f"failed to create a definition for a grammatical piece with properties {exponent_properties} and word class {exponent_pos}"
         )
     

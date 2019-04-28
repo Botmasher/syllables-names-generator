@@ -96,7 +96,7 @@ class WordClasses:
         
         # wrap a single string in a set for filtering
         if isinstance(word_classes, str):
-            word_classes = set(word_classes)
+            word_classes = set([word_classes])
         
         # create set of recognized parts of speech
-        return set(word_classes) & self.word_classes
+        return (set(word_classes) & self.word_classes)

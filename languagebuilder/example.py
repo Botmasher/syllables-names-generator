@@ -222,7 +222,7 @@ my_language.add_grammar(
     *search_results[0],
     post=entry['sound'],
     properties="instrumental comitative",
-    bound=False
+    bound=True
 )
 
 search_results = my_language.dictionary.search(keywords="instrumental")

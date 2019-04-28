@@ -116,9 +116,9 @@ class Grammar:
         grammatical_forms = {
             (True, True, True): "circumfix",
             (True, False, True): "prefix",
-            (True, False, False): "suffix",
-            (False, True, True): "circumposition",
-            (False, False, True): "preposition",
+            (False, True, True): "suffix",
+            (True, True, False): "circumposition",
+            (True, False, False): "preposition",
             (False, True, False): "postposition",
             (False, False, False): "unpositioned exponent"
         }
@@ -136,7 +136,7 @@ class Grammar:
         grammatical_form = self.grammatical_form(pre=is_pre, post=is_post, bound=is_bound)
         # structure the definition
         grammatical_definition = f"{grammatical_form} for {self.pretty_properties(exponent['properties'])}"
-        grammatical_definition += (", ".join(exponent['pos']), "")[not exponent['pos']]
+        grammatical_definition += (" " + "s, ".join(exponent['pos']) + "s")
         return grammatical_definition
 
     def parse_properties(self, properties):
