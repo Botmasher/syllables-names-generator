@@ -283,13 +283,22 @@ class Language:
             exponents=exponents
         )
 
-    def craft_examples(self, word_class, base_headword="", base_index=0):
+    # TODO: structure syntax and morphology through grammar
+    #   - otherwise here you merely attach every exponent individually to a base
+    def print_paradigm(self, paradigm):
+        """created by craft_paradigm"""
+        print(f"{paradigm[0][0]} - \"{paradigm[0][1]}\"")
+        for form in paradigm[1:]:
+            print(f"{form[0]}    {form[1]}")
+        return
+
+    def craft_paradigm(self, word_class, base_headword="", base_index=0):
         """Build out exponent paradigm to store or showcase examples"""
         if not word_class:
             return
         # gather all relevant grammatical pieces
         relevant_exponents = self.grammar.exponents.find(pos=word_class)
-        # look up a base
+        # look up the given base word
         try:
             entry = self.dictionary.lookup(base_headword, base_index)
             base = entry['sound']
@@ -308,6 +317,9 @@ class Language:
             example = f"{pre}{space}{base}{space}{post}"
             example_definition = f"{exponent['definition']}"
             paradigm.append((example, example_definition))
+
+        self.print_paradigm(paradigm)
+        
         return paradigm
 
     # TODO: generate and store examples in either dictionary or corpus
@@ -321,13 +333,13 @@ class Language:
     def store(self, word="", definition="", spelling="", change="", exponent_id=None):
         """Pass word entry components through to the dictionary for storage"""
         word_class = self.grammar.exponents.get(exponent_id).get('pos')
-        examples = self.craft_examples(word_class)
+        examples = self.craft_paradigm(word_class)
         return self.dictionary.add(
             sound=word,
             spelling=spelling,
             change=change,
             definition=definition,
             exponent=exponent_id,
-            examples=examples
+            # examples=examples
         )
     

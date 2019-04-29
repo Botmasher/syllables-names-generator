@@ -222,10 +222,12 @@ my_language.add_grammar(
     *search_results[0],
     post=entry['sound'],
     properties="instrumental comitative",
+    word_classes="noun",
     bound=True
 )
 
 my_language.syllables_min_max(1, 3)
+
 search_results = my_language.dictionary.search(keywords="instrumental")
 entry = my_language.dictionary.lookup(*search_results[0])
 print(entry)
