@@ -81,6 +81,9 @@ class Language:
         self.dictionary = Dictionary()
         # built units with grammar attached
         self.corpus = Corpus()
+        # min and max length of a randomly generated baseword
+        self.syllables_min = 1
+        self.syllables_max = 1
 
     def rename(self, name="", display_name=""):
         """Set the id name or display name for the language"""
@@ -94,11 +97,20 @@ class Language:
     # TODO: send built sounds back up here to store them in dictionary
     #   - otherwise must pass language/dictionary down to phonology to store
 
+    def syllables_min_max(self, min_count=None, max_count=None):
+        """Set the min or max number of syllables for generated words"""
+        if min_count and isinstance(min_count, int):
+            self.syllables_min = min_count
+        if max_count and isinstance(max_count, int):
+            self.syllables_max = max_count
+        return (self.syllables_min, self.syllables_max)
+
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, length=1, definition="", spell_after_change=True, pre=False, post=False, bound=False, properties=None, word_class=None):
+    def generate(self, length=None, definition="", spell_after_change=True, pre=False, post=False, bound=False, properties=None, word_class=None):
+        """Create a word or grammatical piece that follows language's phonology and grammar"""
         # choose a random number of syllables if no syllable count supplied
         if not length:
-            length = random.randrange(1, 5)
+            length = random.randint(self.syllables_min, self.syllables_max)
         # verify that syllable count is a whole number
         if not isinstance(length, int):
             print(f"Language failed to generate word - invalid number of syllables {length}")
@@ -271,21 +283,30 @@ class Language:
             exponents=exponents
         )
 
-    def craft_examples(self, word_class):
+    def craft_examples(self, word_class, base_headword="", base_index=0):
         """Build out exponent paradigm to store or showcase examples"""
         if not word_class:
             return
+        # gather all relevant grammatical pieces
         relevant_exponents = self.grammar.exponents.find(pos=word_class)
-        base = "asadafa"                # TODO: generate example root
-        base_definition = "rootword"    # TODO: generate example definition
-        paradigm = []
+        # look up a base
+        try:
+            entry = self.dictionary.lookup(base_headword, base_index)
+            base = entry['sound']
+            definition = entry['definition']
+        # create a sample base
+        except:
+            base = self.phonology.build_word(length=random.randint(*self.syllables_min_max()))
+            definition = "(example baseword)"
+        # formulate the paradigm with base plus exponents
+        paradigm = [(base, definition)]
         for exponent_id in relevant_exponents:
             exponent = self.grammar.exponents.get(exponent_id)
             pre = exponent['pre']
             post = exponent['post']
             space = "" if exponent['bound'] else " "        
             example = f"{pre}{space}{base}{space}{post}"
-            example_definition = f"{base_definition} - {exponent['definition']}"
+            example_definition = f"{exponent['definition']}"
             paradigm.append((example, example_definition))
         return paradigm
 
@@ -299,7 +320,7 @@ class Language:
     #   - core idea is to store important data for display but only 
     def store(self, word="", definition="", spelling="", change="", exponent_id=None):
         """Pass word entry components through to the dictionary for storage"""
-        word_class = self.grammar.exponents.get(exponent_id, {}).get('pos')
+        word_class = self.grammar.exponents.get(exponent_id).get('pos')
         examples = self.craft_examples(word_class)
         return self.dictionary.add(
             sound=word,
