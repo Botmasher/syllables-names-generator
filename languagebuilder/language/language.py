@@ -283,45 +283,6 @@ class Language:
             exponents=exponents
         )
 
-    # TODO: structure syntax and morphology through grammar
-    #   - otherwise here you merely attach every exponent individually to a base
-    def print_paradigm(self, paradigm):
-        """created by craft_paradigm"""
-        print(f"{paradigm[0][0]} - \"{paradigm[0][1]}\"")
-        for form in paradigm[1:]:
-            print(f"{form[0]}    {form[1]}")
-        return
-
-    def craft_paradigm(self, word_class, base_headword="", base_index=0):
-        """Build out exponent paradigm to store or showcase examples"""
-        if not word_class:
-            return
-        # gather all relevant grammatical pieces
-        relevant_exponents = self.grammar.exponents.find(pos=word_class)
-        # look up the given base word
-        try:
-            entry = self.dictionary.lookup(base_headword, base_index)
-            base = entry['sound']
-            definition = entry['definition']
-        # create a sample base
-        except:
-            base = self.phonology.build_word(length=random.randint(*self.syllables_min_max()))
-            definition = "(example baseword)"
-        # formulate the paradigm with base plus exponents
-        paradigm = [(base, definition)]
-        for exponent_id in relevant_exponents:
-            exponent = self.grammar.exponents.get(exponent_id)
-            pre = exponent['pre']
-            post = exponent['post']
-            space = "" if exponent['bound'] else " "        
-            example = f"{pre}{space}{base}{space}{post}"
-            example_definition = f"{exponent['definition']}"
-            paradigm.append((example, example_definition))
-
-        self.print_paradigm(paradigm)
-        
-        return paradigm
-
     # TODO: generate and store examples in either dictionary or corpus
     #   - take in a definition
     #   - take in a word class
@@ -332,8 +293,8 @@ class Language:
     #   - core idea is to store important data for display but only 
     def store(self, word="", definition="", spelling="", change="", exponent_id=None):
         """Pass word entry components through to the dictionary for storage"""
-        word_class = self.grammar.exponents.get(exponent_id).get('pos')
-        examples = self.craft_paradigm(word_class)
+        #word_class = self.grammar.exponents.get(exponent_id).get('pos')
+        #examples = self.craft_paradigm(word_class)
         return self.dictionary.add(
             sound=word,
             spelling=spelling,
@@ -343,3 +304,55 @@ class Language:
             # examples=examples
         )
     
+
+    # Paradigm creation - defining basic syntax
+    #
+    # TODO: structure syntax and morphology through grammar
+    #
+    # NOTE: first attempt merely took a word class and
+    #       attached every exponent individually to a base
+    
+    def print_paradigm(self, name):
+        """created by craft_paradigm"""
+        paradigm = self.paradigms.get(name)
+        if not paradigm:
+            print(f"Failed to print paradigm with invalid name {name}")
+            return
+        hyphenated_slots = " - ".join(paradigm['slots'])
+        word_classes = ", ".join(paradigm['word_classes'])
+        print(f"Paradigm:      {paradigm['name']}")
+        print(f"Word classes:  {word_classes}")
+        print("Slots:\n", hyphenated_slots)
+        return
+
+    def create_paradigm(self, name, slots=None, word_classes=None):
+        """Create a paradigm with exponent or word class slots
+        and optionally restricted to specific word classes"""
+        if not hasattr(self, "paradigms"):
+            self.paradigms = {}
+        if not isinstance(slots, (list, tuple)):
+            print(f"Failed to create paradigm - expected sequence of grammatical slots not {slots}")
+            return
+        # filter slots for valid categories or word classes
+        # where categories are grammatical pieces and
+        # word classes are contentful headwords
+        paradigm = []
+        vetted_word_classes = self.grammar.word_classes.filter(word_classes)
+        for slot in slots:
+            if self.grammar.properties.is_category(slot):
+                paradigm.append(slot)
+            elif isinstance(slot, str) and self.grammar.word_classes.get(slot):
+                paradigm.append(slot)
+            elif isinstance(slot, (list, tuple)):
+                continue
+        paradigm_id = 'a1'
+        self.paradigms[name] = {
+            'name': name,
+            'slots': paradigm,
+            'word_classes': vetted_word_classes
+        }
+        return paradigm_id
+
+    def apply_paradigm(self, word_class, base_headword="", base_index=0):
+        """Apply exponent paradigm to store or showcase examples"""
+        return
