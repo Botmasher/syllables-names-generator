@@ -29,9 +29,10 @@ class Exponents:
         """Fetch all exponent details from the grammatical exponents map"""
         return self.exponents.values()
 
-    def get_items(self):
-        """"Fetch all exponent ids and details from the grammatical exponents map"""
-        return self.exponents.items()
+#   NOTE: use zero-arg call to .get() instead
+#    def get_items(self):
+#        """Fetch all exponent ids and details from the grammatical exponents map"""
+#        return self.exponents.items()
 
     def exists(self, pre="", post=""):
         """Check if the given sounds are an exponent in this grammar"""
