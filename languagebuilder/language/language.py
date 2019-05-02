@@ -3,6 +3,7 @@ from ..phonetics.phonetics import Phonetics
 from ..phonology.phonology import Phonology
 from ..lexicon.dictionary import Dictionary
 from ..lexicon.corpus import Corpus
+from .paradigms import Paradigms
 import random
 
 # TODO: Accentuation, suprasegmentals
@@ -84,6 +85,8 @@ class Language:
         # min and max length of a randomly generated baseword
         self.syllables_min = 1
         self.syllables_max = 1
+        # grammatical paradigms based on dictionary entries
+        self.paradigms = Paradigms(self)
 
     def rename(self, name="", display_name=""):
         """Set the id name or display name for the language"""
@@ -282,8 +285,9 @@ class Language:
             definition=base_definition,
             exponents=exponents
         )
-
+    
     # TODO: generate and store examples in either dictionary or corpus
+    # NOTE: use Paradigms
     #   - take in a definition
     #   - take in a word class
     #   - for grammar, send to corpus 
@@ -303,71 +307,3 @@ class Language:
             exponent=exponent_id,
             # examples=examples
         )
-    
-
-    # Paradigm creation - defining basic syntax
-    #
-    # TODO: structure syntax and morphology through grammar
-    #
-    # NOTE: first attempt merely took a word class and
-    #       attached every exponent individually to a base
-    
-    def print_paradigm(self, name):
-        """Format and print a string displaying a paradigm's name and slots"""
-        paradigm = self.paradigms.get(name)
-        if not paradigm:
-            print(f"Failed to print paradigm with invalid name {name}")
-            return
-        hyphenated_slots = " - ".join(paradigm)
-        formatted_paradigm = f"Paradigm: {paradigm['name']}\nSlots: {hyphenated_slots}"
-        print(formatted_paradigm)
-        return formatted_paradigm
-
-    # NOTE: define grammatical and content word slots to be filled on apply
-    #   - each slot should have either exponents or word classes
-    #   - word classes are for "bases" and properties for "exponents"
-    #   - exponents list can hold one specific grammeme or many for e.g. "declension"
-    #       - like: GEN-dog (case)-fur "dog's fur"
-    def create_paradigm(self, name, slots=None, word_classes=None):
-        """Create a paradigm with exponent or word class slots and optionally
-        restricted to specific word classes"""
-        if not hasattr(self, "paradigms"):
-            self.paradigms = {}
-        if not isinstance(slots, (list, tuple)):
-            print(f"Failed to create paradigm - expected sequence of grammatical slots not {slots}")
-            return
-        # filter slots for exponents or word classes to be filled with headwords
-        paradigm = []
-        for slot in slots:          
-            # ensure slot is a valid list - placing lone string into list
-            slot_list = {str: [slot], list: slot, tuple: slot}.get(type(slot))
-            if not slot_list:
-                print(f"Failed to create paradigm - invalid slot {slot}")
-                return
-            # list contains base word class options for this slot
-            if len(self.grammar.word_classes.filter(slot_list)) == len(slot_list):
-                paradigm.append(slot_list)
-            # list contains exponent options for this slot
-            elif len([self.grammar.exponents.get(exponent_id) for exponent_id in slot_list]) == len(slot_list):
-                paradigm.append(slot_list)
-            # list contains unrecognized options for this slot
-            else:
-                print(f"Failed to create paradigm - expected either exponent ids or word classes in slot list {slot_list}")
-                return
-        self.paradigms[name] = paradigm
-        return name
-
-    def apply_paradigm(self, name, headwords=None):
-        """Apply exponent paradigm, filling base word class slots with headwords,
-        to store or showcase examples"""
-        paradigm = self.paradigms.get(name)
-        if not paradigm:
-            print(f"Failed to apply paradigm - unrecognized paradigm name {name}")
-            return
-        filled_paradigm = []
-        # TODO: merge this with sentences idea from Grammar morphosyntax
-        #   - need to know which exponents go with which bases
-        #   - then apply bases to build units
-        #   - built units can be stored in relation to each other
-        #   - really then this becomes like unit coordination vs each other
-        return filled_paradigm
