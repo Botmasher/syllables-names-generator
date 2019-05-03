@@ -1,3 +1,5 @@
+import re
+
 # morphological paradigms built using language's dictionary and grammar
 #   - for syntactic patterns use language's grammar.morphosyntax
 #   - or put paradigms together (like multiple noun construct states)
@@ -30,8 +32,10 @@ class Paradigms:
         if not paradigm:
             print(f"Failed to print paradigm with invalid name {name}")
             return
-        hyphenated_slots = " - ".join(paradigm)
-        formatted_paradigm = f"Paradigm: {paradigm['name']}\nSlots: {hyphenated_slots}"
+        formatted_paradigm = f"Paradigm name:    {paradigm['name']}\n"
+        formatted_paradigm += f"Fixed categories: {', '.join(paradigm['fixed_categories'])}\n"
+        formatted_paradigm += f"Fixed categories: {', '.join(paradigm['filled_categories'])}\n"
+        formatted_paradigm += f"Word classes:     {', '.join(paradigm['word_classes'])}"
         print(formatted_paradigm)
         return formatted_paradigm
 
@@ -69,6 +73,16 @@ class Paradigms:
         }
         return name
 
+    # TODO: sentence and phrase (morphosyntax)
+    #   - like article, adjective, noun
+    #   - then within those can build out units
+
+    # NOTE: think of this as defining/applying a word/phrase
+    # with certain grammatical properties, then on apply
+    # those properties are provided by exponents. You are not
+    # selecting exponents via create, and not explicitly
+    # attaching them on apply (the grammar handles that).
+
     # TODO: search by properties in grammar.exponents.find
     #   - is this even necessary here though?
     #   - originally this was to 
@@ -77,17 +91,78 @@ class Paradigms:
     #   - set fixed grammemes (applied every iteration)
     #   - traverse filled grammemes for exponents
     #   - pass every grammemes set to grammar for build unit 
-    def apply(self, name, headword=None):
+    def apply(self, name, headword=None, filled_grammemes=None):
         """Apply exponent paradigm, filling base word class slots with headwords,
         to store or showcase examples"""
         paradigm = self.paradigms.get(name)
         if not paradigm:
             print(f"Failed to apply paradigm - unrecognized paradigm name {name}")
             return
-        filled_paradigm = []
+        
+        base_entry = self.language.dictionary.lookup(*headword)
+        base_word = base_entry['sound']
+        base_word_classes = base_entry['pos']
+
+        # check and format grammemes list
+        grammemes = set([]) if not filled_grammemes else set(filled_grammemes)
+        # split grammemes terms string 
+        if isinstance(filled_grammemes, str):
+            grammemes = set(re.split(r"[, .]", filled_grammemes))
+        # back out if no list
+        if not isinstance(grammemes, set):
+            print(f"Paradigms apply failed - expected filled grammemes list not {filled_grammemes}")
+            return
+
+        # compile a properties map to send to build word
+        paradigm_properties = {}
+        # fit passed-in grammemes to every fixed category
+        for category in paradigm['fixed_categories']:
+            # fetch the property's grammemes
+            category_grammemes = set(
+                self.language.properties
+                .get(category=category).values()
+            )
+            # expect a matching grammeme for each fixed category
+            shared_grammemes = list(category_grammemes & grammemes)
+            if not shared_grammemes:
+                print(f"Failed to apply paradigm - missing grammeme for filled category {category}")
+                return
+            # fill the fixed category with passed-in grammeme
+            fixed_grammeme = shared_grammemes[0]
+            grammemes.remove(fixed_grammeme)
+            paradigm_properties[category] = fixed_grammeme
+
+        # fill filled categories with all property grammemes
+        for category in paradigm['filled_categories']:
+            category_grammemes = self.language.properties.get(category=category).values()
+            paradigm_properties[category] = category_grammemes
+
+        # Traverse categories building requested properties
+        # - go through every combination listed category grammemes
+        # - hold fixed category grammemes (strings) steady
+        built_units = []
+        fixed_grammemes = list(filter(
+            lambda x: isinstance(x, str),
+            paradigm_properties.values()
+        ))
+        filled_grammemes = list(filter(
+            lambda x: isinstance(x, list),
+            paradigm_properties.values()
+        ))
+        # TODO: combinations for provided properties, with
+        # fixed grammemes held constant every time but
+        # filled grammemes combined
+        for grammeme_list in filled_grammemes:
+            built_unit = self.language.grammar.build_unit(
+                base_word,
+                properties=paradigm_properties,
+                word_classes=base_word_classes
+            )
+            built_units.append(built_unit)
+
         # TODO: merge this with sentences idea from Grammar morphosyntax
         #   - need to know which exponents go with which bases
         #   - then apply bases to build units
         #   - built units can be stored in relation to each other
         #   - really then this becomes like unit coordination vs each other
-        return filled_paradigm
+        return built_units

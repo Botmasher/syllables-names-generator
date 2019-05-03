@@ -137,7 +137,7 @@ class Dictionary():
             return
         return self.dictionary[headword][entry_index]['definition']
 
-    def add(self, sound="", spelling="", change=None, definition=None, exponent=None):
+    def add(self, sound="", spelling="", change=None, definition=None, exponent=None, pos=None):
         """Create a dictionary entry and list it under the spelled headword"""
         # expect both valid spelling and phones
         if not (sound and spelling and isinstance(sound, str) and isinstance(spelling, str)):
@@ -157,7 +157,9 @@ class Dictionary():
             # passed-in definition
             'definition': definition if isinstance(definition, str) else "",
             # reference to exponent id for grammatical entry
-            'exponent': exponent
+            'exponent': exponent,
+            # TODO: add parts of speech
+            'pos': None
         }
         # structure lists of entries (homographs) per spelling
         self.dictionary.setdefault(headword, []).append(entry)
