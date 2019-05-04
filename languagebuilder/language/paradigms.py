@@ -76,6 +76,11 @@ class Paradigms:
     # TODO: sentence and phrase (morphosyntax)
     #   - like article, adjective, noun
     #   - then within those can build out units
+    # ? Merge this with sentences idea from Grammar morphosyntax
+    #   - need to know which exponents go with which bases
+    #   - then apply bases to build units
+    #   - built units can be stored in relation to each other
+    #   - really becomes coordinating units with each other
 
     # NOTE: think of this as defining/applying a word/phrase
     # with certain grammatical properties, then on apply
@@ -160,9 +165,4 @@ class Paradigms:
             )
             built_units.append(built_unit)
 
-        # TODO: merge this with sentences idea from Grammar morphosyntax
-        #   - need to know which exponents go with which bases
-        #   - then apply bases to build units
-        #   - built units can be stored in relation to each other
-        #   - really then this becomes like unit coordination vs each other
         return built_units

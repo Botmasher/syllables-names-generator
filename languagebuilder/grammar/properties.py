@@ -1,12 +1,12 @@
 from ..tools.functional_maps import merge_maps
-
+from ..tools.flat_list import flatten
 class Properties:
     def __init__(self, grammar):
         # reference to parent grammar where exponents provide these properties
         # used to update exponent details when categories or grammemes change
         self.grammar = grammar
         
-        # store properties map containing {category: {grammemes: details}}
+        # store properties map containing {category: {grammeme, ...}}
         self.properties = {}
 
     # Methods for properties CRUD
@@ -21,128 +21,112 @@ class Properties:
             return self.properties.get(category)
         # fetch a single grammeme
         else:
-            return self.properties.get(category, {}).get(grammeme, None)
+            return (None, grammeme)[grammeme in self.properties.get(category, {})]
     
+    def is_grammeme(self, grammeme):
+        """Check if the grammeme exists in the properties map"""
+        return grammeme in flatten(self.properties.values())
+
     def is_category(self, category):
         """Check if the category exists in the properties map"""
         return category in self.properties
 
-    def add(self, category=None, grammeme=None, description=None):
+    def add(self, category=None, grammeme=None):
         """Add one grammatical value to an existing category in the properties"""
+        # check for valid category and grammeme input
         if not (category and grammeme and isinstance(category, str) and isinstance(grammeme, str)):
             print("Properties.add failed - expected category and grammeme to be non-empty strings")
             return
 
-        # back out if property category:grammeme pair already exists
+        # property category:grammeme pair already exists
         if grammeme in self.properties.get(category, []):
-            print("Properties.add failed - category {0} already contains grammeme {1} - did you mean to run update_property?".format(category, grammeme))
+            print(f"Added property {category}:{grammeme} already exists")
             return
 
-        # create a new entry under the category for the grammeme
-        self.properties.setdefault(category, {})[grammeme] = {
-            'category': category,
-            'grammeme': grammeme,
-            'description': description
-        }
+        # add the grammeme to the category set
+        self.properties.setdefault(category, set()).add(grammeme)
 
-        # read the created entry
-        return self.properties[category][grammeme]
+        # read the created grammeme
+        return grammeme
 
     def add_many(self, properties_details):
         """Add a map of grammatical values within categories to the properties"""
         if not isinstance(properties_details, dict):
-            print("Properties.add_many failed - invalid properties map {0}".format(properties_details))
+            print(f"Properties.add_many failed - invalid properties map {properties_details}")
             return
         # store each new grammatical value added to the grammar
         # verify it has the expected details structure:
         # {
         #   # string representing the lookup category over the grammeme
-        #   category: [
-        #       # pass a map full of the new property's attributes
-        #       {
-        #           # optional repeated category name (unique top-level category name)
-        #           'category': str,
-        #           # required grammeme name (unique name within the category)
-        #           'grammeme': str,
-        #           # optional attributes
-        #           'description': str
-        #       },
-        #       # or pass only a string to turn into the property's grammeme name and id
-        #       str,
+        #   category: {
+        #       # pass a sequence full of the category's grammemes
+        #       grammeme_0,
         #       ...
-        #   ],
-        #   ...
+        #   },
+        # or pass only a string to turn into a properties set
+        #   grammeme_1
         # }
-        added_properties = []
+        added_properties = {}
+        # traverse properties details adding all valid category:grammemes
         for category, grammemes in properties_details.items():
-            # NOTE: do not skip unknown category or grammeme - both can be added
-            # expect each category to contain a collection of entries
-            if not isinstance(grammemes, (str, list, tuple, dict, set)):
-                print("Properties.add_many skipped category {0} - invalid grammemes collection {1}".format(category, grammemes))
-                continue
+            # wrap just a single grammeme string into a set
+            new_grammemes = set([grammemes]) if isinstance(grammemes, str) else grammemes
             
-            # TODO: flexible input including string - outline how to handle this and other types (incl dict)
-            if isinstance(grammemes, str):
-                self.add(category, grammemes)
-                continue
-            
-            # go through category:grammemes and add each valid pair
-            for grammeme in grammemes:
-                # create a new grammeme passing along only its category name and grammeme name
-                # NOTE: this bare-minimum method leaves all other attributes empty
-                if isinstance(grammeme, str):
-                    added_property = self.add(category=category, grammeme=grammeme)
-                # expect any non-strings to be maps of grammeme details
-                elif not isinstance(grammeme, dict) or 'grammeme' not in grammeme:
-                    print("Properties.add_many skipped {0}:{1} - expected a map with a 'grammeme' key".format(category, grammeme))
-                    continue
-                # create a fuller grammeme entry from a map with supplied attributes
-                else:
-                    # create a bare entry with defaults to underlay missing details
-                    default_details = {
-                        'category': category,
-                        'grammeme': grammeme,
-                        'description': None
-                    }
-                    # pass grammeme to create along with optional attributes
-                    # filter grammeme keys to restrict them to known properties attributes
-                    property_details = merge_maps(
-                        default_details,
-                        grammeme,
-                        key_check=lambda x: x in default_details
-                    )
-                    # create property reading merged custom details + defaults for missing details
-                    added_property = self.add(
-                        category=property_details['category'],
-                        grammeme=property_details['grammeme'],
-                        description=property_details['description']
-                    )
-                # collect successfully added properties
-                added_property and added_properties.append(added_property)
+            # check that grammemes to add are a list or set
+            if not isinstance(grammemes, (list, tuple, set)):
+                print(f"Properties.add_many skipped category {category} - invalid grammemes {grammemes}")
+                
+            # add grammemes collection to the property category's set of grammemes
+            # expect category input to contain a set or list of grammemes
+            added_grammemes = set([
+                self.add(category=category, grammeme=grammeme)
+                for grammeme in new_grammemes
+            ])
+
+            # add created category:grammemes to properties map to return
+            if added_grammemes:
+                added_properties[category] = added_grammemes
+ 
+        # output map of added category:grammemes to send back
         return added_properties
 
-    def update(self, category, grammeme, description=None):
-        """Modify text details for one grammatical property"""
+    def update(self, category=None, grammeme=None, new_category=None, new_grammeme=None):
+        """Modify the category or grammeme of one grammatical property"""
+        # check for existing grammatical property
         if not self.get(category, grammeme):
-            print("Properties.update failed - invalid category value {0}:{1}".format(category, grammeme))
+            print(f"Properties update failed - invalid category:grammeme {category}:{grammeme}")
             return
-        # create new property entry with modified details
-        grammeme_details = merge_maps(self.properties[category][grammeme], {
-            'description': description
-        }, value_check=lambda x: type(x) is str)
-        self.properties[category][grammeme] = grammeme_details
-        # access and return the created details
-        return self.get(category, grammeme)
+        
+        # change grammeme name and remove previous name from its category
+        if new_grammeme and isinstance(new_grammeme, str):
+            updated_grammeme = new_grammeme
+            self.properties[category].remove(grammeme)
+        # keep grammeme name
+        else:
+            updated_grammeme = grammeme
+
+        # add updated grammeme name to new category
+        if new_category and isinstance(new_category, str):
+            updated_category = new_category
+            self.properties.setdefault(new_category, set()).add(updated_grammeme)
+        # add updated grammeme name to same category
+        else:
+            updated_category = category
+            self.properties[category].add(updated_grammeme)
+
+        # delete category if left with empty grammemes set
+        not self.properties[category] and self.properties.pop(category)
+
+        # report back the modified details
+        return {updated_category: updated_grammeme}
 
     def remove(self, category, grammeme):
         """Delete the record for and exponent references to one property from the grammar"""
-        if category not in self.properties or grammeme not in self.properties[category]:
-            print("Properties.remove failed - unknown category value {0}:{1}".format(category, grammeme))
+        if not self.get(category, grammeme):
+            print(f"Properties remove failed - unknown category:grammeme {category}:{grammeme}")
             return
-        # reference deleted details
-        removed_property = self.get(category, grammeme)
         # delete property key and details
-        self.properties[category].pop(grammeme)
+        self.properties[category].remove(grammeme)
         # delete property from exponent properties category sets that have it
         for exponent_id, exponent_details in self.grammar.exponents.get_items():
             if category in exponent_details['properties'] and grammeme in exponent_details['properties'][category]:
@@ -151,7 +135,7 @@ class Properties:
             if self.grammar.exponents.get(exponent_id)['properties'][category] == set():
                 self.grammar.exponents.get(exponent_id)['properties'].pop(category)
         # return the deleted details
-        return removed_property
+        return {category: grammeme}
     
     # update grammeme name, grammeme categorization or category name
 
@@ -159,11 +143,11 @@ class Properties:
         """Update a category name in the properties map and for all grammemes and exponents that reference it"""
         # verify that category exists
         if category not in self.properties:
-            print("Properties.rename_category failed - unknown property category {}".format(category))
+            print(f"Properties.rename_category failed - unknown property category {category}")
             return
         # check for category rename conflict where target already exists
         if new_category in self.properties:
-            print("Properties.rename_category failed - new category name already exists in properties: {}".format(new_category))
+            print(f"Properties.rename_category failed - new category name already exists in properties: {new_category}")
             return
         
         # retrieve property grammemes and clear out old category
