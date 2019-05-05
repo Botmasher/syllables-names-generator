@@ -92,9 +92,12 @@ class Properties:
 
     def update(self, category=None, grammeme=None, new_category=None, new_grammeme=None):
         """Modify the category or grammeme of one grammatical property"""
-        # check for existing grammatical property
-        if not self.get(category, grammeme):
+        # check existing grammatical property depending on grammeme or category update
+        if grammeme and not self.get(category, grammeme):
             print(f"Properties update failed - invalid category:grammeme {category}:{grammeme}")
+            return
+        elif not self.get(category):
+            print(f"Properties update failed - invalid category {category}")
             return
         
         # change grammeme name and remove previous name from its category
@@ -117,118 +120,70 @@ class Properties:
         # delete category if left with empty grammemes set
         not self.properties[category] and self.properties.pop(category)
 
+        # update all property references from exponent details
+        self._update_exponents(
+            category,
+            grammeme,
+            new_category=new_category,
+            new_grammeme=new_grammeme
+        )
+
         # report back the modified details
         return {updated_category: updated_grammeme}
 
-    def remove(self, category, grammeme):
+    def _update_exponents(self, category, grammeme=None, new_category=None, new_grammeme=None, remove=False):
+        """Iterate through grammatical exponents updating category or grammeme names.
+        Internal method to be used when changing category or recategorizing grammeme."""
+        # store exponent ids to return
+        changed_exponents = []
+        
+        # iterate through all exponents to modify category and grammeme names
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
+            # delete grammeme or category from exponent properties map 
+            if remove:
+                # apply delete within category
+                if grammeme:
+                    self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
+                # apply delete to category - no grammeme supplied or category left empty
+                if not grammeme or not exponent_details['properties'][category]:
+                    self.grammar.exponents.get(exponent_id)['properties'].pop(category)
+                # skip exponent update blocks
+                continue
+            
+            # change grammeme name in exponent entry
+            if new_grammeme and grammeme in exponent_details['properties'][category]:
+                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'][category].add(new_grammeme)
+            
+            # change category name in exponent entry
+            if new_category and category in exponent_details['properties']:
+                self.grammar.exponents.get(exponent_id)['properties'][new_category] = self.grammar.exponents.get(exponent_id)['properties'].pop(category)
+                changed_exponents.append(exponent_id)
+        
+        return changed_exponents
+
+    def remove(self, category=None, grammeme=None):
         """Delete the record for and exponent references to one property from the grammar"""
-        if not self.get(category, grammeme):
+        # check for valid category or grammeme to remove
+        if grammeme and not self.get(category, grammeme):
             print(f"Properties remove failed - unknown category:grammeme {category}:{grammeme}")
             return
-        # delete property key and details
-        self.properties[category].remove(grammeme)
-        # delete property from exponent properties category sets that have it
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if category in exponent_details['properties'] and grammeme in exponent_details['properties'][category]:
-                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
-            # also delete the category from properties if it is left empty
-            if self.grammar.exponents.get(exponent_id)['properties'][category] == set():
-                self.grammar.exponents.get(exponent_id)['properties'].pop(category)
+        if category and not self.get(category):
+            print(f"Properties remove failed - unknown category {category}")
+            return
+        
+        # delete property grammeme or just category if no grammeme supplied
+        if grammeme:
+            self.properties[category].remove(grammeme)
+        else:
+            self.properties.pop(category)
+
+        # delete property from exponent properties sets that have it
+        self._update_exponents(category, grammeme, remove=True)
+
         # return the deleted details
         return {category: grammeme}
     
-    # update grammeme name, grammeme categorization or category name
-
-    def rename_category(self, category, new_category):
-        """Update a category name in the properties map and for all grammemes and exponents that reference it"""
-        # verify that category exists
-        if category not in self.properties:
-            print(f"Properties.rename_category failed - unknown property category {category}")
-            return
-        # check for category rename conflict where target already exists
-        if new_category in self.properties:
-            print(f"Properties.rename_category failed - new category name already exists in properties: {new_category}")
-            return
-        
-        # retrieve property grammemes and clear out old category
-        grammemes = self.properties.pop(category)
-        
-        # update the category attribute within each grammeme's details
-        for grammeme_name in grammemes:
-            grammemes[grammeme_name]['category'] = new_category
-
-        # store grammemes under the new target category
-        self.properties[new_category] = grammemes
-
-        # update the property category reference in exponents that point to it
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if category in exponent_details['properties']:
-                self.grammar.exponents.get(exponent_id)['properties'][new_category] = self.grammar.exponents.get(exponent_id)['properties'].pop(category)
-
-        # retrieve the new target category
-        return self.properties[new_category]
-
-    def recategorize(self, source_category, grammeme, target_category):
-        """Recategorize an existing grammeme from below its source category to below a destination category"""
-        # check existence of current property
-        if not self.get(source_category, grammeme):
-            print("Properties.recategorize failed - unrecognized property {}:{}".format(source_category, grammeme))
-            return
-        # check type of swap target category
-        if not isinstance(target_category, str):
-            print("Properties.recategorize failed - expected target category string not {}".format(target_category))
-            return
-
-        # retrieve and modify the grammeme details
-        grammeme_details = self.properties[source_category].pop(grammeme)
-        # create a new details entry
-        grammeme_details = merge_maps(
-            grammeme_details,
-            {'category': target_category}
-        )
-        # remove the original category if it is left empty
-        not self.properties[source_category] and self.properties.pop(source_category)
-        # add the grammeme under the destination category
-        self.properties.setdefault(target_category, {})[grammeme] = grammeme_details
-
-        # swap the grammeme's category within exponent properties that reference it
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if grammeme in exponent_details['properties'].get(source_category, {}):
-                # remove grammeme from exponent properties
-                self.grammar.exponents.get(exponent_id)['properties'][source_category].remove(grammeme)
-                # remove empty category from exponent properties
-                not exponent_details['properties'][source_category] and self.grammar.exponents.get(exponent_id)['properties'].pop(source_category)
-                # add grammeme to destination category under exponent properties
-                self.grammar.exponents.get(exponent_id)['properties'].setdefault(target_category, set()).add(grammeme)
-
-        # retrieve and send back the new grammeme details
-        return self.properties[target_category][grammeme]
-
-    def rename_grammeme(self, category, grammeme, new_grammeme):
-        """Rename the grammeme for a single property and update exponents to reference the new name"""
-        # check for updated grammeme string and existing property
-        if not (new_grammeme and isinstance(new_grammeme, str)):
-            print("Properties.rename_grammeme failed - invalid non-empty new grammeme string {0}".format(new_grammeme))
-            return
-        if not self.get(category, grammeme):
-            print("Properties.rename_grammeme failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
-            return
-
-        # remove old grammeme entry
-        grammeme_details = self.properties[category].pop(grammeme)
-        # store the new details with the new grammeme name
-        grammeme_details['grammeme'] = new_grammeme
-        self.properties[category][new_grammeme] = grammeme_details
-
-        # swap out grammeme name within all exponents that reference the property
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if grammeme in exponent_details['properties'].get(category, {}):
-                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
-                self.grammar.exponents.get(exponent_id)['properties'][category].add(new_grammeme)
-
-        # return updated property details
-        return self.properties[category][new_grammeme]
-
     def find(self, grammeme=None, category=None):
         """Return category:grammeme pairs naming properties with the matching details"""
         # check that at least one of the attributes is filled in
@@ -368,3 +323,92 @@ class Properties:
 
         # no mismatch pitfalls - consider compared map as true subproperties
         return True
+    
+    # Update grammeme name, grammeme categorization or category name
+    # NOTE: now handled through Properties.update taking new_category or new_grammeme
+
+    def rename_category(self, category, new_category):
+        """Update a category name in the properties map and for all grammemes and exponents that reference it"""
+        # verify that category exists
+        if category not in self.properties:
+            print(f"Properties.rename_category failed - unknown property category {category}")
+            return
+        # check for category rename conflict where target already exists
+        if new_category in self.properties:
+            print(f"Properties.rename_category failed - new category name already exists in properties: {new_category}")
+            return
+        
+        # retrieve property grammemes and clear out old category
+        grammemes = self.properties.pop(category)
+        
+        # store grammemes under the new target category
+        self.properties[new_category] = grammemes
+
+        # update the property category reference in exponents that point to it
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
+            if category in exponent_details['properties']:
+                self.grammar.exponents.get(exponent_id)['properties'][new_category] = self.grammar.exponents.get(exponent_id)['properties'].pop(category)
+
+        # retrieve the new target category
+        return self.properties[new_category]
+
+    def recategorize(self, source_category, grammeme, target_category):
+        """Recategorize an existing grammeme from below its source category to below a destination category"""
+        # check existence of current property
+        if not self.get(source_category, grammeme):
+            print("Properties.recategorize failed - unrecognized property {}:{}".format(source_category, grammeme))
+            return
+        # check type of swap target category
+        if not isinstance(target_category, str):
+            print("Properties.recategorize failed - expected target category string not {}".format(target_category))
+            return
+
+        # retrieve and modify the grammeme details
+        grammeme_details = self.properties[source_category].pop(grammeme)
+        # create a new details entry
+        grammeme_details = merge_maps(
+            grammeme_details,
+            {'category': target_category}
+        )
+        # remove the original category if it is left empty
+        not self.properties[source_category] and self.properties.pop(source_category)
+        # add the grammeme under the destination category
+        self.properties.setdefault(target_category, {})[grammeme] = grammeme_details
+
+        # swap the grammeme's category within exponent properties that reference it
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
+            if grammeme in exponent_details['properties'].get(source_category, {}):
+                # remove grammeme from exponent properties
+                self.grammar.exponents.get(exponent_id)['properties'][source_category].remove(grammeme)
+                # remove empty category from exponent properties
+                not exponent_details['properties'][source_category] and self.grammar.exponents.get(exponent_id)['properties'].pop(source_category)
+                # add grammeme to destination category under exponent properties
+                self.grammar.exponents.get(exponent_id)['properties'].setdefault(target_category, set()).add(grammeme)
+
+        # retrieve and send back the new grammeme details
+        return self.properties[target_category][grammeme]
+
+    def rename_grammeme(self, category, grammeme, new_grammeme):
+        """Rename the grammeme for a single property and update exponents to reference the new name"""
+        # check for updated grammeme string and existing property
+        if not (new_grammeme and isinstance(new_grammeme, str)):
+            print("Properties.rename_grammeme failed - invalid non-empty new grammeme string {0}".format(new_grammeme))
+            return
+        if not self.get(category, grammeme):
+            print("Properties.rename_grammeme failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
+            return
+
+        # remove old grammeme entry
+        grammeme_details = self.properties[category].pop(grammeme)
+        # store the new details with the new grammeme name
+        grammeme_details['grammeme'] = new_grammeme
+        self.properties[category][new_grammeme] = grammeme_details
+
+        # swap out grammeme name within all exponents that reference the property
+        for exponent_id, exponent_details in self.grammar.exponents.get_items():
+            if grammeme in exponent_details['properties'].get(category, {}):
+                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
+                self.grammar.exponents.get(exponent_id)['properties'][category].add(new_grammeme)
+
+        # return updated property details
+        return self.properties[category][new_grammeme]
