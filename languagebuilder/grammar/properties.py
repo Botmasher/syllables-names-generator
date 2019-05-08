@@ -250,7 +250,7 @@ class Properties:
         """Verify a well-structured map containing known categories and grammemes"""
         # expect a map to compare
         if not isinstance(properties, dict):
-            print("Properties.is_properties_map check failed - invalid properties map {}".format(properties))
+            print(f"Properties map check failed - expected properties dict not {properties}")
             return False
         
         # vet every single grammeme within every property category
@@ -258,12 +258,10 @@ class Properties:
             # verify category exists in the grammatical properties
             if category not in self.properties:
                 return False
-            # verify paralleled structure of nested grammemes under category
-            for grammeme in self.properties[category]:
-                # check against properties stored in the grammar
-                if not self.get(category, grammeme):
-                    return False
-        
+            # verify all grammemes exist in the grammatical properties
+            if not set(properties[category]).issubset(self.properties[category]):
+                return False
+                
         # no properties or structures fell through during checks
         return True
 
@@ -286,76 +284,79 @@ class Properties:
         """Return a filtered properties copy containing only verified category keys and grammemes sets"""
         # verify that a map was provided
         if not isinstance(properties, dict):
-            print("Properties.filter failed - expected properties dict not {0}".format(properties))
+            print(f"Properties filter failed - expected properties dict not {properties}")
             return
 
-        # map collections for all known categories
+        # filter down the passed-in map to contain only known categories:grammemes
         filtered_map = {
             # collect only known grammemes under known categories
             category: self.filter_grammemes(category, grammemes)
             # iterate through categories - category existence handled in grammemes filter
             for category, grammemes in properties.items()
+            if self.get(category)
         }
 
         return filtered_map
 
-    def map_uncategorized_properties(self, properties=None):
-        """Build a map of properties using a list of grammeme names"""
+    def map_uncategorized_properties(self, grammemes=None):
+        """Build a map of properties using a list of grammemes"""
         # typecheck for properties list
-        if not isinstance(properties, list):
-            print("Grammar map_uncategorized_properties failed - invalid properties list {0}".format(properties))
+        if not isinstance(grammemes, list):
+            print(f"Grammar map_uncategorized_properties failed - invalid grammemes list {grammemes}")
             return
 
-        # collect recognizable/guessable properties and map them as category:grammemes
+        # collect recognizable properties in a map of category:grammemes
         properties_map = {}
-        for category in properties:
-            # read the first category:grammeme details where the grammeme matches this string
-            properties_details = self.find(category=category)
-            # abandon mapping if a property is not found
-            if not properties_details or 'grammeme' not in properties_details[0]:
-                print("Grammar map_uncategorized_properties failed - unknown property {0}".format(category))
+        for grammeme in grammemes:
+            # find category,grammeme pairs where the category contains this grammeme
+            categories = self.find(grammeme=grammeme)
+            # abandon mapping if category not found
+            if not categories or grammeme not in categories[0]:
+                print(f"Grammar map_uncategorized_properties failed - unknown property {grammeme}")
                 return
             # retrieve the category and grammeme from the stored details
-            property_entry = properties_details[0]
-            category = property_entry['category']
-            grammeme = property_entry['grammeme']
-            # add grammeme beneath its category - to new set if needed
-            properties_map[category] = properties_map.get(category, set()).add(grammeme)
+            category = categories[0][0]
+            # add grammeme to a grammemes set beneath its category
+            properties_map.setdefault(category, set()).add(grammeme)
 
         return properties_map
 
-    # subdict method used to determine whether requested properties
+    # NOTE: subdict method to determine whether requested properties match existing ones
     def is_subproperties(self, compared_properties, base_properties=None):
-        """Check whether all category:grammemes in a compared properties map exist in the base properties map"""
+        """Check whether all category:grammemes in a compared properties map
+        exist in the base properties map"""
+        # default to entire properties tree
+        if base_properties is None:
+            base_properties = self.properties
+
         # verify two comparable maps have been passed
         if not isinstance(compared_properties, dict) or not isinstance(base_properties, dict):
             print("Grammar is_subproperties failed - expected a comparison map and base map, got {0} and {1}".format(compared_properties, base_properties))
             return
 
-        # default to entire properties tree
-        if base_properties is None:
-            base_properties = self.properties
-
-        # check every compared category and grammeme for inclusion in the base map
+        # verify that all compared properties are included in the base map
         for category in compared_properties:
             # expect all compared categories to exist in the base map
             if category not in base_properties:
                 return False
 
+            # expect both grammemes collections to be lists or sets
+            if not isinstance(compared_properties[category], (set, list, tuple)) or not isinstance(base_properties[category], (set, list, tuple)):
+                return False
+
             # expect falsy category values to be shared by both
-            if not compared_properties[category]:
-                if base_properties[category]:
-                    return False
+            if not compared_properties[category] and base_properties[category]:
+                return False
 
             # expect iterable to turn into set of properties
-            compared_grammemes = {grammeme for grammeme in compared_properties[category]}
-            base_grammemes = {grammeme for grammeme in base_properties[category]}
+            compared_grammemes = set(compared_properties[category])
+            base_grammemes = set(base_properties[category])
 
             # expect all compared grammemes to exist in the base category
             if not compared_grammemes.issubset(base_grammemes):
                 return False
 
-        # no mismatch pitfalls - consider compared map as true subproperties
+        # no mismatch pitfalls - judge compared properties to be subproperties of base
         return True
     
     # Update grammeme name, grammeme categorization or category name
@@ -372,18 +373,13 @@ class Properties:
             print(f"Properties.rename_category failed - new category name already exists in properties: {new_category}")
             return
         
-        # retrieve property grammemes and clear out old category
-        grammemes = self.properties.pop(category)
-        
-        # store grammemes under the new target category
-        self.properties[new_category] = grammemes
+        # update the property category
+        self.update(category, new_category=new_category)
 
         # update the property category reference in exponents that point to it
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if category in exponent_details['properties']:
-                self.grammar.exponents.get(exponent_id)['properties'][new_category] = self.grammar.exponents.get(exponent_id)['properties'].pop(category)
+        self._update_in_exponents(category, new_category=new_category)
 
-        # retrieve the new target category
+        # retrieve the updated category
         return self.properties[new_category]
 
     def recategorize(self, source_category, grammeme, target_category):
@@ -397,27 +393,11 @@ class Properties:
             print("Properties.recategorize failed - expected target category string not {}".format(target_category))
             return
 
-        # retrieve and modify the grammeme details
-        grammeme_details = self.properties[source_category].pop(grammeme)
-        # create a new details entry
-        grammeme_details = merge_maps(
-            grammeme_details,
-            {'category': target_category}
-        )
-        # remove the original category if it is left empty
-        not self.properties[source_category] and self.properties.pop(source_category)
-        # add the grammeme under the destination category
-        self.properties.setdefault(target_category, {})[grammeme] = grammeme_details
+        # modify the grammeme in properties
+        self.update(category=source_category, grammeme=grammeme, new_category=target_category)
 
         # swap the grammeme's category within exponent properties that reference it
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if grammeme in exponent_details['properties'].get(source_category, {}):
-                # remove grammeme from exponent properties
-                self.grammar.exponents.get(exponent_id)['properties'][source_category].remove(grammeme)
-                # remove empty category from exponent properties
-                not exponent_details['properties'][source_category] and self.grammar.exponents.get(exponent_id)['properties'].pop(source_category)
-                # add grammeme to destination category under exponent properties
-                self.grammar.exponents.get(exponent_id)['properties'].setdefault(target_category, set()).add(grammeme)
+        self._update_in_exponents(source_category, grammeme=grammeme, new_category=target_category)
 
         # retrieve and send back the new grammeme details
         return self.properties[target_category][grammeme]
@@ -432,17 +412,19 @@ class Properties:
             print("Properties.rename_grammeme failed - unknown category:grammeme {0}:{1}".format(category, grammeme))
             return
 
-        # remove old grammeme entry
-        grammeme_details = self.properties[category].pop(grammeme)
-        # store the new details with the new grammeme name
-        grammeme_details['grammeme'] = new_grammeme
-        self.properties[category][new_grammeme] = grammeme_details
+        # modify grammeme in properties
+        self.update(
+            category=category,
+            grammeme=grammeme,
+            new_grammeme=new_grammeme
+        )
 
-        # swap out grammeme name within all exponents that reference the property
-        for exponent_id, exponent_details in self.grammar.exponents.get_items():
-            if grammeme in exponent_details['properties'].get(category, {}):
-                self.grammar.exponents.get(exponent_id)['properties'][category].remove(grammeme)
-                self.grammar.exponents.get(exponent_id)['properties'][category].add(new_grammeme)
-
+        # modify references to grammeme in exponents
+        self._update_in_exponents(
+            category,
+            grammeme=grammeme,
+            new_grammeme=new_grammeme
+        )
+        
         # return updated property details
         return self.properties[category][new_grammeme]
