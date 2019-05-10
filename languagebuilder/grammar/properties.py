@@ -168,6 +168,22 @@ class Properties:
         
         return list(updated_exponents)
 
+    def remove(self, category, grammeme=None):
+        """"Delete one category:grammeme or an entire category if no grammeme supplied"""
+        # delete from properties map
+        removed_property = self._remove_from_properties(category, grammeme)
+        if not removed_property:
+            message = f"Failed to remove property {category}{(':' + grammeme, '')[not grammeme]}"
+            print(message)
+            return
+        # delete from all exponents that reference it
+        removed_exponents = self._remove_from_exponents(category, grammeme)
+        # return formatted deleted data
+        return {
+            'property': removed_property,
+            'exponents': removed_exponents
+        }
+
     def _remove_from_exponents(self, category=None, grammeme=None):
         """Delete either a category or grammeme from exponents referencing this property"""
         # check existence of category and optional grammeme
@@ -238,7 +254,7 @@ class Properties:
             )]
         # all grammemes in a single category
         elif category in self.properties:
-            return [(category, stored_grammeme) for stored_grammeme in self.properties[category].keys()]
+            return [(category, stored_grammeme) for stored_grammeme in self.properties[category]]
         # no valid category or grammeme supplied
         else:
             return
@@ -400,7 +416,7 @@ class Properties:
         self._update_in_exponents(source_category, grammeme=grammeme, new_category=target_category)
 
         # retrieve and send back the new grammeme details
-        return self.properties[target_category][grammeme]
+        return self.get(target_category, grammeme)
 
     def rename_grammeme(self, category, grammeme, new_grammeme):
         """Rename the grammeme for a single property and update exponents to reference the new name"""
@@ -427,4 +443,4 @@ class Properties:
         )
         
         # return updated property details
-        return self.properties[category][new_grammeme]
+        return self.get(category, new_grammeme)

@@ -100,7 +100,7 @@ class LanguageGrammar(LanguageFixture):
     def test_add_property(self):
         self.language.grammar.properties.add("class", "animate")
         self.assertIsNotNone(
-            self.language.grammar.properties.properties.get("class", {}).get("animate"),
+            self.language.grammar.properties.get("class", "animate"),
             "failed to add a grammatical property to the language"
         )
 

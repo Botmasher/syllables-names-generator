@@ -73,15 +73,16 @@ class GrammarProperties(GrammarFixture):
             "failed to add then remove a property"
         )
 
-    def test_update_property_description(self):
-        test_description = "test description"
-        self.grammar.properties.add("updated_category", "updated_grammeme")
-        self.grammar.properties.update("updated_category", "updated_grammeme", description=test_description)
-        self.assertEqual(
-            self.grammar.properties.get("updated_category", "updated_grammeme").get("description"),
-            test_description,
-            "failed to add then update a property's description attribute"
-        )
+    # NOTE: properties no longer contain description, only category:{grammeme,...}
+    # def test_update_property_description(self):
+    #     test_description = "test description"
+    #     self.grammar.properties.add("updated_category", "updated_grammeme")
+    #     self.grammar.properties.update("updated_category", "updated_grammeme", description=test_description)
+    #     self.assertEqual(
+    #         self.grammar.properties.get("updated_category", "updated_grammeme").get("description"),
+    #         test_description,
+    #         "failed to add then update a property's description attribute"
+    #     )
 
     def test_get_property_existing(self):
         self.grammar.properties.add("get_category", "get_grammeme")
@@ -109,9 +110,9 @@ class GrammarProperties(GrammarFixture):
     def test_rename_property_category(self):
         self.grammar.properties.add("rename_category_category", "rename_category_grammeme")
         self.grammar.properties.rename_category("rename_category_category", "renamed_category")
-        self.assertEqual(
-            self.grammar.properties.get("renamed_category", "rename_category_grammeme").get('category'),
-            "renamed_category",
+        self.assertIn(
+            "rename_category_grammeme",
+            self.grammar.properties.get("renamed_category"),
             "failed to change the name of a category"
         )
     
