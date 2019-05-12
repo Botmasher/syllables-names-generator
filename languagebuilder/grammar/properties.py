@@ -90,19 +90,11 @@ class Properties:
         # output map of added category:grammemes to send back
         return added_properties
 
-    def update(self, category=None, grammeme=None, new_category=None, new_grammeme=None):
+    def update(self, category=None, grammeme=None, new_category=None, new_grammeme=None, update_exponents=True):
         """Modify the category or grammeme of one grammatical property"""
         # check existing grammatical property depending on grammeme or category update
         if not self.get(category, grammeme):
             print(f"Properties update failed - invalid category or grammeme")
-            return
-        # check for updated category and grammeme strings
-        if not new_category or not isinstance(new_category, str):
-            print(f"Properties update failed - expected new_category string not {new_category}")
-            return
-        # check if new property already exists in properties map
-        if self.get(new_category, new_grammeme):
-            print(f"Properties update failed - new category or grammeme already exists")
             return
 
         # change grammeme name and remove previous name from its category
@@ -115,11 +107,23 @@ class Properties:
 
         # add updated grammeme name to new category
         if new_category:
+            # check for updated category string
+            if not isinstance(new_category, str):
+                print(f"Properties update failed - expected new_category string not {new_category}")
+                return
+            # check if new property already exists in properties map
+            if self.get(new_category, new_grammeme):
+                print(f"Properties update failed - new category or grammeme already exists")
+                return
             updated_category = new_category
             self.properties[new_category] = self.properties.pop(category)
             self.properties[new_category].add(updated_grammeme)
         # add updated grammeme name to same category
         else:
+            # check if new property already exists in properties map
+            if self.get(category, new_grammeme):
+                print(f"Properties update failed - new category or grammeme already exists")
+                return
             updated_category = category
             self.properties[category].add(updated_grammeme)
 
@@ -128,7 +132,7 @@ class Properties:
             self.properties.pop(category)
 
         # update all property references from exponent details
-        self._update_in_exponents(
+        update_exponents and self._update_in_exponents(
             category,
             grammeme,
             new_category=new_category,
@@ -168,7 +172,7 @@ class Properties:
         
         return list(updated_exponents)
 
-    def remove(self, category, grammeme=None):
+    def remove(self, category, grammeme=None, update_exponents=True):
         """"Delete one category:grammeme or an entire category if no grammeme supplied"""
         # delete from properties map
         removed_property = self._remove_from_properties(category, grammeme)
@@ -177,7 +181,7 @@ class Properties:
             print(message)
             return
         # delete from all exponents that reference it
-        removed_exponents = self._remove_from_exponents(category, grammeme)
+        removed_exponents = self._remove_from_exponents(category, grammeme) if update_exponents else []
         # return formatted deleted data
         return {
             'property': removed_property,
@@ -378,7 +382,7 @@ class Properties:
     # Update grammeme name, grammeme categorization or category name
     # NOTE: now handled through Properties.update taking new_category or new_grammeme
 
-    def rename_category(self, category, new_category):
+    def rename_category(self, category, new_category, update_exponents=True):
         """Update a category name in the properties map and for all grammemes and exponents that reference it"""
         # verify that category exists
         if category not in self.properties:
@@ -393,12 +397,15 @@ class Properties:
         self.update(category, new_category=new_category)
 
         # update the property category reference in exponents that point to it
-        self._update_in_exponents(category, new_category=new_category)
+        update_exponents and self._update_in_exponents(
+            category,
+            new_category=new_category
+        )
 
         # retrieve the updated category
         return self.properties[new_category]
 
-    def recategorize(self, source_category, grammeme, target_category):
+    def recategorize(self, source_category, grammeme, target_category, update_exponents=True):
         """Recategorize an existing grammeme from below its source category to below a destination category"""
         # check existence of current property
         if not self.get(source_category, grammeme):
@@ -413,12 +420,16 @@ class Properties:
         self.update(category=source_category, grammeme=grammeme, new_category=target_category)
 
         # swap the grammeme's category within exponent properties that reference it
-        self._update_in_exponents(source_category, grammeme=grammeme, new_category=target_category)
+        update_exponents and self._update_in_exponents(
+            source_category,
+            grammeme=grammeme,
+            new_category=target_category
+        )
 
         # retrieve and send back the new grammeme details
         return self.get(target_category, grammeme)
 
-    def rename_grammeme(self, category, grammeme, new_grammeme):
+    def rename_grammeme(self, category, grammeme, new_grammeme="", update_exponents=True):
         """Rename the grammeme for a single property and update exponents to reference the new name"""
         # check for updated grammeme string and existing property
         if not (new_grammeme and isinstance(new_grammeme, str)):
@@ -436,7 +447,7 @@ class Properties:
         )
 
         # modify references to grammeme in exponents
-        self._update_in_exponents(
+        update_exponents and self._update_in_exponents(
             category,
             grammeme=grammeme,
             new_grammeme=new_grammeme

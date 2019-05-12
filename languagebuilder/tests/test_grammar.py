@@ -284,9 +284,11 @@ class GrammarWordClasses(GrammarFixture):
             "failed to remove added word class"
         )
 
+
+
     def test_add_word_class_to_exponent_pos(self):
         self.grammar.word_classes.add("added_exponent_pos")
-        exponent_id = self.grammar.exponents.add(pre="pre", properties={'category': 'grammeme'})
+        exponent_id = self.grammar.exponents.add(pre="pre", properties={'exponent_category': 'exponent_grammeme'})
         self.grammar.exponents.add_pos(exponent_id, "added_exponent_pos")
         self.assertIn(
             "added_exponent_pos",
@@ -296,17 +298,17 @@ class GrammarWordClasses(GrammarFixture):
 
     def test_remove_word_class_from_exponent_pos(self):
         self.grammar.word_classes.add("excluded_exponent_pos")
-        exponent_id = self.grammar.exponents.add(post="-post", properties={'category': 'grammeme'})
+        exponent_id = self.grammar.exponents.add(post="-post", properties={'exponent_category': 'exponent_grammeme'})
         self.grammar.exponents.remove_pos(exponent_id, "excluded_exponent_pos")
         self.assertNotIn(
             "excluded_exponent_pos",
-            self.grammar.exponents.get(exponent_id)['pos'],
+            self.grammar.exponents.exponents[exponent_id]['pos'],
             "failed to remove word class directly from an exponent's pos collection"
         )
     
     def test_remove_word_class_then_check_exponent_pos(self):
         self.grammar.word_classes.add("removed_exponent_pos")
-        exponent_id = self.grammar.exponents.add(pre="pre", properties={'category': 'grammeme'})
+        exponent_id = self.grammar.exponents.add(pre="pre", properties={'exponent_category': 'exponent_grammeme'})
         self.grammar.exponents.add_pos(exponent_id, "removed_exponent_pos")
         self.grammar.word_classes.remove("removed_exponent_pos")
         self.assertNotIn(
@@ -405,7 +407,11 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_nonexisting_property(self):
-        unit = self.grammar.build_unit("baseword", properties={'noncategory': 'nongrammeme'})
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'noncategory': 'nongrammeme'},
+            all_or_none=True
+        )
         self.assertIsNone(
             unit,
             "did not handle avoiding building grammatical unit using nonexistent property"

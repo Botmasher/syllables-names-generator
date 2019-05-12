@@ -275,7 +275,7 @@ class Grammar:
         if isinstance(properties, str):
             return self.parse_properties(properties)
         # turn a list of grammemes into a map of guessed categories and grammemes
-        if type(properties) in (list, tuple, set):
+        if isinstance(properties, (list, tuple, set)):
             return self.properties.map_uncategorized_properties(properties)
         # unexpected properties value given
         return
