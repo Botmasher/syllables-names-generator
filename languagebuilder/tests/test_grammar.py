@@ -53,16 +53,34 @@ class GrammarProperties(GrammarFixture):
 
     def test_add_properties(self):
         added_properties = self.grammar.properties.add_many({
-            'added_categories': ('added_grammemes_1', 'added_grammemes_2')
+            'added_categories_1': ('added_grammemes_1', 'added_grammemes_2'),
+            'added_categories_2': ('added_grammemes_3', 'added_grammemes_4')
         })
-        added_properties = list(filter(
-            lambda x: isinstance(x, dict) and 'grammeme' in x,
-            added_properties
-        ))
+        added_properties = [
+            grammeme
+            for grammemes in added_properties.values()
+            for grammeme in grammemes
+        ]
         self.assertEqual(
             len(added_properties),
-            2,
-            "could not add multiple properties"
+            4,
+            f"could not add multiple properties {added_properties}"
+        )
+    
+    def test_add_properties_same_grammeme_name(self):
+        properties = self.grammar.properties.add_many({
+            'same_grammeme_category_1': ('same_grammeme_1', 'same_grammeme_2'),
+            'same_grammeme_category_2': ('same_grammeme_1', 'same_grammeme_2')
+        })
+        added_properties = [
+            grammeme
+            for grammemes in properties.values()
+            for grammeme in grammemes
+        ]
+        self.assertEqual(
+            len(added_properties),
+            4,
+            f"could not add multiple properties with the same grammeme name but under different categories"
         )
     
     def test_add_remove_property(self):
@@ -410,7 +428,7 @@ class GrammarBuildWords(GrammarFixture):
         unit = self.grammar.build_unit(
             "baseword",
             properties={'noncategory': 'nongrammeme'},
-            all_or_none=True
+            all_requested=True
         )
         self.assertIsNone(
             unit,

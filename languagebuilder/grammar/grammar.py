@@ -266,11 +266,15 @@ class Grammar:
         # unexpected word classes value supplied
         return
 
-    def vet_build_word_properties(self, properties):
-        """Attempt to map a copy of valid, known category grammemes from flexible property input"""
+    def vet_build_word_properties(self, properties, all_requested=False):
+        """Attempt to map a copy of valid, known category grammemes from flexible property input."""
         # vet map for recognized categories and their grammemes
         if isinstance(properties, dict):
-            return self.properties.filter(properties)
+            filtered_properties = self.properties.filter(properties)
+            if all_requested and (len(filtered_properties.keys()) != len(properties.keys()) or len(filtered_properties.values()) != len(properties.values())):
+                print(f"Grammar vet_build_word_properties failed all_or_none check - requested properties {properties} not found in grammar properties {filtered_properties}")
+                return
+            return filtered_properties
         # parse string of terms to collect known properties
         if isinstance(properties, str):
             return self.parse_properties(properties)
@@ -281,8 +285,13 @@ class Grammar:
         return
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, all_or_none=False):
-        """Build up relevant morphosyntax around a base using the given grammatical terms"""
+    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, all_requested=False, all_or_none=False):
+        """Build up relevant morphosyntax around a base using the given grammatical terms.
+        Set exact_pos to use only exponents associated with the matching word classes.
+        Set all_requested to move forward only if all requested properties exist when
+        passing in a properties dict.
+        Set all_or_none to ensure all requested properties
+        must be provided by matching exponents."""
         # TODO: better docstring particularly for this method
 
         # verify that a root word is given
@@ -294,9 +303,8 @@ class Grammar:
         requested_word_classes = self.vet_build_word_classes(word_classes)
 
         # make usable properties map collecting valid and recognizable category:grammemes
-        # TODO: include 'pos' within self.properties - no major gains from separating
-        # or enhance method to search for pos? - (properties, word_classes != None)
-        requested_properties = self.vet_build_word_properties(properties)
+        # TODO: enhance method to search for pos - (properties, word_classes != None)
+        requested_properties = self.vet_build_word_properties(properties, all_requested=all_requested)
         
         # dead end when did not turn up a good map of vetted properties
         if not self.properties.is_properties_map(requested_properties):
