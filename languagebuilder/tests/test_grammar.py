@@ -546,6 +546,92 @@ class GrammarOrderMorphosyntax(GrammarFixture):
             "morphosyntax failed to include only requested ordered exponents"
         )
 
+class GrammarOrderSentences(GrammarFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(GrammarOrderSentences, this_class).setUpClass()
+        # add properties and word classes for defining exponents
+        this_class.grammar.properties.add("case", "subject")
+        this_class.grammar.properties.add("case", "object")
+        this_class.grammar.properties.add("voice", "active")
+        this_class.grammar.properties.add("voice", "passive")
+        this_class.grammar.properties.add("aspect", "perfective")
+        this_class.grammar.properties.add("aspect", "imperfective")
+        this_class.grammar.word_classes.add("noun")
+        this_class.grammar.word_classes.add("verb")
+        # add exponents for nouns and verbs
+        this_class.grammar.exponents.add(
+            pre="a",
+            bound=True,
+            properties="perfective active",
+            pos="verb"
+        )
+        this_class.grammar.exponents.add(
+            pre="m",
+            bound=True,
+            properties="imperfective active",
+            pos="verb"
+        )
+        this_class.grammar.exponents.add(
+            pre="uk",
+            bound=False,
+            properties="subject",
+            pos="noun"
+        )
+        this_class.grammar.exponents.add(
+            pre="nu",
+            bound=False,
+            properties="object",
+            pos="noun"
+        )
+
+    def build_sentence(self):
+        structure = self.grammar.sentences.add(
+            name = "basic_perfective",
+            syntax = [
+                [0, "verb", "perfective active"],
+                [1, "noun", "subject"],
+                [2, "noun", "object"]
+            ],
+            translation = [
+                "a",
+                1,
+                "did",
+                0,
+                "a",
+                2
+            ]
+        )
+        mock_verb = {
+            'sound': 'tota',
+            'spelling': 'tota',
+            'definition': 'chase',
+            'pos': 'verb'
+        }
+        mock_subject = {
+            'sound': 'kata',
+            'spelling': 'kata',
+            'definition': 'cat',
+            'pos': 'noun'
+        }
+        mock_object = {
+            'sound': 'data',
+            'spelling': 'data',
+            'definition': 'dog',
+            'pos': 'noun'
+        }
+        sentence = self.grammar.sentences.apply(
+            structure,
+            mock_verb,
+            mock_subject,
+            mock_object
+        )
+        self.assertEqual(
+            sentence,
+            "A cat did chase a dog",
+            "morphosyntax failed to create a basic sentence"
+        )
+
 
 # TODO: TEST intuitive buildout of more realistic looking words
 #        - content differs but generally these tested actions are repeats

@@ -54,13 +54,13 @@ class Paradigms:
             print(f"Paradigm create failed - cannot overwrite existing paradigm {name}")
             return
         # check for valid categories lists
-        filled_categories = [] if filled_categories is None else filled_categories
-        fixed_categories = [] if fixed_categories is None else fixed_categories
-        if not isinstance(filled_categories, list) or not isinstance(fixed_categories, list):
+        filled_categories = [] if not filled_categories else filled_categories
+        fixed_categories = [] if not fixed_categories else fixed_categories
+        if not isinstance(filled_categories, list) and not isinstance(fixed_categories, list):
             print(f"Paradigm create failed - expected fixed or filled categories list")
             return
         for category in fixed_categories + filled_categories:
-            if category not in self.language.grammar.properties.is_category(category):
+            if not self.language.grammar.properties.is_category(category):
                 print(f"Paradigms create failed - invalid category {category}")
                 return
         # check for valid word classes
@@ -110,7 +110,7 @@ class Paradigms:
 
         # check and format grammemes list
         grammemes = set([]) if not filled_grammemes else set(filled_grammemes)
-        # split grammemes terms string 
+        # separate grammemes listed in a string
         if isinstance(filled_grammemes, str):
             grammemes = set(re.split(r"[, .]", filled_grammemes))
         # back out if no list
