@@ -23,20 +23,6 @@ class Morphosyntax:
         # }
         self.units = {}
 
-        # fixed left-to-right order of units in various types of sentences
-        #   - each discrete part is a unit or a word classes
-        #   - see arrange method for the reordering process
-        #
-        # structure of sentence:sequence pairs:
-        # {
-        #   'sentence_name': [
-        #       {'unit_name', 'word_class', ...},   # options
-        #       {'unit_name_2'},
-        #       {'word_class_2', word_class_3}
-        #   ]
-        # }
-        self.sentences = {}
-
     # TODO: conditional ordering
     #   - example [first_ending, [another, only_if_another] || [this_one], ...]
 
@@ -44,10 +30,6 @@ class Morphosyntax:
     #   - have exponents gravitate to nearest applicable base (how to know? word classes?)
     #   - subarrange exponents around that base
     
-    # TODO: support varying syntax and flexible word order
-    #   - "interrogative" vs "declarative" syntax in EN
-    #   - word order in nonconfig langs
-
     def get_unit(self, unit_name):
         """Read unit pieces sequence for one named unit"""
         return self.units.get(unit_name)
@@ -125,50 +107,6 @@ class Morphosyntax:
         removed_unit = self.units.pop(unit_name)
         return removed_unit
     
-    def get_sentence(self, sentence_name):
-        """Read one named sentence sequence"""
-        return self.sentences.get(sentence_name)
-
-    def add_sentence(self, sentence_name, sentence_sequence, overwrite=False, all_or_none=False):
-        """Add a named sentence type with a sequence of units in the sentence"""
-        # check for existing sentence type name and sequence of units
-        if (overwrite or sentence_name in self.sentences) or not isinstance(sentence_sequence, (list, tuple)):
-            print("Failed to add sentence to morphosyntax - expected valid sentence name and sequence")
-            return
-        
-        # collect only known units
-        filtered_units = [
-            unit for unit in sentence_sequence
-            if unit in self.units
-        ]
-
-        # back out if any non-units given
-        if all_or_none and len(filtered_units) != len(sentence_sequence):
-            return
-
-        # add units sequence to sentences
-        self.sentences[sentence_name] = filtered_units
-
-        return self.sentences[sentence_name]
-
-    def update_sentence(self, sentence_name, sentence_sequence, all_or_none=False):
-        """Modify the unit sequence of a single named sentence type"""
-        # check that the sentence type already exists
-        if not self.get_sentence(sentence_name):
-            return
-        # run sentence add with overwrite
-        return self.add_sentence(sentence_name, sentence_sequence, overwrite=True)
-    
-    def remove_sentence(self, sentence_name):
-        """Delete and return one existing sentence sequence from the sentence order map, or None if not sentence found"""
-        # check for existence of sentence
-        if not self.get_sentence(sentence_name):
-            return
-        # remove and return the sentence sequence
-        removed_sentence = self.sentences.pop(sentence_name)
-        return removed_sentence
-
-
     ## Relative Exponent ordering
 
     # TODO: ordering of non-positional exponents for example multiple apophonies
@@ -418,58 +356,3 @@ class Morphosyntax:
 
         # send back the sorted exponents list
         return ordered_exponents
-
-    # TODO: rework Syntax side to manage sentences and sentence units well
-    #
-    def arrange_sentence(self, sentence, sentence_tags, sentence_type):
-        """Take a collection of sentence items and return a reordered copy
-        reordering units using on the named sentence type."""
-
-        # check if sentence type exists in collection
-        if sentence_type not in self.sentences:
-            print(f"Morphosyntax failed to arrange unidentified sentence type {sentence_type}")
-            return
-        # expect all sentence elements to be tagged 
-        if len(sentence) != len(sentence_tags):
-            print(f"Morphosyntax failed to arrange sentence - tokens and tags counts do not match")
-            return
-
-        # TODO: arrange sentence units and each individual unit
-        #   - expect one-to-one mapping of sentence elements and tags
-        #   - expect tags to be properties or word classes (per-unit info)
-        #   - expect groups of units
-        #   - linearly identify which raw pieces belong to which units
-        #   - assume properties in multiple units are nearer to their units
-
-        # set up a sequence for catching all unit pieces in order
-        sentence_units = [
-            {
-                'unit_piece': unit_piece,
-                # data for elements from the passed-in sentence
-                'token': None,
-                'tag': None
-            }
-            for unit in self.sentences[sentence_type]
-            for unit_piece in self.units[unit]
-        ]
-
-        # which indexes have already settled in order
-        used_indexes = set()
-
-        # fill in units
-        for unit_piece in sentence_units:
-            # find the next unused element fiting into this piece of this unit
-            for i in range(len(sentence_tags)):
-                if sentence_tags[i] in unit_piece and i not in used_indexes:
-                    # remember the token/tag as used
-                    used_indexes.add(i)
-                    # store info for the token/tag
-                    sentence_units[unit_piece]['token'] = sentence[i]
-                    sentence_units[unit_piece]['tag'] = sentence_tags[i]
-                    break
-            continue
-        
-        # use the settled tokens to collect reordered sentence elements
-        ordered_sentence = [sentence_units[unit]['token'] for unit in sentence_units]
-
-        return ordered_sentence

@@ -9,6 +9,7 @@ from .word_classes import WordClasses
 from .exponents import Exponents
 from .properties import Properties
 from .morphosyntax import Morphosyntax
+from .sentences import Sentences
 
 # ## Cases from Grammar instantiation and testing
 
@@ -83,6 +84,9 @@ class Grammar:
 
         # object ordering word pieces and words
         self.morphosyntax = Morphosyntax(self)
+
+        # storing fillable sequences of build unit structures
+        self.sentences = Sentences(self)
 
         # TODO: resupport property and word class abbreviations
         # - unambiguous abbreviation:full_term map
