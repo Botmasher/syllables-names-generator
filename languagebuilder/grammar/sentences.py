@@ -1,6 +1,8 @@
 # TODO: consider is this phrases and sentences?
 #   - example: DP instead of having everything attach to exponents
 
+# NOTE: a named sentence is a list of blueprints for building a sequence of units
+
 # Sentences stores instructions for building out any
 # predefined unit structures to be filled with headwords
 class Sentences:
@@ -12,45 +14,67 @@ class Sentences:
         #   - each discrete part is a unit or a word classes
         #   - see arrange method for the reordering process
         #
-        # structure of sentence:sequence pairs:
+        # structure of sentences:
         # {
-        #   'sentence_name': [
-        #       {'unit_name', 'word_class', ...},   # options
-        #       {'unit_name_2'},
-        #       {'word_class_2', word_class_3}
-        #   ]
+        #   sentence_name: {
+        #       # sequence for building units
+        #       'structure': [
+        #           [word_class, properties],
+        #           ...
+        #       ],
+        #       # sentence-level properties for passing in type "sentence"
+        #       # example: property sentence:interrogative to attach question particle
+        #       'properties': {}
+        #   },
+        #   ...
         # }
+        # NOTE: for now keep simpler sentences map between names : structures
         self.sentences = {}
 
         # TODO: support varying syntax and flexible word order
-        #   - "interrogative" vs "declarative" syntax in EN
         #   - word order in nonconfig langs
     
     def get(self, name):
         """Read one named sentence sequence"""
         return self.sentences.get(name)
 
-    def add(self, name="", structure=None, overwrite=False, all_or_none=False):
+    def vet_structure(self, structure):
+        """Check and refine the units structure sequence for one sentence"""
+        if not isinstance(structure, (list, tuple)):
+            print(f"Sentences vet_structure failed - expected structure list {structure}")
+            return
+        # create sequence of structures for building units
+        units_sequence = []
+        for unit in structure:
+            # expect (word_class, properties) pairs
+            if not isinstance(unit, list) or len(unit) != 2:
+                print(f"Sentences vet_structure failed - unrecognized unit-building structure {unit}")
+                return
+            # add properties and pos for this unit structure
+            unit_word_classes = self.grammar.parse_word_classes(unit[0]) if unit[0] else None
+            unit_properties = self.grammar.parse_properties(unit[1])
+            # check for valid properties
+            if not unit_properties:
+                print(f"Sentences vet_structure failed - invalid unit properties {unit_properties}")
+                return
+            units_sequence.append([unit_word_classes, unit_properties])
+        return units_sequence
+
+    def add(self, name="", structure=None, all_or_none=False):
         """Add a named sentence type with a sequence of units in the sentence"""
         # check for existing sentence type name and sequence of units
-        if not name or (overwrite or name in self.sentences) or not isinstance(structure, (list, tuple)):
+        if not name or name in self.sentences or not isinstance(structure, (list, tuple)):
             print("Failed to add sentence - expected valid name and structure")
             return
         
-        # TODO: take in word class, exponents and test-build every unit
-
-        # collect only known units
-        filtered_units = [
-            unit for unit in structure
-            if unit in self.grammar.exponents.exponents
-        ]
-
-        # back out if any non-units given
-        if all_or_none and len(filtered_units) != len(structure):
+        # create the sentence's units structure sequence
+        vetted_structure = self.vet_structure(structure)
+        if not vetted_structure:
+            print(f"Sentences add failed - invalid sentence structure {structure}")
             return
 
-        # add units sequence to sentences
-        self.sentences[name] = filtered_units
+        # add units structure to sentences
+        self.sentences[name] = vetted_structure
 
         return self.sentences[name]
 
@@ -58,9 +82,19 @@ class Sentences:
         """Modify the unit sequence of a single named sentence type"""
         # check that the sentence type already exists
         if not self.get(name):
+            print(f"Sentences update failed - unrecognized sentence name {name}")
             return
-        # run sentence add with overwrite
-        return self.add(name, structure, overwrite=True)
+        
+        # create valid units structure
+        vetted_structure = self.vet_structure(structure)
+        if not vetted_structure:
+            print(f"Sentences add failed - invalid sentence structure {structure}")
+            return
+
+        # overwrite named sentence's units structure
+        self.sentences[name] = vetted_structure
+
+        return self.sentences[name]
     
     def remove(self, name):
         """Delete and return one existing sentence structure from the

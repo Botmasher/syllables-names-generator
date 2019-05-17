@@ -586,21 +586,21 @@ class GrammarOrderSentences(GrammarFixture):
         )
 
     def build_sentence(self):
-        structure = self.grammar.sentences.add(
+        self.grammar.sentences.add(
             name = "basic_perfective",
-            syntax = [
-                [0, "verb", "perfective active"],
-                [1, "noun", "subject"],
-                [2, "noun", "object"]
+            structure = [
+                ["verb", "perfective active"],
+                ["noun", "subject"],
+                ["noun", "object"]
             ],
-            translation = [
-                "a",
-                1,
-                "did",
-                0,
-                "a",
-                2
-            ]
+            # translation = [
+            #     "a",
+            #     1,
+            #     "did",
+            #     0,
+            #     "a",
+            #     2
+            # ]
         )
         mock_verb = {
             'sound': 'tota',
@@ -621,10 +621,8 @@ class GrammarOrderSentences(GrammarFixture):
             'pos': 'noun'
         }
         sentence = self.grammar.sentences.apply(
-            structure,
-            mock_verb,
-            mock_subject,
-            mock_object
+            "basic_perfective",
+            [mock_verb, mock_subject, mock_object]
         )
         self.assertEqual(
             sentence,
