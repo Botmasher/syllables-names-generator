@@ -114,22 +114,45 @@ class Sentences:
             headwords.append(unit[0])
         return headwords
 
-    def apply(self, name, headwords):
-        """Take a collection of sentence items and return a reordered copy
-        reordering units using on the named sentence type."""
+    def apply(self, name="", headwords=None):
+        """Take a named sentence and a list of headwords to fill out the units in the
+        name sentence and build out a sequence of units."""
 
-        # check if sentence type exists in collection
-        if name not in self.sentences:
-            print(f"Failed to arrange unidentified sentence {name}")
+        # check for sentence type in collection
+        sentence = self.get(name)
+        if not sentence:
+            print(f"Failed to apply unidentified sentence {name}")
+            return
+
+        # grab list of word objects from the dictionary
+        fetched_words = [
+           self.language.dictionary.lookup(word, i)
+           for word, i in headwords
+        ]
+
+        # check that headwords match buildable sentence units
+        if not isinstance(fetched_words, (list, tuple)) or len(sentence) != len(headwords):
+            print(f"Failed to apply sentence to invalid headwords list {headwords}")
             return
         
-        sentence = self.get(name)
-        
-        ordered_sentence = []
+        # store final built units
+        applied_sentence = []
 
-        # TODO: arrange sentence
-        # - fill in headwords for each slot
-        # - add exponents/properties for each headword
-        # - follow order of units given in self.sentences[name]
+        # iterate through both sentence units and headwords
+        # - unit structure is (word_classes, properties)
+        # - headwords is a map containing various representations of word and data
+        for i, unit in enumerate(sentence):
+            # compare headword class to expected word class
+            if fetched_words[i]['pos'] not in sentence[i][1]:
+                print(f"Failed to apply sentence - headword class {fetched_words[i]['pos']} does not match expected word class {sentence[i][1]}")
+                return
+            # create grammatical unit with headword and sentence unit properties
+            built_unit = self.grammar.build_unit(
+                fetched_words[i]['sound'],
+                properties=sentence[i][0],
+                word_classes=fetched_words[i]['pos']
+            )
+            applied_sentence.append(built_unit)
         
-        return "".join(ordered_sentence)
+        # return single string sentence
+        return "".join(applied_sentence)
