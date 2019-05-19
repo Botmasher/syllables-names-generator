@@ -125,13 +125,19 @@ class Sentences:
             return
 
         # grab list of word objects from the dictionary
+        #fetched_words = [
+        #   self.language.dictionary.lookup(word, i)
+        #   for word, i in headwords
+        #]
+        # expect full entries instead of tying this to dictionary with lookups
+        # TODO: high-level sentence methods with lookups from the Language
         fetched_words = [
-           self.language.dictionary.lookup(word, i)
-           for word, i in headwords
+            entry for entry in headwords
+            if isinstance(headwords, dict) and 'pos' in headwords and 'sound' in headwords 
         ]
 
         # check that headwords match buildable sentence units
-        if not isinstance(fetched_words, (list, tuple)) or len(sentence) != len(headwords):
+        if not isinstance(fetched_words, (list, tuple)) or len(sentence) != len(fetched_words):
             print(f"Failed to apply sentence to invalid headwords list {headwords}")
             return
         
@@ -142,15 +148,19 @@ class Sentences:
         # - unit structure is (word_classes, properties)
         # - headwords is a map containing various representations of word and data
         for i, unit in enumerate(sentence):
+            word_data = fetched_words[i]
+            word_sounds = word_data['sound']
+            word_pos = word_data['pos']
+            unit_properties, unit_pos = unit
             # compare headword class to expected word class
-            if fetched_words[i]['pos'] not in sentence[i][1]:
-                print(f"Failed to apply sentence - headword class {fetched_words[i]['pos']} does not match expected word class {sentence[i][1]}")
+            if word_pos not in unit_pos:
+                print(f"Failed to apply sentence - word {word_sounds} part of speech {word_pos} does not match expected word class {unit_pos}")
                 return
             # create grammatical unit with headword and sentence unit properties
             built_unit = self.grammar.build_unit(
-                fetched_words[i]['sound'],
-                properties=sentence[i][0],
-                word_classes=fetched_words[i]['pos']
+                word_sounds,
+                properties=unit_properties,
+                word_classes=word_pos
             )
             applied_sentence.append(built_unit)
         

@@ -567,7 +567,7 @@ class GrammarOrderSentences(GrammarFixture):
             pos="verb"
         )
         this_class.grammar.exponents.add(
-            pre="m",
+            pre="r",
             bound=True,
             properties="imperfective active",
             pos="verb"
@@ -585,14 +585,18 @@ class GrammarOrderSentences(GrammarFixture):
             pos="noun"
         )
 
-    def build_sentence(self):
+    def test_build_sentence(self):
         self.grammar.sentences.add(
-            name = "basic_perfective",
+            name = "indefinite_imperfective",
             structure = [
-                ["verb", "perfective active"],
+                ["verb", "imperfective active"],
                 ["noun", "subject"],
                 ["noun", "object"]
             ],
+            # TODO: allow translation
+            #   - look in dictionary/corpus first
+            #   - then fall back to this structure
+            #   - ? perhaps have paradigms translate using grammatical properties
             # translation = [
             #     "a",
             #     1,
@@ -621,13 +625,32 @@ class GrammarOrderSentences(GrammarFixture):
             'pos': 'noun'
         }
         sentence = self.grammar.sentences.apply(
-            "basic_perfective",
+            "indefinite_imperfective",
             [mock_verb, mock_subject, mock_object]
         )
         self.assertEqual(
             sentence,
-            "A cat did chase a dog",
-            "morphosyntax failed to create a basic sentence"
+            # "A cat did chase a dog", # NOTE: if using translation
+            "ritota uk kata nu data",
+            "grammar failed to build (add and apply) a basic sentence"
+        )
+
+    def test_add_sentence(self):
+        self.grammar.sentences.add(
+            name = "indefinite_perfective_transitive",
+            structure = [
+                ["verb", "perfective active"],
+                ["noun", "subject"],
+                ["noun", "object"]
+            ]
+        )
+        self.assertEqual(
+            self.grammar.sentences.get("indefinite_perfective_transitive")[0],
+            [
+                self.grammar.parse_word_classes("verb"),
+                self.grammar.parse_properties("perfective active"),
+            ],
+            "grammar failed to add a basic sentence"
         )
 
 
