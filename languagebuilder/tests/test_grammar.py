@@ -631,7 +631,7 @@ class GrammarOrderSentences(GrammarFixture):
         self.assertEqual(
             sentence,
             # "A cat did chase a dog", # NOTE: if using translation
-            "ritota uk kata nu data",
+            "rtota uk kata nu data",
             "grammar failed to build (add and apply) a basic sentence"
         )
 
@@ -652,7 +652,37 @@ class GrammarOrderSentences(GrammarFixture):
             ],
             "grammar failed to add a basic sentence"
         )
+    
+    def test_remove_sentence(self):
+        self.grammar.sentences.add(
+            name="deleted_sentence",
+            structure=[
+                ["verb", "perfective aspect"]
+            ]
+        )
+        self.grammar.sentences.remove("deleted_sentence")
+        self.assertNotIn(
+            "deleted_sentence",
+            self.grammar.sentences.sentences,
+            "grammar failed to remove a sentence"
+        )
 
+    def test_update_sentence(self):
+        self.grammar.sentences.add(
+            name="updated_sentence",
+            structure=[
+                ["verb", "perfective aspect"]
+            ]
+        )
+        self.grammar.sentences.update(
+            "updated_sentence",
+            [["verb", "imperfective aspect"]]
+        )
+        self.assertEqual(
+            self.grammar.sentences.get("updated_sentence")[0][1],
+            self.grammar.parse_properties("imperfective aspect"),
+            "grammar failed to modify an existing sentence structure"
+        )
 
 # TODO: TEST intuitive buildout of more realistic looking words
 #        - content differs but generally these tested actions are repeats

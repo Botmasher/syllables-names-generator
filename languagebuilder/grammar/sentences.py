@@ -43,6 +43,16 @@ class Sentences:
         if not isinstance(structure, (list, tuple)):
             print(f"Sentences vet_structure failed - expected structure list {structure}")
             return
+        
+        # catch a single word class, properties pair in a one-depth list and
+        # try reinterpreting as a list with the pair as the first element
+        # TODO: parse strings including both
+        if len(structure) == 2 and all(isinstance(e, str) for e in structure):
+            word_class = self.grammar.parse_word_classes(structure[0])
+            properties = self.grammar.parse_properties(structure[1])
+            if properties and word_class:
+                return [[word_class, properties]]
+
         # create sequence of structures for building units
         units_sequence = []
         for unit in structure:
@@ -78,7 +88,7 @@ class Sentences:
 
         return self.sentences[name]
 
-    def update(self, name, structure, all_or_none=False):
+    def update(self, name, structure=None, all_or_none=False):
         """Modify the unit sequence of a single named sentence type"""
         # check that the sentence type already exists
         if not self.get(name):
@@ -88,7 +98,7 @@ class Sentences:
         # create valid units structure
         vetted_structure = self.vet_structure(structure)
         if not vetted_structure:
-            print(f"Sentences add failed - invalid sentence structure {structure}")
+            print(f"Sentences update failed - invalid sentence structure {structure}")
             return
 
         # overwrite named sentence's units structure
@@ -114,7 +124,7 @@ class Sentences:
             headwords.append(unit[0])
         return headwords
 
-    def apply(self, name="", headwords=None):
+    def apply(self, name="", headwords=None, spacing=" "):
         """Take a named sentence and a list of headwords to fill out the units in the
         name sentence and build out a sequence of units."""
 
@@ -133,13 +143,16 @@ class Sentences:
         # TODO: high-level sentence methods with lookups from the Language
         fetched_words = [
             entry for entry in headwords
-            if isinstance(headwords, dict) and 'pos' in headwords and 'sound' in headwords 
+            if isinstance(entry, dict) and 'pos' in entry and 'sound' in entry 
         ]
 
         # check that headwords match buildable sentence units
-        if not isinstance(fetched_words, (list, tuple)) or len(sentence) != len(fetched_words):
-            print(f"Failed to apply sentence to invalid headwords list {headwords}")
+        if not isinstance(fetched_words, (list, tuple)):
+            print(f"Failed to apply sentence - expected headwords list not {headwords}")
             return
+        if len(sentence) != len(fetched_words):
+            print(f"Failed to apply sentence - number of headwords does not match fillable sentence units")
+            return len(fetched_words)
         
         # store final built units
         applied_sentence = []
@@ -151,7 +164,7 @@ class Sentences:
             word_data = fetched_words[i]
             word_sounds = word_data['sound']
             word_pos = word_data['pos']
-            unit_properties, unit_pos = unit
+            unit_pos, unit_properties = unit
             # compare headword class to expected word class
             if word_pos not in unit_pos:
                 print(f"Failed to apply sentence - word {word_sounds} part of speech {word_pos} does not match expected word class {unit_pos}")
@@ -165,4 +178,4 @@ class Sentences:
             applied_sentence.append(built_unit)
         
         # return single string sentence
-        return "".join(applied_sentence)
+        return spacing.join(applied_sentence)
