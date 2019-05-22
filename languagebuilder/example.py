@@ -289,15 +289,17 @@ my_language.grammar.sentences.add(
     name = "basic:transitive",
     structure = [
         ["noun", "nominative"],
-        ["verb", "perfective realis"],
-        ["noun", "accusative"]
+        ["noun", "accusative"],
+        ["verb", "perfective realis"]
     ]
 )
 # TODO: make composable like ability to embed units (definite + noun)
-my_language.grammar.sentences.apply(
+sentence = my_language.grammar.sentences.apply(
     name = "basic:transitive",
     headwords = [s, o, v]
 )
+print(sentence['sound'])
+print(sentence['translation'])
 
 # TODO: check and refine exponent storage
 #   - examples (from corpus?) for entries in the dictionary

@@ -463,6 +463,9 @@ class Phonology:
         }
 
     # TODO: handle spelling rules and environments
+    # TODO: track down errors due to fallback_phonemes[i] out of range
+    #       - changed phonemes is string like "iðixtsu"
+    #       - fallback_phonemes is list like ['i', 't', 'i', 'x', 'ts', 'u']
     def spell(self, phonemes, fallback_phonemes=None):
         """Transform a list of sounds into a list of letters (including multigraphs)
         representing a spelled word. Use optional fallback list in case changed
@@ -475,6 +478,9 @@ class Phonology:
         letter = None
         # characters that can be passed through without spelling
         skippable_chars = ("")
+
+        #print(f"These are the changed sounds to spell: {phonemes}")
+        #print(f"These are the fallback sounds to spell: {fallback_phonemes}")
 
         # traverse choosing a letter for each sound
         for i, phoneme in enumerate(phonemes):

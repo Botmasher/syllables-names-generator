@@ -167,6 +167,8 @@ class Sentences:
             unit_pos, unit_properties = unit
             # compare headword class to expected word class
             if word_pos not in unit_pos:
+                print(fetched_words)
+                print(unit)
                 print(f"Failed to apply sentence - word {word_sounds} part of speech {word_pos} does not match expected word class {unit_pos}")
                 return
             # create grammatical unit with headword and sentence unit properties
@@ -177,5 +179,11 @@ class Sentences:
             )
             applied_sentence.append(built_unit)
         
+        # TODO: add translation
+        sentence_data = {
+            'sound': spacing.join(applied_sentence),
+            'translation': ""
+        }
+
         # return single string sentence
-        return spacing.join(applied_sentence)
+        return sentence_data

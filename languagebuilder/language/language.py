@@ -119,11 +119,6 @@ class Language:
             print(f"Language failed to generate word - invalid number of syllables {length}")
             return
         
-        # expect a single string for one part of speech
-        if word_class and not isinstance(word_class, str):
-            print(f"Language generate failed - expected one part of speech in a word_class string")
-            return
-
         # generate the created phonemes in syllables
         word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
         
@@ -144,6 +139,12 @@ class Language:
                 bound=bound,
                 pos=word_class
             )
+
+            # back out if exponent not created
+            if not exponent_id:
+                print(f"Language generate failed - unable to create grammatical exponent")
+                return
+            
             # store sound changes and spelling for both grammatical pieces
             pre_change = pre_word['change']
             post_change = post_word['change']
@@ -175,20 +176,27 @@ class Language:
             
             # store and return a grammatical word entry
             return self.store(
-                formatted_word,
-                formatted_definition,
-                formatted_change,
-                formatted_spelling,
-                exponent_id
+                word=formatted_word,
+                definition=formatted_definition,
+                change=formatted_change,
+                spelling=formatted_spelling,
+                exponent_id=exponent_id
             )
         
         # Store and return a base word entry
+        
+        # check supplied part of speech
+        if word_class and not self.grammar.word_classes.get(word_class):
+            print(f"Language generate failed - invalid word class {word_class}")
+            return
+
         # store created word or word piece and return lookup info
         return self.store(
             word=word['sound'],
             change=word['change'],
             definition=definition.strip(),
-            spelling=word['spelling']
+            spelling=word['spelling'],
+            word_class=word_class
         )
 
     def add_grammar(self, entry_headword, entry_index, pre=False, post=False, bound=False, properties="", word_classes=""):
@@ -207,6 +215,9 @@ class Language:
             pos=vetted_word_classes
         )
 
+        # NOTE: grammar treating as word with pos or as exponent
+        #   - non-exponents can have a word class
+        #   - exponents can be restricted to providing to certain word classs
         # TODO: abstract grammar definition creation from .generate 
         self.dictionary.update(
             entry_headword,
@@ -302,7 +313,7 @@ class Language:
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
     #   - core idea is to store important data for display but only 
-    def store(self, word="", definition="", spelling="", change="", exponent_id=None):
+    def store(self, word="", definition="", spelling="", change="", exponent_id=None, word_class=None):
         """Pass word entry components through to the dictionary for storage"""
         #word_class = self.grammar.exponents.get(exponent_id).get('pos')
         #examples = self.craft_paradigm(word_class)
@@ -312,5 +323,6 @@ class Language:
             change=change,
             definition=definition,
             exponent=exponent_id,
+            pos=word_class
             # examples=examples
         )
