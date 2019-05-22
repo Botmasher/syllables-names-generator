@@ -232,6 +232,73 @@ search_results = my_language.dictionary.search(keywords="instrumental")
 entry = my_language.dictionary.lookup(*search_results[0])
 print(entry)
 
+
+# Make sentences
+
+# add verb properties for full sentence
+my_language.grammar.properties.add("aspect", "perfective")
+my_language.grammar.properties.add("aspect", "imperfective")
+my_language.grammar.properties.add("mood", "realis")
+my_language.grammar.properties.add("mood", "irrealis")
+my_language.grammar.properties.add("case", "nominative")
+my_language.grammar.properties.add("case", "accusative")
+
+# create exponents
+my_language.generate(
+    length = 1,     
+    post = True,
+    bound = True,
+    properties = "perfective realis",
+    word_class = "verb"
+)
+my_language.generate(
+    length = 1,     
+    post = True,
+    bound = True,
+    properties = "nominative",
+    word_class = "noun"
+)
+my_language.generate(
+    length = 1,     
+    post = True,
+    bound = True,
+    properties = "accusative",
+    word_class = "noun"
+)
+
+# generate words and look up headwords
+my_language.syllables_min_max(2, 4)     # TODO: separate exponent min max
+generated_verb = my_language.generate(
+    definition = "run around",
+    word_class = "verb"
+)
+generated_subject = my_language.generate(
+    definition = "wolf",
+    word_class = "noun"
+)
+generated_object = my_language.generate(
+    definition = "sheep",
+    word_class = "noun"
+)
+v = my_language.dictionary.lookup(*generated_verb)
+s = my_language.dictionary.lookup(*generated_subject)
+o = my_language.dictionary.lookup(*generated_object)
+
+# create and apply sentence
+my_language.grammar.sentences.add(
+    name = "basic:transitive",
+    structure = [
+        ["noun", "nominative"],
+        ["verb", "perfective realis"],
+        ["noun", "accusative"]
+    ]
+)
+# TODO: make composable like ability to embed units (definite + noun)
+my_language.grammar.sentences.apply(
+    name = "basic:transitive",
+    headwords = [s, o, v]
+)
+
 # TODO: check and refine exponent storage
 #   - examples (from corpus?) for entries in the dictionary
 #       - at least examples for the exponents since they're so out of context otherwise

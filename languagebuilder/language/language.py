@@ -216,6 +216,13 @@ class Language:
         )
         return self.dictionary.lookup(entry_headword, entry_index)
 
+    # TODO: create sentences checking grammar 
+    def create_sentence(self, name, structure):
+        return
+    # TODO: apply sentences looking up headwords
+    def apply_sentence(self, name, headwords):
+        return
+
     def translate(self, definition, properties="", word_class=""):
         """Attempt to render a single base plus grammatical properties
         in the target language"""

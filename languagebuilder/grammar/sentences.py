@@ -65,7 +65,7 @@ class Sentences:
             unit_properties = self.grammar.parse_properties(unit[1])
             # check for valid properties
             if not unit_properties:
-                print(f"Sentences vet_structure failed - invalid unit properties {unit_properties}")
+                print(f"Sentences vet_structure failed - invalid unit properties {unit[1]}")
                 return
             units_sequence.append([unit_word_classes, unit_properties])
         return units_sequence
