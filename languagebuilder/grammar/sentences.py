@@ -70,7 +70,7 @@ class Sentences:
             units_sequence.append([unit_word_classes, unit_properties])
         return units_sequence
 
-    def add(self, name="", structure=None, all_or_none=False):
+    def add(self, name="", structure=None, translation=None, all_or_none=False):
         """Add a named sentence type with a sequence of units in the sentence"""
         # check for existing sentence type name and sequence of units
         if not name or name in self.sentences or not isinstance(structure, (list, tuple)):
@@ -88,7 +88,7 @@ class Sentences:
 
         return self.sentences[name]
 
-    def update(self, name, structure=None, all_or_none=False):
+    def update(self, name, structure=None, translation=None, all_or_none=False):
         """Modify the unit sequence of a single named sentence type"""
         # check that the sentence type already exists
         if not self.get(name):

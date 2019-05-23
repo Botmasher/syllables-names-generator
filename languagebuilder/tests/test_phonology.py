@@ -218,3 +218,45 @@ class PhonologyWords(PhonologyFixture):
             "ka",
             "applied rule to inapplicable sound"
         )    
+
+class PhonologySpelling(PhonologyFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(PhonologySpelling, this_class).setUpClass()
+        this_class.phonology.phonemes.add("c", ["ts"])
+        this_class.phonology.phonemes.add("z", ["dz"])
+        this_class.phonology.phonemes.add("o", ["o"])
+        this_class.phonology.syllables.add("CV")
+
+    def test_spell_word(self):
+        # spell the word as given in letters
+        phonemes = ['ts', 'o', 'ts', 'o']
+        spelling = self.phonology.spell(phonemes)
+        self.assertEqual(
+            spelling,
+            "coco",
+            "failed to spell a simple word with known letters"
+        )
+
+    def test_spell_word_fallback_phonemes(self):
+        # fall back on one consonant but not the other
+        phonemes = ['g', 'o', 'dz', 'o']
+        fallback_phonemes = ['ts', 'o', 'ts', 'o']
+        spelling = self.phonology.spell(phonemes, fallback_phonemes)
+        self.assertEqual(
+            spelling,
+            "cozo",
+            "failed to use fallback phonemes correctly when spelling a word"
+        )
+
+    def test_build_spell_word(self):
+        # generate a word
+        word = self.phonology.build_word(
+            length=4,
+            apply_rules=True,
+            spell_after_change=True
+        )
+        self.assertTrue(
+            word['spelling'] and word['spelling'] == self.phonology.spell(word['sound'], word['change']),
+            "failed to spell  word with known letters"
+        )

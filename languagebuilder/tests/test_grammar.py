@@ -629,7 +629,7 @@ class GrammarOrderSentences(GrammarFixture):
             [mock_verb, mock_subject, mock_object]
         )
         self.assertEqual(
-            sentence,
+            sentence['sound'],
             # "A cat did chase a dog", # NOTE: if using translation
             "rtota uk kata nu data",
             "grammar failed to build (add and apply) a basic sentence"

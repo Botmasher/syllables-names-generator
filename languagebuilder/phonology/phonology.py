@@ -479,8 +479,8 @@ class Phonology:
         # characters that can be passed through without spelling
         skippable_chars = ("")
 
-        #print(f"These are the changed sounds to spell: {phonemes}")
-        #print(f"These are the fallback sounds to spell: {fallback_phonemes}")
+        print(f"These are the changed sounds to spell: {phonemes}")
+        print(f"These are the fallback sounds to spell: {fallback_phonemes}")
 
         # traverse choosing a letter for each sound
         for i, phoneme in enumerate(phonemes):
