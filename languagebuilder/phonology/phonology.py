@@ -125,7 +125,9 @@ class Phonology:
         if not self.phonetics.has_ipa(ipa) or not all(isinstance(l, str) for l in letters) or len(letters) < 1:
             print("Phonology add_sound failed - invalid phonetic symbol or letters")
             return
-        self.phonemes.add(ipa, letters, weight)
+        phoneme = self.phonemes.add(ipa, letters, weight)
+        if not phoneme:
+            raise NameError("Failed to add phoneme {ipa} - ")
         return ipa
     #
     def add_sounds(self, ipa_letters_map):
@@ -402,7 +404,7 @@ class Phonology:
             new_ipa_sequence = self.apply_rule(new_ipa_sequence, rule_id)
 
         # return the changed sequence fed through all rules
-        return "".join(new_ipa_sequence)
+        return new_ipa_sequence
 
     # TODO add affixes, apply rules and store word letters and symbols
     def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True):
@@ -432,8 +434,8 @@ class Phonology:
                 # find all inventory ipa that have these features
                 symbols = self.phonetics.get_ipa(feature_set, filter_phonemes=self.inventory())
                 print("Choosing from the following symbols: ", symbols)
-                # TODO you store Phoneme with associated letters so this should be easy
-                #   - right now inventory maps features to letters
+                # TODO: you store Phoneme with associated letters so this should be easy
+                #   - inventory maps features to letters
                 #   - features maps them to sounds
                 #   - instead stick with features <> ipa <> letters
                 #   - use Features and Phoneme to accomplish (see features.py comment)
@@ -494,7 +496,7 @@ class Phonology:
             elif fallback_phonemes and self.phonemes.has(fallback_phonemes[i]):
                 spelled_phoneme = fallback_phonemes[i]
             else:
-                print(f"Phonology failed to spell unrecognized {phoneme} or find a fallback sound.")
+                print(f"Phonology failed to spell unrecognized phoneme {phoneme} or find a fallback sound.")
                 return
             
             # choose a letter from possible representations

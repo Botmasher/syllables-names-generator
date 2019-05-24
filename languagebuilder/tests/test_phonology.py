@@ -13,13 +13,13 @@ class PhonologyFixture(unittest.TestCase):
     def setUpClass(this_class):
         """Instantiate Phonology for all tests in the class"""
         print("Setting up a Phonology instance")
-        phonetics = Phonetics()
-        phonetics.add("a", ["vowel", "front", "open", "unrounded"])
-        phonetics.add("k", ["consonant", "voiceless", "velar", "stop"])
-        phonetics.add("g", ["consonant", "voiced", "velar", "stop"])
-        phonetics.add("x", ["consonant", "voiceless", "velar", "fricative"])
-        phonetics.add("ɣ", ["consonant", "voiced", "velar", "fricative"])
-        this_class.phonology = Phonology(phonetics)
+        this_class.phonetics = Phonetics()
+        this_class.phonetics.add("a", ["vowel", "front", "open", "unrounded"])
+        this_class.phonetics.add("k", ["consonant", "voiceless", "velar", "stop"])
+        this_class.phonetics.add("g", ["consonant", "voiced", "velar", "stop"])
+        this_class.phonetics.add("x", ["consonant", "voiceless", "velar", "fricative"])
+        this_class.phonetics.add("ɣ", ["consonant", "voiced", "velar", "fricative"])
+        this_class.phonology = Phonology(this_class.phonetics)
     
     @classmethod
     def tearDownClass(this_class):
@@ -223,17 +223,21 @@ class PhonologySpelling(PhonologyFixture):
     @classmethod
     def setUpClass(this_class):
         super(PhonologySpelling, this_class).setUpClass()
-        this_class.phonology.phonemes.add("c", ["ts"])
-        this_class.phonology.phonemes.add("z", ["dz"])
+        this_class.phonetics.add("ts", ["consonant", "voiceless", "alveolar", "affricate"])
+        this_class.phonetics.add("dz", ["consonant", "voiced", "alveolar", "affricate"])
+        this_class.phonetics.add("o", ["vowel", "back", "mid", "rounded"])
+        this_class.phonology.phonemes.add("ts", ["c"])
+        this_class.phonology.phonemes.add("dz", ["z"])
         this_class.phonology.phonemes.add("o", ["o"])
         this_class.phonology.syllables.add("CV")
-
+        
     def test_spell_word(self):
         # spell the word as given in letters
         phonemes = ['ts', 'o', 'ts', 'o']
+        # use class phonology to spell word
         spelling = self.phonology.spell(phonemes)
         self.assertEqual(
-            spelling,
+            "".join(spelling),
             "coco",
             "failed to spell a simple word with known letters"
         )
@@ -242,21 +246,36 @@ class PhonologySpelling(PhonologyFixture):
         # fall back on one consonant but not the other
         phonemes = ['g', 'o', 'dz', 'o']
         fallback_phonemes = ['ts', 'o', 'ts', 'o']
+        # use class phonology to spell
         spelling = self.phonology.spell(phonemes, fallback_phonemes)
         self.assertEqual(
-            spelling,
+            "".join(spelling),
             "cozo",
             "failed to use fallback phonemes correctly when spelling a word"
         )
 
+    def test_spell_word_sound_change(self):
+        self.phonology.add_rule("voiceless", "voiced", "V_")
+        # spell changed sounds but fall back on pre-change sounds
+        phonemes = ['ts', 'o', 'k', 'o']    # k exists in fixture phonetics
+        changed_phonemes = self.phonology.apply_rules(phonemes)
+        # use class phonology to spell
+        spelling = self.phonology.spell(changed_phonemes, phonemes)
+        self.assertEqual(
+            "".join(spelling) if spelling else "",
+            "dzoko",
+            f"failed to spell a word after a sound change was applied"
+        )
+
     def test_build_spell_word(self):
-        # generate a word
+        # build a word with sounds, change and spelling based on class phonology
         word = self.phonology.build_word(
             length=4,
             apply_rules=True,
             spell_after_change=True
         )
-        self.assertTrue(
-            word['spelling'] and word['spelling'] == self.phonology.spell(word['sound'], word['change']),
-            "failed to spell  word with known letters"
+        self.assertEqual(
+            (None, word['spelling'])[not not word['spelling']],
+            self.phonology.spell(word['change'], word['sound']),
+            "failed to generate a word with valid spelling"
         )

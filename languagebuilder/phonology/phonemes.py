@@ -37,7 +37,7 @@ class Phonemes():
 
         # create entry
         self.phonemes[ipa] = phoneme
-        return ipa
+        return phoneme
     
     # TODO: ability to manage (crud) individual letters
     def update(self, ipa, letters=None, weight=None, new_ipa=None):
