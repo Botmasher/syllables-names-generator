@@ -271,7 +271,7 @@ class Language:
         # TODO: consider definitions
         else:
             base_sounds = base
-            base_definition = "(ad hoc base)"
+            base_definition = "(undefined)"
 
         # compute spelling, underlying sounds and changed sounds
         unit_sounds = self.grammar.build_unit(
@@ -280,6 +280,7 @@ class Language:
             word_classes=word_classes
         )
         unit_change = self.phonology.apply_rules(unit_sounds)
+        raise ValueError(f"Expect changed unit list not {unit_change}, changed from unit sounds {unit_sounds}")
         if spell_after_change:
             unit_spelling = self.phonology.spell(unit_change, unit_sounds)
         else:

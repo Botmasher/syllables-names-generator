@@ -121,14 +121,15 @@ class Phonology:
     #   - current weight intended for distributing phon freq
     def add_sound(self, ipa, letters=[], weight=0):
         """Add one phonetic symbol, associated letters and optional weight
-        to the inventory"""
+        to the inventory and """
         if not self.phonetics.has_ipa(ipa) or not all(isinstance(l, str) for l in letters) or len(letters) < 1:
-            print("Phonology add_sound failed - invalid phonetic symbol or letters")
+            raise NameError("Phonology add_sound failed - invalid phonetic symbol or letters")
+        # check for modification to existing phoneme
+        if self.phonemes.has(ipa):
+            print(f"Phonology add_sound failed - phoneme {ipa} already exists")
             return
-        phoneme = self.phonemes.add(ipa, letters, weight)
-        if not phoneme:
-            raise NameError("Failed to add phoneme {ipa} - ")
-        return ipa
+        # store phoneme data
+        return self.phonemes.add(ipa, letters, weight)
     #
     def add_sounds(self, ipa_letters_map):
         """Add multiple phonetic symbols to the inventory with their associated
@@ -396,12 +397,14 @@ class Phonology:
         result of each rule application to the next rule as sorted in Rules.order"""
 
         # set up the word
-        print(f"\nApplying rules to {ipa_sequence}")
+        print(f"\nApplying all rules to input ipa sequence {ipa_sequence}")
         new_ipa_sequence = [character for character in ipa_sequence]
 
         # traverse local rules map searching for and applying rule matches
         for rule_id in self.rules.get():
             new_ipa_sequence = self.apply_rule(new_ipa_sequence, rule_id)
+
+        print(f"Finished applying all rules to create new ipa sequence {new_ipa_sequence}\n")
 
         # return the changed sequence fed through all rules
         return new_ipa_sequence
@@ -453,6 +456,8 @@ class Phonology:
         # apply sound changes to built word
         word_changed = self.apply_rules(word_ipa) if apply_rules else word_ipa
 
+        #raise ValueError(f"oh no it's {word_ipa}, which changed into {word_changed}")
+
         # respell word either before or following sound changes
         # NOTE: expect word_changed and word_ipa have same elements count!         
         word_spelling = self.spell(word_changed, word_ipa) if spell_after_change else self.spell(word_ipa)
@@ -473,6 +478,14 @@ class Phonology:
         representing a spelled word. Use optional fallback list in case changed
         phonemes do not have letters. Fallback length and character indexes must match
         the main phonemes list."""
+        # check for valid input lists
+        if not isinstance(phonemes, list):
+            raise NameError(f"Phonology spell failed - invalid phonemes list {phonemes}")
+            return
+        if fallback_phonemes and (not isinstance(fallback_phonemes, list) or len(fallback_phonemes) != len(phonemes)):
+            raise NameError(f"Phonology spell failed - fallback phonemes {fallback_phonemes} must be a list with same length as phonemes {phonemes}")
+            return
+
         # left-to-right spelling letter storage
         letters = []
         # sound and letter that get spelled each pass
@@ -496,8 +509,8 @@ class Phonology:
             elif fallback_phonemes and self.phonemes.has(fallback_phonemes[i]):
                 spelled_phoneme = fallback_phonemes[i]
             else:
-                print(f"Phonology failed to spell unrecognized phoneme {phoneme} or find a fallback sound.")
-                return
+                raise NameError(f"Phonology failed to spell unrecognized phoneme {phoneme} or find a fallback sound {fallback_phonemes[i]}.")
+            
             
             # choose a letter from possible representations
             letter = random.choice(list(self.phonemes.get_letters(spelled_phoneme)))

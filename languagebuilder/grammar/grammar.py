@@ -418,7 +418,10 @@ class Grammar:
 
         # add exponents to build up the word
         # attach the best matches from the mapped and reduced exponents
-        built_word = self.attach_exponents(root, reduced_exponents, as_string=True)
+        built_word = self.attach_exponents(
+            root,
+            reduced_exponents
+        )
 
         # return the grammatically augmented word
         return built_word

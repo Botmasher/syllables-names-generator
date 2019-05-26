@@ -257,25 +257,32 @@ class PhonologySpelling(PhonologyFixture):
     def test_spell_word_sound_change(self):
         self.phonology.add_rule("voiceless", "voiced", "V_")
         # spell changed sounds but fall back on pre-change sounds
-        phonemes = ['ts', 'o', 'k', 'o']    # k exists in fixture phonetics
+        phonemes = ['ts', 'o', 'ts', 'o']
         changed_phonemes = self.phonology.apply_rules(phonemes)
         # use class phonology to spell
         spelling = self.phonology.spell(changed_phonemes, phonemes)
         self.assertEqual(
             "".join(spelling) if spelling else "",
-            "dzoko",
+            "cozo",
             f"failed to spell a word after a sound change was applied"
         )
 
     def test_build_spell_word(self):
-        # build a word with sounds, change and spelling based on class phonology
+        """Test building and spelling a word after sound changes based on class phonology"""
+
+        # TODO: repair rule with environment _V not applying!
+        # TODO: extract rule from difference (like dz > ts picking up on voicing)
+
+        # add sound change and build word 
+        self.phonology.add_rule("voiceless", "voiced", "V_")
         word = self.phonology.build_word(
             length=4,
             apply_rules=True,
             spell_after_change=True
         )
-        self.assertEqual(
+        # expect word
+        self.assertIn(
             (None, word['spelling'])[not not word['spelling']],
-            self.phonology.spell(word['change'], word['sound']),
+            ["cozozozo", "zozozozo"],  # changes result in ts,dz > dz | V_(V)
             "failed to generate a word with valid spelling"
         )
