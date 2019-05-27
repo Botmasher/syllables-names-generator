@@ -353,7 +353,11 @@ class GrammarBuildWords(GrammarFixture):
         this_class.grammar.exponents.add(pre="circum-", post="-fix", properties={'category': 'grammeme'}, bound=True)
 
     def test_build_unit(self):
-        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme_verb'})
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'category': 'grammeme_verb'},
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "baseword-verb",
@@ -361,7 +365,11 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_parsed(self):
-        unit = self.grammar.build_unit("baseword", properties='category grammeme_verb')
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties='category grammeme_verb',
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "baseword-verb",
@@ -369,7 +377,12 @@ class GrammarBuildWords(GrammarFixture):
         )
     
     def test_build_unit_parsed_uncategorized(self):
-        unit = self.grammar.build_unit("baseword", properties="grammeme grammeme_noun", word_classes="noun")
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties="grammeme grammeme_noun",
+            word_classes="noun",
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "nounish baseword",
@@ -377,7 +390,12 @@ class GrammarBuildWords(GrammarFixture):
         )
     
     def test_build_unit_parsed_postcategorized(self):
-        unit = self.grammar.build_unit("baseword", properties='grammeme_noun category grammeme category', word_classes="noun")
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties='grammeme_noun category grammeme category',
+            word_classes="noun",
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "nounish baseword",
@@ -385,7 +403,12 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_parsed_messy(self):
-        unit = self.grammar.build_unit("baseword", properties='   ἄβγδ  grammeme :  grammeme_noun , category   , something  else too     ', word_classes="noun")
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties='   ἄβγδ  grammeme :  grammeme_noun , category   , something  else too     ',
+            word_classes="noun",
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "nounish baseword",
@@ -393,7 +416,13 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_excluded_word_class(self):
-        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme_verb'}, word_classes="noun", exact_pos=True)
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'category': 'grammeme_verb'},
+            word_classes="noun",
+            exact_pos=True,
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "baseword",
@@ -401,7 +430,12 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_multiproperty_exponent(self):
-        unit = self.grammar.build_unit("baseword", properties={'category': ['grammeme', 'grammeme_noun']}, word_classes="noun")
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'category': ['grammeme', 'grammeme_noun']},
+            word_classes="noun",
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "nounish baseword",
@@ -409,7 +443,11 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_circumfix(self):
-        unit = self.grammar.build_unit("baseword", properties={'category': 'grammeme'})
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'category': 'grammeme'},
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "circum-baseword-fix",
@@ -417,7 +455,11 @@ class GrammarBuildWords(GrammarFixture):
         )
 
     def test_build_unit_existing_property_nonexisting_exponent(self):
-        unit = self.grammar.build_unit("baseword", properties={'category': 'nonexponented_grammeme'})
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'category': 'nonexponented_grammeme'},
+            as_string=True
+        )
         self.assertEqual(
             unit,
             "baseword",
@@ -453,7 +495,11 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         # order the exponents
         self.grammar.morphosyntax.add_exponent_order(first_prefix, inner=second_prefix)
         # see if exponents are in order when building word
-        built_unit = self.grammar.build_unit("rootword", properties="grammeme1 grammeme2")
+        built_unit = self.grammar.build_unit(
+            "rootword",
+            properties="grammeme1 grammeme2",
+            as_string=True
+        )
         self.assertEqual(
             built_unit,
             "first-second-rootword",
@@ -469,7 +515,11 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         # reorder the exponents
         self.grammar.morphosyntax.add_exponent_order(first_prefix, outer=second_prefix)
         # see if exponents are in order when building word
-        built_unit = self.grammar.build_unit("rootword", properties="grammemeSwap1 grammemeSwap2")
+        built_unit = self.grammar.build_unit(
+            "rootword",
+            properties="grammemeSwap1 grammemeSwap2",
+            as_string=True
+        )
         self.assertEqual(
             built_unit,
             "second-first-rootword",
@@ -514,7 +564,7 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         built_unit = self.grammar.build_unit("rootword", properties="4 2 1 5")
 
         self.assertEqual(
-            built_unit,
+            "".join(built_unit),
             "rootword1245",
             "morphosyntax did not correctly arrange exponents when not requesting one skipped ordered inner or outer element"
         )
@@ -538,7 +588,7 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         self.grammar.morphosyntax.add_exponent_order(abc_D, inner=abc_C, outer=abc_E)
         
         # see if exponents are in order when building word
-        built_unit = self.grammar.build_unit("rootword", properties="C B")
+        built_unit = self.grammar.build_unit("rootword", properties="C B", as_string=True)
 
         self.assertEqual(
             built_unit,

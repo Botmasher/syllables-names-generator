@@ -480,11 +480,12 @@ class Phonology:
         the main phonemes list."""
         # check for valid input lists
         if not isinstance(phonemes, list):
-            raise NameError(f"Phonology spell failed - invalid phonemes list {phonemes}")
-            return
-        if fallback_phonemes and (not isinstance(fallback_phonemes, list) or len(fallback_phonemes) != len(phonemes)):
-            raise NameError(f"Phonology spell failed - fallback phonemes {fallback_phonemes} must be a list with same length as phonemes {phonemes}")
-            return
+            raise TypeError(f"Phonology spell failed - invalid phonemes list {phonemes}")
+        if fallback_phonemes:
+            if not isinstance(fallback_phonemes, list):
+                raise TypeError(f"Phonology spell failed - expected fallback phonemes list not {fallback_phonemes}")
+            elif len(fallback_phonemes) != len(phonemes):
+                raise ValueError(f"Phonology spell failed - fallback phonemes {fallback_phonemes} list length does not match phonemes {phonemes}")
 
         # left-to-right spelling letter storage
         letters = []

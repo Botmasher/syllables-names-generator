@@ -177,11 +177,16 @@ class Sentences:
                 properties=unit_properties,
                 word_classes=word_pos
             )
-            applied_sentence.append(built_unit)
+            # add spacing separator and unit to sentence
+            appended_unit = [spacing, *built_unit]
+            [
+                applied_sentence.append(unit_piece)
+                for unit_piece in appended_unit
+            ]
         
         # TODO: add translation
         sentence_data = {
-            'sound': spacing.join(applied_sentence),
+            'sound': "".join(applied_sentence).strip(),
             'translation': ""
         }
 

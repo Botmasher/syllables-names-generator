@@ -289,7 +289,7 @@ class Grammar:
         return
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, all_requested=False, all_or_none=False):
+    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, all_requested=False, all_or_none=False, as_string=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms.
         Set exact_pos to use only exponents associated with the matching word classes.
         Set all_requested to move forward only if all requested properties exist when
@@ -422,6 +422,10 @@ class Grammar:
             root,
             reduced_exponents
         )
+
+        # allow returning string instead of list
+        if as_string:
+            return "".join(built_word)
 
         # return the grammatically augmented word
         return built_word

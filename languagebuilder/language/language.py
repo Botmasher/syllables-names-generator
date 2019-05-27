@@ -273,14 +273,16 @@ class Language:
             base_sounds = base
             base_definition = "(undefined)"
 
-        # compute spelling, underlying sounds and changed sounds
+        # build grammatical unit with underlying sounds
         unit_sounds = self.grammar.build_unit(
             base_sounds,
             properties=properties,
             word_classes=word_classes
         )
+        # compute changed sounds
         unit_change = self.phonology.apply_rules(unit_sounds)
-        raise ValueError(f"Expect changed unit list not {unit_change}, changed from unit sounds {unit_sounds}")
+        
+        # obtain and store spelling
         if spell_after_change:
             unit_spelling = self.phonology.spell(unit_change, unit_sounds)
         else:
