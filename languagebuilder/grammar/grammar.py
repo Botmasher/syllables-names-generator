@@ -289,18 +289,28 @@ class Grammar:
         return
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, all_requested=False, all_or_none=False, as_string=False):
+    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, spacing=" ", all_requested=False, all_or_none=False, as_string=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms.
-        Set exact_pos to use only exponents associated with the matching word classes.
-        Set all_requested to move forward only if all requested properties exist when
-        passing in a properties dict.
-        Set all_or_none to ensure all requested properties
-        must be provided by matching exponents."""
+
+        Args:
+            root (list): Base word sounds to build around.
+            properties (list): All grammatical properties requested for the unit.
+            word_classes (list): All word classes this root belongs to.
+            exact_pos (bool): Use only exponents associated with matching word classes.
+            spacing (str): Symbol to use when surrounding with unbound exponents.
+            all_requested (bool): Move forward only if all requested properties exist.
+            all_or_none (bool): Ensure all requested properties are provided.
+            as_string (bool): Return the built unit as a string instead of a list.
+        
+        Returns:
+            A list of sound symbols representing the grammatically exponented base,
+            with or without spacing depending on exponent binding settings.
+        """
         # TODO: better docstring particularly for this method
 
         # verify that a root word is given
-        if not isinstance(root, str):
-            print("Grammar build_word failed - invalid root word string {0}".format(root))
+        if not isinstance(root, list):
+            print(f"Grammar build_word failed - invalid root word list {root}")
             return
 
         # make usable word class set collecting valid and recognizable pos terms
@@ -428,6 +438,7 @@ class Grammar:
             return "".join(built_word)
 
         # return the grammatically augmented word
+        #raise ValueError(f"list contains more than symbols: {built_word}")
         return built_word
 
     def attach_exponents(self, root, exponent_ids, as_string=False, reorder=True):

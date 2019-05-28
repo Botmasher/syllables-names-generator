@@ -33,11 +33,17 @@ class Exponents:
        """Fetch all exponent ids and details from the grammatical exponents map"""
        return self.exponents.items()
 
-    def exists(self, pre="", post=""):
+    def exists(self, pre=None, post=None):
         """Check if the given sounds are an exponent in this grammar"""
+        # check for pre or post material
         if not (pre or post):
-            print("Exponents.exists failed - expected pre or post string")
+            print("Exponents exists failed - expected pre or post list or string")
             return
+
+        # turn pre and post strings into list of ipa
+        pre = list(pre) if pre else []
+        post = list(post) if post else []
+
         # search details for pre/post matches
         for exponent_details in self.exponents.values():
             # circumfix or circumposition
@@ -57,17 +63,22 @@ class Exponents:
     #   category: 'grammeme'           # a single string is also allowed
     #   ...
     # }
-    def add(self, pre="", post="", bound=True, properties=None, pos=None):
+    # NOTE: other language methods expect pre, post lists of ipa not string
+    def add(self, pre=None, post=None, bound=True, properties=None, pos=None):
         """Add one grammatical exponent to the grammar"""
         # ensure either valid pre or post
         if not (pre or post):
-            print("Exponents.add failed - expected pre or post exponent string")
+            print("Exponents add failed - expected pre or post exponent symbols")
             return
+
+        # turn pre and post strings into list of ipa
+        pre = list(pre) if pre else []
+        post = list(post) if post else []
 
         # vet and check provided grammatical properties
         parsed_properties = self.grammar.parse_properties(properties) if isinstance(properties, str) else properties
         if not parsed_properties or not isinstance(parsed_properties, dict):
-            print("Exponents.add failed - expected valid properties map or string")
+            print("Exponents add failed - expected valid properties map or string")
             return
 
         # collect valid word classes to include or exclude when property is applied
@@ -78,15 +89,15 @@ class Exponents:
         
         # back out of add if no recognized properties provided by exponent
         if not recognized_properties:
-            print("Exponents.add failed - invalid properties")
+            print(f"Exponents add failed - invalid properties {parsed_properties}")
             return
         
         # store exponent details
-        exponent_id = "grammatical-exponent-{0}".format(uuid4())
+        exponent_id = f"grammatical-exponent-{uuid4()}"
         self.exponents[exponent_id] = {
             'id': exponent_id,
-            'pre': pre,
-            'post': post,
+            'pre': pre if pre else [],
+            'post': post if post else [],
             'bound': bound,
             'properties': recognized_properties,
             'pos': recognized_word_classes
@@ -96,20 +107,21 @@ class Exponents:
     def add_many(self, exponents_details):
         """Add a list of grammatical exponents with properties"""
         if not isinstance(exponents_details, list):
-            print("Exponents.add_many failed - invalid list of exponents {0}".format(exponents_details))
+            print(f"Exponents add_many failed - invalid list of exponents {exponents_details}")
             return
         # prepare to store ids of created exponents
         exponent_ids = []
         # shape and store details
         for exponent in exponents_details:
             # verify expected details for an exponent
-            if not isinstance(exponent, dict) or 'properties' not in exponent or not ('pre' in exponent or 'post' in exponent):
-                print("Exponents.add_many skipped invalid element - expected dict with 'properties' and 'pre' or 'post', got {0}".format(exponent))
+            # NOTE: not all-or-nothing add, log skipped exponents to console
+            if not isinstance(exponent, dict) or not {'pre', 'post'} & exponent.keys() or 'properties' not in exponent:
+                print(f"Exponents add_many skipped invalid exponent dict {exponent}")
                 continue
             # shape new details layering default values over missing details
             new_exponent_details = merge_maps({
-                'pre': "",
-                'post': "",
+                'pre': [],
+                'post': [],
                 'bound': True,
                 'pos': set()
             }, exponent)
@@ -125,11 +137,11 @@ class Exponents:
             exponent_id and exponent_ids.append(exponent_id)
         return exponent_ids
 
-    def update(self, exponent_id, pre="", post="", bound=None, properties=None, pos=None):
+    def update(self, exponent_id, pre=None, post=None, bound=None, properties=None, pos=None):
         """Modify the basic details of one grammatical exponent"""
         # check that the exponent exists
         if exponent_id not in self.exponents:
-            print("Exponents.update failed - unknown exponent id {0}".format(exponent_id))
+            print(f"Exponents.update failed - unknown exponent id {exponent_id}")
             return
         
         # store existing parts of speech for this exponent
@@ -142,8 +154,8 @@ class Exponents:
         updated_exponent_details = merge_maps(
             self.exponents[exponent_id],
             {
-                'pre': pre if pre and isinstance(pre, str) else None,
-                'post': post if post and isinstance(post, str) else None,
+                'pre': pre if pre and isinstance(pre, list) else None,
+                'post': post if post and isinstance(post, list) else None,
                 'bound': bound if isinstance(bound, bool) else None,
                 'properties': recognized_properties,
                 'pos': recognized_word_classes
@@ -157,7 +169,7 @@ class Exponents:
         """Delete the record for one exponent from the grammar"""
         # check that the exponent exists
         if exponent_id not in self.exponents:
-            print("Exponents.remove failed - unknown id {0}".format(exponent_id))
+            print(f"Exponents remove failed - unknown id {exponent_id}")
             return
         # keep a copy of the details to return
         removed_exponent = self.exponents[exponent_id]
@@ -171,10 +183,10 @@ class Exponents:
         """Add one included or excluded word class to the grammatical property"""
         # check that the exponent exists and that there is a part of speech to add
         if exponent_id not in self.exponents:
-            print("Exponents.add_pos failed - unknown exponent {}".format(exponent_id))
+            print(f"Exponents add_pos failed - unknown exponent {exponent_id}")
             return
-        if not isinstance(pos, str) or not self.grammar.word_classes.get(pos):
-            print("Exponents.add_pos failed - expected an existing word class string")
+        if not self.grammar.word_classes.get(pos):
+            print(f"Exponents add_pos failed - expected an existing word class not {pos}")
             return
 
         # add verified part of speech to exponent word class set
@@ -186,7 +198,7 @@ class Exponents:
         """Remove one included or excluded word class from the grammatical property"""
         # check for the property
         if exponent_id not in self.exponents:
-            print("Exponents.remove_pos failed - unknown exponent {}".format(exponent_id))
+            print(f"Exponents remove_pos failed - unknown exponent {exponent_id}")
             return
 
         # remove word class from exponent parts of speech
@@ -199,11 +211,11 @@ class Exponents:
         """Update the included or excluded word classes for a property"""
         # verify that the property exists
         if exponent_id not in self.exponents:
-            print("Exponents.replace_pos failed - unknown exponent {}".format(exponent_id))
+            print(f"Exponents replace_pos failed - unknown exponent {exponent_id}")
             return
         # check for valid include and exclude part of speech lists
         if not pos or not isinstance(pos, (list, tuple, set)):
-            print("Exponents.replace_pos failed - invalid include or exclude lists")
+            print(f"Exponents replace_pos failed - invalid include pos list {pos}")
             return
 
         # collect only recognized parts of speech
