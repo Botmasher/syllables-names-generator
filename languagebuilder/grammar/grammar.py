@@ -289,7 +289,7 @@ class Grammar:
         return
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, root, properties=None, word_classes=None, exact_pos=False, spacing=" ", all_requested=False, all_or_none=False, as_string=False):
+    def build_unit(self, base, properties=None, word_classes=None, exact_pos=False, spacing=" ", all_requested=False, all_or_none=False, as_string=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms.
 
         Args:
@@ -308,9 +308,10 @@ class Grammar:
         """
         # TODO: better docstring particularly for this method
 
-        # verify that a root word is given
-        if not isinstance(root, list):
-            print(f"Grammar build_word failed - invalid root word list {root}")
+        # verify that a valid base word is supplied
+        base = list(base) if isinstance(base, str) else base
+        if not isinstance(base, list):
+            print(f"Grammar build_word failed - invalid base word {base}")
             return
 
         # make usable word class set collecting valid and recognizable pos terms
@@ -322,7 +323,7 @@ class Grammar:
         
         # dead end when did not turn up a good map of vetted properties
         if not self.properties.is_properties_map(requested_properties):
-            print("Grammar build_word failed for {0} - invalid properties {1}".format(root, requested_properties))
+            print(f"Grammar build_word failed for {base} - invalid properties {requested_properties}")
             return
 
         # Below map-reduce exponents using vetted_properties and vetted_word_classes
@@ -380,7 +381,7 @@ class Grammar:
             for category_grammeme_pair in provided_properties:
                 property_count = provided_properties[category_grammeme_pair]
                 if not property_count:
-                    print("Grammar build_word failed - no exponent found for property {}:{}".format(category_grammeme_pair[0], category_grammeme_pair[1]))
+                    print(f"Grammar build_word failed - no exponent found for property {category_grammeme_pair[0]}:{category_grammeme_pair[1]}")
                     return
 
         # 2. Reduce subsets among exponent matches
@@ -429,7 +430,7 @@ class Grammar:
         # add exponents to build up the word
         # attach the best matches from the mapped and reduced exponents
         built_word = self.attach_exponents(
-            root,
+            base,
             reduced_exponents
         )
 
@@ -441,7 +442,7 @@ class Grammar:
         #raise ValueError(f"list contains more than symbols: {built_word}")
         return built_word
 
-    def attach_exponents(self, root, exponent_ids, as_string=False, reorder=True):
+    def attach_exponents(self, base, exponent_ids, spacing=" ", as_string=False, reorder=True):
         """Exponent a complex word to correctly position a root, prefixes, postfixes, prepositions, postpositions"""
         # expect a collection of exponent ids and a word-building map
         if not isinstance(exponent_ids, (list, set, tuple)):
@@ -452,7 +453,7 @@ class Grammar:
         attachment_sequence = (
             'preposition',
             'prefix',
-            'root',
+            'base',
             'postfix',
             'postposition'
         )
@@ -462,7 +463,7 @@ class Grammar:
             attachment: deque()
             for attachment in attachment_sequence
         }
-        exponented_word_map['root'].append(root)
+        exponented_word_map['base'].append(base)
         
         # rearrange exponents using morphosyntax ordering
         if reorder:
@@ -506,17 +507,19 @@ class Grammar:
                 # use binding to determine placement and spacing
                 attachment_key = attachment_keys[exponent_details['bound']]
                 # add spaces next to filled exponents that are unbound
-                spacing = "" if exponent_details['bound'] or not exponent_details[position] else " "
+                spacing = "" if exponent_details['bound'] or not exponent_details[position] else spacing
 
                 # reference the actual material being added
                 exponent_material = exponent_details[position]
 
                 # add both spacing and material to the relevant attachment list
                 if is_post:
-                    exponented_word_map[attachment_key].append(exponent_material)
                     exponented_word_map[attachment_key].append(spacing)
-                elif is_pre:
-                    exponented_word_map[attachment_key].append(exponent_material)
+                [
+                    exponented_word_map[attachment_key].append(sound)
+                    for sound in exponent_material
+                ]
+                if is_pre and not is_post:
                     exponented_word_map[attachment_key].append(spacing)
 
         # turn the exponenting map into a flat sequence

@@ -215,7 +215,7 @@ class GrammarExponents(GrammarFixture):
         )
         self.grammar.exponents.update(exponent_id, pre=test_pre)
         self.assertEqual(
-            self.grammar.exponents.get(exponent_id).get('pre'),
+            "".join(self.grammar.exponents.get(exponent_id).get('pre')),
             test_pre,
             "failed to add then update an exponent's attributes"
         )
@@ -231,14 +231,20 @@ class GrammarExponents(GrammarFixture):
         )
     
     def test_get_exponent(self):
-        exponent_id = self.grammar.exponents.add(pre="get_pre", properties={'exponent_category': 'exponent_grammeme'})
+        exponent_id = self.grammar.exponents.add(
+            pre="get_pre",
+            properties={'exponent_category': 'exponent_grammeme'}
+        )
         self.assertIsNotNone(
             self.grammar.exponents.get(exponent_id),
             "failed to add then check if exponent exists"
         )
 
     def test_find_exponents(self):
-        exponent_id = self.grammar.exponents.add(pre="existing_exponent", properties={'exponent_category': 'exponent_grammeme'})
+        exponent_id = self.grammar.exponents.add(
+            pre = "existing_exponent",
+            properties = {'exponent_category': 'exponent_grammeme'}
+        )
         self.assertIn(
             exponent_id,
             self.grammar.exponents.find(pre="existing_exponent"),
@@ -547,7 +553,7 @@ class GrammarOrderMorphosyntax(GrammarFixture):
         self.grammar.morphosyntax.add_exponent_order(n_3, inner=n_2, outer=n_4)
         self.grammar.morphosyntax.add_exponent_order(n_5, inner=n_4)
         print({
-            self.grammar.exponents.get(e_id)['post']: {
+            "".join(self.grammar.exponents.get(e_id)['post']): {
                 'inner': [
                     self.grammar.exponents.get(c_id)['post']
                     for c_id in self.grammar.morphosyntax.exponent_order[e_id]['inner']

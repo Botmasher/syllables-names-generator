@@ -1,5 +1,4 @@
-from uuid import uuid4      # for indexing exponent keys
-import math                 # for allowing finds to break at user-defined count or data limit
+from uuid import uuid4
 from ..tools.functional_maps import merge_maps
 
 # TODO: consider "exponent" name
@@ -144,8 +143,15 @@ class Exponents:
             print(f"Exponents.update failed - unknown exponent id {exponent_id}")
             return
         
+        # treat incoming strings as sound sequences
+        vetted_pre = self.vet_pre_post(pre)
+        vetted_post = self.vet_pre_post(post)
+        
+        # only modify bound flag if provided
+        vetted_bound = bound if isinstance(bound, bool) else None
+
         # store existing parts of speech for this exponent
-        recognized_word_classes = self.grammar.word_classes.filter(pos)
+        recognized_word_classes = self.grammar.word_classes.filter(pos) if pos else None
 
         # filter requested category, values sets through the existing properties
         recognized_properties = self.grammar.properties.filter(properties) if properties else None
@@ -154,9 +160,9 @@ class Exponents:
         updated_exponent_details = merge_maps(
             self.exponents[exponent_id],
             {
-                'pre': pre if pre and isinstance(pre, list) else None,
-                'post': post if post and isinstance(post, list) else None,
-                'bound': bound if isinstance(bound, bool) else None,
+                'pre': vetted_pre,
+                'post': vetted_post,
+                'bound': vetted_bound,
                 'properties': recognized_properties,
                 'pos': recognized_word_classes
             }
@@ -164,6 +170,19 @@ class Exponents:
         # assign the existing exponent to point to the new details
         self.exponents[exponent_id] = updated_exponent_details
         return exponent_id
+
+    def vet_pre_post(self, pre_post):
+        """Ensure pre or post material has the type and structure expected
+        by an exponent, notably turning a string into a list of sounds."""
+        # invalid sound collection
+        if not isinstance(pre_post, (list, tuple, str)):
+            return None
+        # flat list of sound strings
+        if isinstance(pre_post, (list, tuple)):
+            for sound in pre_post:
+                if not isinstance(sound, str):
+                    return None
+        return list(pre_post)
 
     def remove(self, exponent_id):
         """Delete the record for one exponent from the grammar"""
@@ -234,12 +253,17 @@ class Exponents:
 
     # TODO: find exponents by properties
     #   - consider attribues-per-exponent map for easy reverse lookups
-    def find(self, pre=None, post=None, bound=None, pos=None, count=math.inf):
+    def find(self, pre=None, post=None, bound=None, pos=None, count=None):
         """List exponent ids (all or up to a count limit) with the matching details"""
-        if pre is None and post is None and bound is None and not pos:
+        # expect at least one attribute to match against
+        if not any([pre, post, bound, pos]):
             print("Grammar find_exponents failed - expected at least one detail to search for")
             return
         
+        # check and convert pre and post input
+        pre = self.vet_pre_post(pre)
+        post = self.vet_pre_post(post)
+
         # vet parts of speech for existing word classes
         filtered_pos = self.grammar.word_classes.filter(pos)
 
@@ -259,8 +283,7 @@ class Exponents:
                 # collect ids of exponents matching the compared details
                 found_exponents.append(exponent_id)
                 # return requested exponents if count tally reached
-                count -= 1
-                if count == 0:
+                if count and len(found_exponents) >= count:
                     break
         
         # return a list of exponents with matching details
