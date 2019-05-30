@@ -215,7 +215,7 @@ class LanguageWords(LanguageFixture):
             word_classes="verb"
         )
         self.assertEqual(
-            unit['sound'],
+            "".join(unit['sound']),
             f"{base_entry['sound']}ka",
             "failed to generate a new root + grammatical unit in the language"
         )
@@ -229,7 +229,7 @@ class LanguageWords(LanguageFixture):
             word_classes="verb"
         )
         self.assertEqual(
-            unit['sound'],
+            "".join(unit['sound']),
             f"{base_entry['sound']}ka",
             "failed to generate a new root + grammatical unit in the language"
         )
@@ -250,7 +250,7 @@ class LanguageWords(LanguageFixture):
             properties="imperfective future"
         )
         self.assertEqual(
-            unit['change'],
+            "".join(unit['change']),
             "taxa",
             "failed to build a grammatical unit and change sounds across boundaries"
         )

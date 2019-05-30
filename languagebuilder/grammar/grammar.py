@@ -1,5 +1,6 @@
 import re                       # for splitting strings and parsing them for properties
 from collections import deque   # for building pre- and post-exponented word pieces lists
+from ..tools import flat_list   # for unnesting attachments deques
 
 # breakout components managing Grammar collections
 # - word classes represent broad parts of speech
@@ -436,7 +437,10 @@ class Grammar:
 
         # allow returning string instead of list
         if as_string:
-            return "".join(built_word)
+            try:
+                return "".join(built_word)
+            except:
+                raise TypeError(f"expected list of strings not {built_word}")
 
         # return the grammatically augmented word
         #raise ValueError(f"list contains more than symbols: {built_word}")
@@ -458,12 +462,14 @@ class Grammar:
             'postposition'
         )
 
+        # map of attachment types to flat lists of sound symbols
         # keep word pieces accounting for possible positions and spacing
         exponented_word_map = {
             attachment: deque()
             for attachment in attachment_sequence
         }
-        exponented_word_map['base'].append(base)
+        # add all base word symbols to word pieces
+        [exponented_word_map['base'].append(base_sound) for base_sound in base]
         
         # rearrange exponents using morphosyntax ordering
         if reorder:
@@ -522,7 +528,16 @@ class Grammar:
                 if is_pre and not is_post:
                     exponented_word_map[attachment_key].append(spacing)
 
-        # turn the exponenting map into a flat sequence
+        # flattend word piece map sequences and remove empty strings
+        for piece_name in exponented_word_map:
+            flat_list.flatten(exponented_word_map[piece_name])
+            exponented_word_map[piece_name] = list(filter(
+                lambda symbol: symbol and isinstance(symbol, str),
+                exponented_word_map[piece_name]
+            ))
+        
+        # turn exponenting map into one sound sequence
+        # following the order of attachments
         exponented_word = [
             piece for attachment in attachment_sequence
             for piece in exponented_word_map[attachment]

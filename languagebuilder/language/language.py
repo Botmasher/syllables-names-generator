@@ -255,7 +255,6 @@ class Language:
         # - produce a unit
         # - or produce a table of all possible forms
         # - store the unit in the corpus
-    
         if lookup and not self.dictionary.is_word(base):
             print(f"Language attach failed - unrecognized base word {base}")
             return
@@ -270,7 +269,7 @@ class Language:
         # use given one-off base
         # TODO: consider definitions
         else:
-            base_sounds = base
+            base_sounds = list(base)
             base_definition = "(undefined)"
 
         # build grammatical unit with underlying sounds
@@ -299,10 +298,11 @@ class Language:
 
         # format and store entry for built grammatical unit
         # TODO: vet properties and pos
+        # TODO: sound changes across boundaries (units spacing character " ")
         return self.corpus.add(
             sound=unit_sounds,
-            change="".join(unit_change),
-            spelling="".join(unit_spelling),
+            change=unit_change,
+            spelling=unit_spelling,
             definition=base_definition,
             exponents=exponents
         )

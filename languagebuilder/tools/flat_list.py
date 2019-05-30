@@ -1,7 +1,9 @@
+from collections import deque
+
 def flatten(l):
-    """"Take a nested list and return a flattened version with no sublists"""
+    """"Take a nested sequence and return a flattened list with no subcollections"""
     # reached individual list item or recursion depth
-    if not isinstance(l, (list, set, tuple)):
+    if not isinstance(l, (list, set, tuple, deque)):
         return [l]
 
     # reached another list - flatten it

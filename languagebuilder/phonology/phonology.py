@@ -234,7 +234,10 @@ class Phonology:
         rule_tracker = RuleTracker()
 
         # set of word sounds
-        word_sounds = set([c for c in ipa_sequence])
+        try:
+            word_sounds = set([c for c in ipa_sequence])
+        except:
+            raise ValueError(f"ipa_sequence {ipa_sequence}")
         
         # features for all sounds in the word
         word_features = {
