@@ -266,10 +266,16 @@ class LanguageWords(LanguageFixture):
     
     def test_spell_unit(self):
         root = self.language.generate(2)
-        unit_entry = self.language.attach(*root, word_classes="verb", properties="imperfective future")
-        self.assertTrue(
-            unit_entry.get('spelling') and root[0] in unit_entry['spelling'],
-            "failed to spell a newly generated unit"
+        unit_entry = self.language.attach(
+            root[0],
+            root[1],
+            word_classes = "verb",
+            properties = "imperfective future"
+        )
+        self.assertIn(
+            root[0],
+            "".join(unit_entry.get('spelling', "")),
+            f"failed to spell a newly generated unit {unit_entry}"
         )
     
     def test_lookup_word(self):

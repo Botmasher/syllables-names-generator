@@ -1,3 +1,5 @@
+import ..tools.string_list
+
 # NOTE a dictionary manages a map of {headword: [entries], } pairs
 # - Headwords have a spelling that each entry for a headword shares
 # - Each entries list stores entry maps contain spelling, sounds and definition attributes
@@ -82,25 +84,35 @@ class Dictionary():
         # strip weights and return (headword,entry_index) lookup pairs
         return [(match[0], match[1]) for match in sorted_matches]
 
-    def _search_sounds(self, ipa="", max_results=10, sound_change=False):
+    # TODO: update sound/spell search to account for storage in lists
+    # - Phonology and Grammar now build word, unit lists not simple strings
+
+    def _search_sounds(self, ipa, max_results=10, sound_change=False):
         """Search for headword entries that have the specified pronunciation"""
-        if not isinstance(ipa, str):
+        # ensure spelling is a list of strings
+        sounds = string_list.string_listify(ipa, True)
+        if not string_list.is_string_list(sounds):
             print(f"Dictionary search failed - invalid ipa {ipa}")
+       
         # list of headword, entry_index tuples
         matches = []
+        
         # search entries for changed sounds instead of underlying sounds
         sound_key = 'change' if sound_change else 'sound'
         # search through all entries to find requested number of sound matches
         for headword in self.dictionary:
             for entry_index in self.dictionary[headword]:
-                if ipa == self.dictionary[headword][entry_index][sound_key]:
+                if sounds == self.dictionary[headword][entry_index][sound_key]:
                     matches.append((headword, entry_index))
                 if len(matches) >= max_results-1:
                     return matches
         return matches
 
-    def _search_spellings(self, spelling="", max_results=10):
+    def _search_spellings(self, spelling, max_results=10):
         """Search for headword entries that have the given spelling"""
+        # ensure spelling is a list of strings
+        spelling = string_list.string_listify(spelling, True)
+        
         # store lookups for exact spelling matches
         matches = [
             (spelling, i)
@@ -140,9 +152,17 @@ class Dictionary():
     def add(self, sound="", spelling="", change=None, definition=None, exponent=None, pos=None):
         """Create a dictionary entry and list it under the spelled headword"""
         # expect both valid spelling and phones
-        if not (sound and spelling and isinstance(sound, str) and isinstance(spelling, str)):
-            print (f"Dictionary add failed - expected to store both spelling and sound")
+        if not (sound and spelling):
+            print (f"Dictionary add failed - expected both spelling and sound")
             return
+
+        # ensure sound and spelling are lists of strings
+        sound = string_list.string_listify(sound, True)
+        spelling = string_list.string_listify(spelling, True)
+        if not string_list.is_string_list(sound):
+            print(f"Dictionary add failed - invalid sounds {sound}")
+        if not string_list.is_string_list(sound):
+            print(f"Dictionary add failed - invalid spelling {spelling}")
 
         # create an entry
         headword = spelling
@@ -175,6 +195,14 @@ class Dictionary():
             print("Dictionary update failed - invalid entry {0} for headword {1}".format(entry_index, headword))
             return
         
+        # ensure sounds and spelling are lists of strings
+        if sound:
+            sound = string_list.string_listify(sound, True)
+        if spelling:
+            spelling = string_list.string_listify(spelling, True)
+        if change:
+            change = string_list.string_listify(change, True)
+    
         # modifications adding any new strings
         modified_attributes = {
             'spelling': spelling,
