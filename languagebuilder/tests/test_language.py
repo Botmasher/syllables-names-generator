@@ -201,8 +201,9 @@ class LanguageWords(LanguageFixture):
             properties="grammeme"
         )
         affix_entry = self.language.dictionary.lookup(*affix)
-        self.assertTrue(
-            'sound' in affix_entry and affix_entry['spelling'] == affix[0],
+        self.assertEqual(
+            "".join(affix_entry['spelling']),
+            affix[0],
             "failed to generate a new grammatical word in the language"
         )
         
@@ -216,7 +217,7 @@ class LanguageWords(LanguageFixture):
         )
         self.assertEqual(
             "".join(unit['sound']),
-            f"{base_entry['sound']}ka",
+            "".join(base_entry['sound']) + "ka",
             "failed to generate a new root + grammatical unit in the language"
         )
 
@@ -230,7 +231,7 @@ class LanguageWords(LanguageFixture):
         )
         self.assertEqual(
             "".join(unit['sound']),
-            f"{base_entry['sound']}ka",
+            "".join(base_entry['sound']) + "ka",
             "failed to generate a new root + grammatical unit in the language"
         )
 
@@ -282,7 +283,7 @@ class LanguageWords(LanguageFixture):
         word = self.language.generate(2, "cat")
         word_entry = self.language.dictionary.lookup(*word)
         self.assertEqual(
-            word_entry['spelling'],
+            "".join(word_entry['spelling']),
             word[0],
             "failed to look up a generated word"
         )

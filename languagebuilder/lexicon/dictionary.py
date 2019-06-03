@@ -1,4 +1,5 @@
-import ..tools.string_list
+from ..tools import string_list
+from ..tools import flat_list
 
 # NOTE a dictionary manages a map of {headword: [entries], } pairs
 # - Headwords have a spelling that each entry for a headword shares
@@ -115,9 +116,15 @@ class Dictionary():
         
         # store lookups for exact spelling matches
         matches = [
-            (spelling, i)
-            for i in range(len(self.dictionary.get(spelling, [])))
+            [
+                (headword, i)
+                for i, entry in enumerate(entries)
+                if spelling == entry['spelling']
+            ]
+            for headword, entries in self.dictionary.items()
         ]
+
+        matches = flat_list.flatten(matches, depth = 1)
 
         # TODO: inexact search
         # matches = []
@@ -165,7 +172,7 @@ class Dictionary():
             print(f"Dictionary add failed - invalid spelling {spelling}")
 
         # create an entry
-        headword = spelling
+        headword = "".join(spelling)
         # NOTE: keys created here are accessed throughout class
         entry = {
             # representation of entry in letters
