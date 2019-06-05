@@ -6,10 +6,11 @@ from ..tools import flat_list
 # - Each entries list stores entry maps contain spelling, sounds and definition attributes
 # - Searching for a single "word" requires passing both a spelled headword and entry index
 
-# TODO: rethink attributes as arrays instead of string
+# TODO: consider attributes as arrays of options
 # String vs array:
 #   - should noun "ache" vs verb "ache" be separate entries or options under one entry?
 #   - what about pronunciation variants of "pecan"?
+#   - currently multiple options have to exist as separate entries
 class Dictionary():
     def __init__(self):
         self.dictionary = {}    # map of headword:[entries]

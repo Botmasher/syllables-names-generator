@@ -684,8 +684,11 @@ class GrammarOrderSentences(GrammarFixture):
             "indefinite_imperfective",
             [mock_verb, mock_subject, mock_object]
         )
+        # TODO: build sentence in test_language to check
+        # if it works together with phonology and phonetics
+        # (all sounds present are sounds in the language)
         self.assertEqual(
-            sentence['sound'],
+            "".join(sentence['sound']).strip(),
             # "A cat did chase a dog", # NOTE: if using translation
             "rtota uk kata nu data",
             "grammar failed to build (add and apply) a basic sentence"

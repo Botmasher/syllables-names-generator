@@ -165,18 +165,24 @@ class Phonology:
         symbol_features = self.phonetics.get_features(ipa_symbol)
         new_symbol_features = set(target_features)
         print("Successful rule!")
-        print("Currently attempting to turn {0} into a {1}".format(symbol_features, target_features))
+        print(f"Currently attempting to turn {symbol_features} into a {target_features}")
         # merge target features into symbol features where rule changes from source->target
         for feature in symbol_features:
             if feature in source_features and feature not in target_features:
                 pass
             else:
                 new_symbol_features.add(feature)
+        
         # find phonetic symbols with these features
-        # choose from all possible symbols not just current inventory
+        # from all possible symbols not just current inventory
         new_symbols = self.phonetics.get_ipa(list(new_symbol_features))
 
-        # TODO choose a new symbol from matching symbols if more than one
+        # no symbols match this new set of features
+        if not new_symbols:
+            print(f"Unable to find a symbol matching {new_symbol_features}. Keeping {symbol_features}.")
+            return
+
+        # choose a new symbol from matching symbols
         new_symbol = new_symbols[0]
 
         # TODO also suggest changed spellings
@@ -385,6 +391,8 @@ class Phonology:
                 applied_rule['target'],  # rule target features to transform sound
                 ipa_to_change            # the matched sound to change
             )
+            if not changed_ipa:
+                changed_ipa = ipa_to_change
             print("source ipa: " + ipa_to_change)
             print("updated ipa: " + changed_ipa)
 

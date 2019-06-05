@@ -184,9 +184,11 @@ class Sentences:
                 for unit_piece in appended_unit
             ]
         
+        # remove 
+
         # TODO: add translation
         sentence_data = {
-            'sound': "".join(applied_sentence).strip(),
+            'sound': applied_sentence,
             'translation': ""
         }
 

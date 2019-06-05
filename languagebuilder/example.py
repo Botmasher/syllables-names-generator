@@ -7,6 +7,15 @@ my_language = Language(
 )
 
 # define phonetics
+
+# TODO: adding features beyond vc/p/m like aspirated breaks
+# Phonology.change_symbol unless corresponding feature added
+# to all complements, like "unaspirated".
+# Organized object instead?
+# NOTE: documentation - right now if you really care about a feature
+# and it's in one phonetics features set you should have the 
+# complement for every other relevant symbol, like unaspirated
+
 my_language.phonetics.add_map({
     'a': ['vowel', 'front', 'open', 'unrounded'],
     'i': ['vowel', 'front', 'close', 'unrounded'],
@@ -19,11 +28,17 @@ my_language.phonetics.add_map({
     'o': ['vowel', 'raised', 'mid', 'rounded'],
     'u': ['vowel', 'raised', 'rounded'],
     'p': ['consonant', 'voiceless', 'bilabial', 'stop'],
+    'pʰ': ['consonant', 'voiceless', 'bilabial', 'stop', 'aspirated'],
     'b': ['consonant', 'voiced', 'bilabial', 'stop'],
+    'bʰ': ['consonant', 'voiced', 'bilabial', 'stop', 'aspirated'],
     't': ['consonant', 'voiceless', 'dental', 'alveolar', 'stop'],
+    'tʰ': ['consonant', 'voiceless', 'dental', 'alveolar', 'stop', 'aspirated'],
     'd': ['consonant', 'voiced', 'dental', 'alveolar', 'stop'],
+    'dʰ': ['consonant', 'voiced', 'dental', 'alveolar', 'stop', 'aspirated'],
     'k': ['consonant', 'voiceless', 'velar', 'stop'],
+    'kʰ': ['consonant', 'voiceless', 'velar', 'stop', 'aspirated'],
     'g': ['consonant', 'voiced', 'velar', 'stop'],
+    'gʰ': ['consonant', 'voiced', 'velar', 'stop', 'aspirated'],
     'q': ['consonant', 'voiceless', 'uvular', 'stop'],
     'ɢ': ['consonant', 'voiced', 'uvular', 'stop'],
     'ʔ': ['consonant', 'voiceless', 'glottal', 'stop'],
@@ -61,10 +76,13 @@ my_language.phonology.add_sounds({
     'i': ['i', 'ie'],
     'u': ['u'],
     'p': ['p', 'b'],
+    'pʰ': ['bh'],
     'f': ['ph'],
     't': ['t', 'd'],
+    'tʰ': ['dh'],
     'θ': ['th'],
     'k': ['k', 'g'],
+    'kʰ': ['gh'],
     'x': ['kh', 'hh'],
     's': ['s'],
     'ts': ['ds']
@@ -298,6 +316,7 @@ sentence = my_language.grammar.sentences.apply(
     name = "basic:transitive",
     headwords = [s, o, v]
 )
+print(sentence)
 print(sentence['sound'])
 print(sentence['translation'])
 
@@ -307,14 +326,3 @@ print(sentence['translation'])
 #   - definitions, are they really shaping up well? what about support for other langs?
 #       - already hardcoding terms like "preposition" in Grammar.autodefine despite abstracting "exponent" mechanics
 #   - searchability of terms with - or ... in the spelling (see Language.generate when pre/post material exists)
-
-# TODO: troubleshoot odd rare misspelling issue
-#   File "language-builder/languagebuilder/example.py", line 213, in <module>
-#     length = word_params[1]
-#   File "language-builder/languagebuilder/language/language.py", line 113, in generate
-#     word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
-#   File "language-builder/languagebuilder/phonology/phonology.py", line 456, in build_word
-#     word_spelling = self.spell(word_changed, word_ipa) if spell_after_change else self.spell(word_ipa)
-#   File "language-builder/languagebuilder/phonology/phonology.py", line 488, in spell
-#     elif fallback_phonemes and self.phonemes.has(fallback_phonemes[i]):
-# IndexError: list index out of range

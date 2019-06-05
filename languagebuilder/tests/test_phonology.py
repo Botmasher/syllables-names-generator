@@ -17,6 +17,8 @@ class PhonologyFixture(unittest.TestCase):
         this_class.phonetics.add("a", ["vowel", "front", "open", "unrounded"])
         this_class.phonetics.add("k", ["consonant", "voiceless", "velar", "stop"])
         this_class.phonetics.add("g", ["consonant", "voiced", "velar", "stop"])
+        this_class.phonetics.add("kʰ", ["consonant", "voiceless", "aspirated", "velar", "stop"])
+        this_class.phonetics.add("gʰ", ["consonant", "voiced", "aspirated", "velar", "stop"])
         this_class.phonetics.add("x", ["consonant", "voiceless", "velar", "fricative"])
         this_class.phonetics.add("ɣ", ["consonant", "voiced", "velar", "fricative"])
         this_class.phonology = Phonology(this_class.phonetics)
@@ -31,7 +33,7 @@ class PhonologyPhonemes(PhonologyFixture):
     @classmethod
     def setUpClass(this_class):
         super(PhonologyPhonemes, this_class).setUpClass()
-        
+
     def test_add_sound(self):
         self.phonology.add_sound("a", ["a"])
         self.assertTrue(
@@ -40,10 +42,10 @@ class PhonologyPhonemes(PhonologyFixture):
         )
 
     def test_get_sound_features(self):
-        self.phonology.phonemes.add("k", ["k"])
+        self.phonology.phonemes.add("x", ["h"])
         self.assertEqual(
-            set(self.phonology.get_sound_features("k")) & {"voiceless", "velar", "stop"},
-            {"voiceless", "velar", "stop"},
+            set(self.phonology.get_sound_features("x")),
+            {"voiceless", "velar", "fricative"},
             "failed to add a sound and get its features"
         )
 
@@ -57,11 +59,28 @@ class PhonologyPhonemes(PhonologyFixture):
         )
 
     def test_remove_sound(self):
-        self.phonology.phonemes.add("k", ["k"])
-        self.phonology.phonemes.remove("k")
+        self.phonology.phonemes.add("g", ["g"])
+        self.phonology.phonemes.remove("g")
         self.assertFalse(
-            self.phonology.has_sound("k"),
+            self.phonology.has_sound("g"),
             "failed to remove a sound from the inventory"
+        )
+
+    def test_change_sound(self):
+        symbol = self.phonology.change_symbol(["voiceless"], ["voiced"], "k")
+        self.assertEqual(
+            symbol,
+            "g",
+            "failed to change a sound from voiceless to voiced"
+        )
+    
+    def test_change_sound_extra_feature(self):
+        self.phonology.phonemes.add("kʰ", ["kh"])
+        symbol = self.phonology.change_symbol(["voiceless"], ["voiced"], "kʰ")
+        self.assertEqual(
+            symbol,
+            "gʰ",
+            "failed to change a consonant with an extra feature (aspiration) compared to other consonants"
         )
 
 class PhonologySyllables(PhonologyFixture):
