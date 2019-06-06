@@ -160,12 +160,23 @@ class Phonology:
         return self.phonemes.remove(ipa)
 
     # use rule to turn symbol from source into target
-    def change_symbol(self, source_features, target_features, ipa_symbol):
-        """Turn one symbol into another with a source->target features shift"""
+    def change_symbol(self, source_features, target_features, ipa_symbol, exact=True):
+        """Turn one symbol into another with a source -> target features shift.
+        args:
+            source_features (list): sound features to be replaced (change from)
+            target_features (list): sound features to be adopted (change into)
+            ipa_symbol (str):       ipa symbol representing the changed sound
+            exact (bool):           get ipa with updated features as an improper set
+        returns:
+            => (str)    a single ipa symbol after this sound change
+        """
+        # fetch symbols matching the symbol feature
         symbol_features = self.phonetics.get_features(ipa_symbol)
         new_symbol_features = set(target_features)
-        print("Successful rule!")
+        
+        # log start of change attempt
         print(f"Currently attempting to turn {symbol_features} into a {target_features}")
+        
         # merge target features into symbol features where rule changes from source->target
         for feature in symbol_features:
             if feature in source_features and feature not in target_features:
@@ -175,18 +186,21 @@ class Phonology:
         
         # find phonetic symbols with these features
         # from all possible symbols not just current inventory
-        new_symbols = self.phonetics.get_ipa(list(new_symbol_features))
+        new_symbols = self.phonetics.get_ipa(list(new_symbol_features), exact=exact)
 
         # no symbols match this new set of features
         if not new_symbols:
+            # log change attempt failure
             print(f"Unable to find a symbol matching {new_symbol_features}. Keeping {symbol_features}.")
             return
 
         # choose a new symbol from matching symbols
         new_symbol = new_symbols[0]
 
-        # TODO also suggest changed spellings
-        # - (default to same if none available)
+        # TODO: decide how to select from symbols list (just zeroth? arbitrary?)
+        
+        # log change attempt success
+        print(f"Successfully changed '{ipa_symbol}' into '{new_symbol}'.")
 
         return new_symbol
 

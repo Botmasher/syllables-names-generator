@@ -65,24 +65,34 @@ class Phonetics:
             return []
         return list(self.ipa[symbol])
 
-    def get_ipa(self, features, filter_phonemes=[], exact=True):
-        """Find phonetic symbols (optionally restricted to a filtered list) matching all given features"""
-        if len(features) < 1:
+    def get_ipa(self, features, filter_phonemes=None, exact=False):
+        """Find phonetic symbols (optionally restricted to a filtered list)
+        matching all and only the given features"""
+        # return no matches for empty or null features
+        if not features:
             return []
+
         # optionally restrict phonetic symbols searched
-        phonetic_symbols = filter_phonemes if filter_phonemes else self.ipa.keys()
-        # compare test features to stored features for symbol matches
+        if filter_phonemes:
+            phonetic_symbols = list(filter(
+                lambda x: x in self.ipa,
+                filter_phonemes
+            ))
+        else:
+            phonetic_symbols = list(self.ipa)
+
+        # find symbols matching requested features to stored features
         found_symbols = set()
         for symbol in phonetic_symbols:
-            if symbol not in self.ipa:
-                print("Features get_ipa skipped unknown phonetic filter symbol {0}".format(symbol))
-                continue
             # store exact or subset match
             match_features = self.ipa[symbol]
-            if exact and not set(features) ^ match_features:
+            # add exact match if all symbol features are in requested
+            is_exact = exact and set(features) == match_features
+            # add partial match if all requested features are in symbol
+            is_partial = not exact and match_features.issuperset(features)
+            if is_exact or is_partial:
                 found_symbols.add(symbol)
-            elif match_features.issuperset(features):
-                found_symbols.add(symbol)
+        
         return list(found_symbols)
 
     def add_map(self, ipa_features_map):
@@ -111,7 +121,7 @@ class Phonetics:
     def add(self, symbol, features):
         """Add one phonetic symbol and its associated features to the maps"""
         # check that the symbol is valid ipa
-        if not isinstance(symbol, str): #or len(symbol) > 2:
+        if not isinstance(symbol, str):
             print(f"Features add_entry failed to add invalid symbol {symbol}")
             return
         # add each feature to both symbols and features maps

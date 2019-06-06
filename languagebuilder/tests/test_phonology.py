@@ -45,7 +45,7 @@ class PhonologyPhonemes(PhonologyFixture):
         self.phonology.phonemes.add("x", ["h"])
         self.assertEqual(
             set(self.phonology.get_sound_features("x")),
-            {"voiceless", "velar", "fricative"},
+            {"consonant", "voiceless", "velar", "fricative"},
             "failed to add a sound and get its features"
         )
 

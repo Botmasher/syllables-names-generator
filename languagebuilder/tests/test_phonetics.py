@@ -58,6 +58,31 @@ class PhoneticsAddUpdateDelete(PhoneticsFixture):
             "failed to change a symbol's name"
         )
 
+    # TODO: Phonetics get_ipa by features both exact and partial match (...exact=False), (...exact=True)
+    def test_get_ipa_features_exact(self):
+        self.phonetics.add("symbol_exact", ["1", "2", "3"])
+        self.assertIn(
+            "symbol_exact",
+            self.phonetics.get_ipa(["1", "2", "3"], exact=True),
+            "failed to get a symbol with an exactly matched features set"
+        )
+
+    def test_get_ipa_features_exact_failure(self):
+        self.phonetics.add("symbol_exact_failure", ["1", "2", "3", "4"])
+        self.assertNotIn(
+            "symbol_exact_failure",
+            self.phonetics.get_ipa(["1", "2", "3"], exact=True),
+            "failed to avoid getting a symbol with inexactly matched features"
+        )
+
+    def test_get_ipa_features_partial(self):
+        self.phonetics.add("symbol_partial", ["1", "2", "3", "4"])
+        self.assertIn(
+            "symbol_partial",
+            self.phonetics.get_ipa(["1", "2", "3"], exact=False),
+            "failed to get a symbol with a partially matched features set"
+        )
+
     def test_parse_features(self):
         features = self.phonetics.parse_features("updatable keepable feature")
         self.assertEqual(
