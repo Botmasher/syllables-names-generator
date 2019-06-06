@@ -64,15 +64,18 @@ class Exponents:
     # }
     # NOTE: other language methods expect pre, post lists of ipa not string
     def add(self, pre=None, post=None, bound=True, properties=None, pos=None):
-        """Add one grammatical exponent to the grammar"""
-        # ensure either valid pre or post
-        if not (pre or post):
-            print("Exponents add failed - expected pre or post exponent symbols")
-            return
+        """Add one grammatical exponent to the grammar. This exponent has pre or post
+        material (or both), is affixed or free, provides properties and optionally
+        is restricted to specific parts of speech."""
 
-        # turn pre and post strings into list of ipa
-        pre = list(pre) if pre else []
-        post = list(post) if post else []
+        # turn pre and post strings into list of ipa; leave string lists alone
+        pre = self.vet_pre_post(pre)
+        post = self.vet_pre_post(post)
+
+        # ensure exponent has either valid pre or post material
+        if not (pre or post) or not isinstance(pre, list) or not isinstance(post, list):
+            print("Exponents add failed - expected pre or post exponent lists")
+            return
 
         # vet and check provided grammatical properties
         parsed_properties = self.grammar.parse_properties(properties) if isinstance(properties, str) else properties
@@ -95,8 +98,8 @@ class Exponents:
         exponent_id = f"grammatical-exponent-{uuid4()}"
         self.exponents[exponent_id] = {
             'id': exponent_id,
-            'pre': pre if pre else [],
-            'post': post if post else [],
+            'pre': pre,
+            'post': post,
             'bound': bound,
             'properties': recognized_properties,
             'pos': recognized_word_classes
@@ -175,13 +178,13 @@ class Exponents:
         """Ensure pre or post material has the type and structure expected
         by an exponent, notably turning a string into a list of sounds."""
         # invalid sound collection
-        if not isinstance(pre_post, (list, tuple, str)):
-            return None
+        if not pre_post or not isinstance(pre_post, (list, tuple, str)):
+            return []
         # flat list of sound strings
         if isinstance(pre_post, (list, tuple)):
             for sound in pre_post:
                 if not isinstance(sound, str):
-                    return None
+                    return []
         return list(pre_post)
 
     def remove(self, exponent_id):

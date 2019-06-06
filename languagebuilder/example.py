@@ -320,6 +320,13 @@ print(sentence)
 print(sentence['sound'])
 print(sentence['translation'])
 
+# TODO:
+#   - [ ] test for exponent and base with multichar symbols
+#       - if bʱ is a symbol, do not store separated ['b','ʱ']
+#   - [ ] (tests for below)
+#   - [ ] change sounds at borders (base beginning/end)
+#   - [ ] definitions for sentences
+
 # TODO: check and refine exponent storage
 #   - examples (from corpus?) for entries in the dictionary
 #       - at least examples for the exponents since they're so out of context otherwise

@@ -138,7 +138,7 @@ class PhonologyWords(PhonologyFixture):
         this_class.phonology.syllables.add("CV")
 
     def test_build_word_sounds(self):
-        entry = self.phonology.build_word(1)
+        entry = self.phonology.build_word(1, as_string=True)
         self.assertEqual(
             entry['sound'],
             "ka",
@@ -146,7 +146,7 @@ class PhonologyWords(PhonologyFixture):
         )
 
     def test_build_word_letters(self):
-        entry = self.phonology.build_word(1)
+        entry = self.phonology.build_word(1, as_string=True)
         self.assertEqual(
             entry['spelling'],
             "qa",
@@ -169,7 +169,7 @@ class PhonologyWords(PhonologyFixture):
         )
 
     def test_build_word_multisyllable(self):
-        entry = self.phonology.build_word(3)
+        entry = self.phonology.build_word(3, as_string=True)
         self.assertEqual(
             entry['spelling'],
             "qaqaqa",
@@ -182,13 +182,13 @@ class PhonologyWords(PhonologyFixture):
         self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['change'],
-            "kaxa",
+            list("kaxa"),
             "failed to apply a single stop-to-fricative rule correctly"
         )
 
     def test_build_word_voicing(self):
         rule_id = self.phonology.add_rule(["voiceless"], ["voiced"], "V_V")
-        entry = self.phonology.build_word(2)
+        entry = self.phonology.build_word(2, as_string=True)
         self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['change'],
@@ -199,7 +199,7 @@ class PhonologyWords(PhonologyFixture):
     def test_build_word_lenition(self):
         rule_0 = self.phonology.add_rule(["stop"], ["fricative"], "V_V")
         rule_1 = self.phonology.add_rule(["voiceless"], ["voiced"], "V_V")
-        entry = self.phonology.build_word(2)
+        entry = self.phonology.build_word(2, as_string=True)
         self.phonology.remove_rule(rule_0)
         self.phonology.remove_rule(rule_1)
         self.assertEqual(
@@ -214,13 +214,13 @@ class PhonologyWords(PhonologyFixture):
         self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['sound'],
-            "ka",
+            list("ka"),
             "applied rule to inapplicable sound"
         )
 
     def test_build_word_applicable_rule_nonexisting_sound(self):
         rule_id = self.phonology.add_rule(["velar"], ["palatal"], "_")
-        entry = self.phonology.build_word(1)
+        entry = self.phonology.build_word(1, as_string=True)
         self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['sound'],
@@ -230,7 +230,7 @@ class PhonologyWords(PhonologyFixture):
     
     def test_build_word_nochange_rule(self):
         rule_id = self.phonology.add_rule(["velar"], ["velar"], "_V")
-        entry = self.phonology.build_word(1)
+        entry = self.phonology.build_word(1, as_string=True)
         self.phonology.remove_rule(rule_id)
         self.assertEqual(
             entry['sound'],
@@ -297,7 +297,8 @@ class PhonologySpelling(PhonologyFixture):
         word = self.phonology.build_word(
             length=4,
             apply_rules=True,
-            spell_after_change=True
+            spell_after_change=True,
+            as_string=True
         )
         # expect word
         self.assertIn(

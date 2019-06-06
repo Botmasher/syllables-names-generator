@@ -258,7 +258,8 @@ class LanguageWords(LanguageFixture):
 
     def test_spell_word(self):
         word = self.language.generate(2)
-        matches = self.language.dictionary.search(spelling=word[0])
+        word_entry = self.language.dictionary.lookup(*word)
+        matches = self.language.dictionary.search(spelling=word_entry['spelling'])
         self.assertIn(
             word,
             matches,

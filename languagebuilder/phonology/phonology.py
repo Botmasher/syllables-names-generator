@@ -435,7 +435,7 @@ class Phonology:
         return new_ipa_sequence
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True):
+    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True, as_string=False):
         """Form a word following the defined inventory and syllable structure"""
         # form a list of possible syllables to choose from
         syllables = self.syllables.get()
@@ -488,11 +488,19 @@ class Phonology:
         word_spelling = self.spell(word_changed, word_ipa) if spell_after_change else self.spell(word_ipa)
         
         # send back phones, sound change result and spelling result
-        return {
-            'spelling': "".join(word_spelling),
-            'sound': "".join(word_ipa),
-            'change': "".join(word_changed)
+        word_entry = {
+            'spelling': word_spelling,
+            'sound': word_ipa,
+            'change': word_changed
         }
+
+        # optionally turn lists of sound symbols into strings
+        # NOTE: only for custom, manual, readable output; language and
+        # grammar methods deal with lists of strings!
+        if as_string:
+            return {k: "".join(v) for k,v in word_entry.items()}
+
+        return word_entry
 
     # TODO: handle spelling rules and environments
     # TODO: track down errors due to fallback_phonemes[i] out of range

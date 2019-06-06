@@ -124,7 +124,11 @@ class Language:
         
         # add as grammatical word
         if pre or post:
-            empty_entry = {'spelling': "", 'sound': "", 'change': ""}
+            empty_entry = {
+                'spelling': [],
+                'sound': [],
+                'change': []
+            }
             # determine word to attach before or after
             pre_word = word if pre else empty_entry
             post_word = word if post else empty_entry

@@ -294,7 +294,7 @@ class Grammar:
         """Build up relevant morphosyntax around a base using the given grammatical terms.
 
         Args:
-            root (list): Base word sounds to build around.
+            base (list): Base word sounds to build around.
             properties (list): All grammatical properties requested for the unit.
             word_classes (list): All word classes this root belongs to.
             exact_pos (bool): Use only exponents associated with matching word classes.
@@ -542,6 +542,24 @@ class Grammar:
             piece for attachment in attachment_sequence
             for piece in exponented_word_map[attachment]
         ]
+
+        # TODO: bases AND exponents are being chopped per char not per symbol
+        #   - see how 'kʰ' and 'tʰ' are treated below
+        #   - note that base is already split like this on input
+        #
+        # example base: ['a', 't', 'ʰ', 't', 'a', 'f', 'k', 'ʰ', 'u', 'u', 'θ']
+        #
+        # example attachmap:
+        # {
+        #   'preposition': [],
+        #   'prefix': [],
+        #   'base': ['a', 't', 'ʰ', 't', 'a', 'f', 'k', 'ʰ', 'u', 'u', 'θ'],
+        #   'postfix': ['t', 'ʰ', 'u', 'f'],
+        #   'postposition': []
+        # }
+        #
+        print(f"ATTACHMAP on {base}: {exponented_word_map}")
+        # --> sounds listed bad here
 
         # return the sequence as a list or string
         if as_string:
