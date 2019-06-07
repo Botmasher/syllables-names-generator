@@ -321,11 +321,12 @@ print(sentence['sound'])
 print(sentence['translation'])
 
 # TODO:
-#   - [ ] test for exponent and base with multichar symbols
-#       - if bʱ is a symbol, do not store separated ['b','ʱ']
-#   - [ ] (tests for below)
+#   - [ ] more refined management of syllable building
+#       - permitted and avoided consonant clusters
+#       - or probabilistically what to (dis)prefer
 #   - [ ] change sounds at borders (base beginning/end)
 #   - [ ] definitions for sentences
+#   - [ ] (test above)
 
 # TODO: check and refine exponent storage
 #   - examples (from corpus?) for entries in the dictionary

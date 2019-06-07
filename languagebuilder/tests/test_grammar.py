@@ -230,6 +230,19 @@ class GrammarExponents(GrammarFixture):
             "failed to add then remove an exponent"
         )
     
+    def test_exponent_stores_multichars(self):
+        prefix = ["i", "bʱ", "i"]
+        exponent_id = self.grammar.exponents.add(
+            pre=prefix,
+            bound=True,
+            properties="exponent_grammeme"
+        )
+        self.assertEqual(
+            self.grammar.exponents.get(exponent_id)['pre'],
+            prefix,
+            "failed to store exponent with a multiple characters as one of its prefix symbols"
+        )
+
     def test_get_exponent(self):
         exponent_id = self.grammar.exponents.add(
             pre="get_pre",

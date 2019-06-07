@@ -319,4 +319,51 @@ class LanguageWords(LanguageFixture):
             "suffix for imperfective aspect, future tense verbs",
             f"failed to create a definition for a grammatical piece with properties {exponent_properties} and word class {exponent_pos}"
         )
+
+class LanguageStorage(LanguageFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(LanguageStorage, this_class).setUpClass()
+        
+        this_class.language.phonetics.add_map({
+            'a': ['vowel', 'front', 'open', 'unrounded', 'short'],
+            'aː': ['vowel', 'front', 'open', 'unrounded', 'long'],
+            'pʰ': ['consonant', 'voiceless', 'bilabial', 'stop', 'aspirated'],
+            'tʰ': ['consonant', 'voiceless', 'dental', 'alveolar', 'stop', 'aspirated'],
+            'kʰ': ['consonant', 'voiceless', 'velar', 'stop', 'aspirated']
+        })
+        this_class.language.phonology.add_sounds({
+            'a': ['a'],
+            'aː': ['ā'],
+            'pʰ': ['p'],
+            'tʰ': ['t'],
+            'kʰ': ['k']
+        })
+        this_class.language.phonology.syllables.add("CV")
+        this_class.language.phonology.syllables.add("CVC")
+        
+        this_class.language.grammar.properties.add("category", "default")
+        this_class.language.grammar.properties.add("category", "marked")
+        this_class.language.grammar.word_classes.add("noun")
+        this_class.language.grammar.word_classes.add("verb")
+        this_class.language.grammar.exponents.add(post=["a", "pʰ"], properties="marked", pos="noun")
+        this_class.language.grammar.exponents.add(post=["a", "kʰ"], properties="marked", pos="verb")
+
+    def test_store_sound_list(self):
+        base = self.language.generate(length=3)
+        stored_base = self.language.dictionary.lookup(*base)
+        self.assertGreaterEqual(
+            len({"pʰ", "tʰ", "kʰ"} & set(stored_base.get('sound', []))),
+            1,
+            "failed to generate and store a base word entry with sound and spelling lists of single or multicharacter symbols"
+        )
+
+    def test_store_generated_base(self):
+        base = self.language.generate(length=2, word_class="verb")
+        entry = self.language.dictionary.lookup(*base)
+        self.assertIsNotNone(
+            entry.get('sound'),
+            "failed to generate and store a base word in the language"
+        )
+
     
