@@ -31,12 +31,19 @@ class Sentences:
         # NOTE: for now keep simpler sentences map between names : structures
         self.sentences = {}
 
+        # translation structures kept in sync with sentences
+        # TODO: incorporate into sentences
+        self.translations = {}
+
         # TODO: support varying syntax and flexible word order
         #   - word order in nonconfig langs
     
     def get(self, name):
         """Read one named sentence sequence"""
         return self.sentences.get(name)
+
+    def get_translation(self, name):
+        return self.translations.get(name)
 
     def vet_structure(self, structure):
         """Check and refine the units structure sequence for one sentence"""
@@ -70,6 +77,43 @@ class Sentences:
             units_sequence.append([unit_word_classes, unit_properties])
         return units_sequence
 
+    # TODO: find a less user-defined way to generate translations
+    #   - map structures to structure in target language?
+    #   - e.g. X ({case:instrumental, deixis:indefinite}, noun) -> "with a(n) X"
+    #   - this would put the structure at source of both units and translation
+    def vet_translation(self, translation, structure, insertion_symbol="{}"):
+        """Verify and format a valid translation for the given structure. Pass an
+        insertion symbol to verify symbol used to format the translation on apply.
+        Return a dict mapping each structural unit index to a unit translation
+        with a formattable insertion point for a unit's base."""
+        # send back empty to store in translations map
+        if not translation:
+            return []
+        
+        # track which units are given a valid translation
+        units_translated = set()
+
+        # collect valid translation piece for each unit in structure
+        vetted_translation = {}
+        for translation_piece in translation:
+            # expect translation piece to be a two-member sequence
+            # ("translation", index) associated with a structural unit
+            unit_translation = translation_piece[0]
+            unit_index = translation_piece[1]
+            if not isinstance(unit_translation, str) or not isinstance(unit_index, int) or not structure[unit_index]:
+                return
+            # expect one insertion symbol per translation piece
+            if insertion_symbol not in unit_translation:
+                return
+            # add piece data to collection of vetted elements
+            vetted_translation[unit_index] = unit_translation
+            
+        # expect no structural unit left untranslated
+        if set(vetted_translation) != set(range(len(structure))):
+            return
+        
+        return vetted_translation
+
     def add(self, name="", structure=None, translation=None, all_or_none=False):
         """Add a named sentence type with a sequence of units in the sentence"""
         # check for existing sentence type name and sequence of units
@@ -79,14 +123,16 @@ class Sentences:
         
         # create the sentence's units structure sequence
         vetted_structure = self.vet_structure(structure)
-        if not vetted_structure:
+        vetted_translation = self.vet_translation(translation, structure)
+        if not vetted_structure or vetted_translation is None:
             print(f"Sentences add failed - invalid sentence structure {structure}")
             return
 
         # add units structure to sentences
         self.sentences[name] = vetted_structure
+        self.translations[name] = vetted_translation
 
-        return self.sentences[name]
+        return name
 
     def update(self, name, structure=None, translation=None, all_or_none=False):
         """Modify the unit sequence of a single named sentence type"""
@@ -95,16 +141,36 @@ class Sentences:
             print(f"Sentences update failed - unrecognized sentence name {name}")
             return
         
-        # create valid units structure
+        # create valid units structure and translation
         vetted_structure = self.vet_structure(structure)
-        if not vetted_structure:
-            print(f"Sentences update failed - invalid sentence structure {structure}")
+        vetted_translation = self.vet_translation(translation, structure)
+        
+        # back out of update if nothing to modify
+        if not vetted_structure or vetted_translation is None:
+            print(f"Sentences update failed - no valid translation or structure supplied")
             return
 
         # overwrite named sentence's units structure
-        self.sentences[name] = vetted_structure
+        if vetted_structure:
+            self.sentences[name] = vetted_structure
+        if vetted_translation:
+            self.translations[name] = translation
 
-        return self.sentences[name]
+        return name
+
+    def rename(self, name, new_name):
+        """Change the name (id) of a stored sentence"""
+        # check that named sentence exists and new name does not
+        if not self.get(name) or self.get(new_name):
+            return
+        
+        # remap both structure and translation to new name
+        structure = self.sentences.pop(name)
+        translation = self.translations.pop(name)
+        self.sentences[new_name] = structure
+        self.translations[new_name] = translation
+
+        return new_name
     
     def remove(self, name):
         """Delete and return one existing sentence structure from the
@@ -130,8 +196,9 @@ class Sentences:
 
         # check for sentence type in collection
         sentence = self.get(name)
-        if not sentence:
-            print(f"Failed to apply unidentified sentence {name}")
+        translation = self.get_translation(name)
+        if not sentence or not translation:
+            print(f"Failed to apply unidentified sentence named {name}")
             return
 
         # grab list of word objects from the dictionary
@@ -143,7 +210,7 @@ class Sentences:
         # TODO: high-level sentence methods with lookups from the Language
         fetched_words = [
             entry for entry in headwords
-            if isinstance(entry, dict) and 'pos' in entry and 'sound' in entry 
+            if isinstance(entry, dict) and set(entry).issuperset({'pos', 'sound', 'definition'}) 
         ]
 
         # check that headwords match buildable sentence units
@@ -156,6 +223,7 @@ class Sentences:
         
         # store final built units
         applied_sentence = []
+        applied_translation = []
 
         # iterate through both sentence units and headwords
         # - unit structure is (word_classes, properties)
@@ -164,6 +232,7 @@ class Sentences:
             word_data = fetched_words[i]
             word_sounds = word_data['sound']
             word_pos = word_data['pos']
+            word_definition = word_data['definition']
             unit_pos, unit_properties = unit
             # compare headword class to expected word class
             if word_pos not in unit_pos:
@@ -183,14 +252,13 @@ class Sentences:
                 applied_sentence.append(unit_piece)
                 for unit_piece in appended_unit
             ]
+            # translate the unit
+            unit_translation = translation[i].format(word_definition)   # format at insertion symbol (see vet_translation)
+            applied_translation.append(unit_translation)
         
-        # remove 
-
-        # TODO: add translation
+        # format and return sentence representation
         sentence_data = {
             'sound': applied_sentence,
-            'translation': ""
+            'translation': applied_translation
         }
-
-        # return single string sentence
         return sentence_data
