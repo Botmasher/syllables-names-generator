@@ -542,25 +542,7 @@ class Grammar:
             piece for attachment in attachment_sequence
             for piece in exponented_word_map[attachment]
         ]
-
-        # TODO: bases AND exponents are being chopped per char not per symbol
-        #   - see how 'kʰ' and 'tʰ' are treated below
-        #   - note that base is already split like this on input
-        #
-        # example base: ['a', 't', 'ʰ', 't', 'a', 'f', 'k', 'ʰ', 'u', 'u', 'θ']
-        #
-        # example attachmap:
-        # {
-        #   'preposition': [],
-        #   'prefix': [],
-        #   'base': ['a', 't', 'ʰ', 't', 'a', 'f', 'k', 'ʰ', 'u', 'u', 'θ'],
-        #   'postfix': ['t', 'ʰ', 'u', 'f'],
-        #   'postposition': []
-        # }
-        #
-        print(f"ATTACHMAP on {base}: {exponented_word_map}")
-        # --> sounds listed bad here
-
+        
         # return the sequence as a list or string
         if as_string:
             return "".join(exponented_word)

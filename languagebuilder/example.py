@@ -309,6 +309,11 @@ my_language.grammar.sentences.add(
         ["noun", "nominative"],
         ["noun", "accusative"],
         ["verb", "perfective realis"]
+    ],
+    translation=[
+        ("The {}", 0),
+        ("did {}", 2),
+        ("the {}.", 1)
     ]
 )
 # TODO: make composable like ability to embed units (definite + noun)
@@ -317,8 +322,8 @@ sentence = my_language.grammar.sentences.apply(
     headwords = [s, o, v]
 )
 print(sentence)
-print(sentence['sound'])
-print(sentence['translation'])
+print("".join(sentence['sound']))
+print(" ".join(sentence['translation']))
 
 # TODO:
 #   - [ ] more refined management of syllable building

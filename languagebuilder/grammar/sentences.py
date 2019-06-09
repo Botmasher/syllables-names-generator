@@ -94,7 +94,7 @@ class Sentences:
         units_translated = set()
 
         # collect valid translation piece for each unit in structure
-        vetted_translation = {}
+        vetted_translation = []
         for translation_piece in translation:
             # expect translation piece to be a two-member sequence
             # ("translation", index) associated with a structural unit
@@ -106,10 +106,10 @@ class Sentences:
             if insertion_symbol not in unit_translation:
                 return
             # add piece data to collection of vetted elements
-            vetted_translation[unit_index] = unit_translation
+            vetted_translation.append((unit_translation, unit_index))
             
         # expect no structural unit left untranslated
-        if set(vetted_translation) != set(range(len(structure))):
+        if set([piece[1] for piece in vetted_translation]) != set(range(len(structure))):
             return
         
         return vetted_translation
@@ -124,10 +124,11 @@ class Sentences:
         # create the sentence's units structure sequence
         vetted_structure = self.vet_structure(structure)
         vetted_translation = self.vet_translation(translation, structure)
-        if not vetted_structure or vetted_translation is None:
-            print(f"Sentences add failed - invalid sentence structure {structure}")
-            return
-
+        if not vetted_structure:
+            raise ValueError(f"Sentences failed to add {name} - invalid sentence structure {structure}")
+        if not vetted_translation:
+            raise ValueError(f"Sentences failed to add {name} - invalid translation {translation}")
+        
         # add units structure to sentences
         self.sentences[name] = vetted_structure
         self.translations[name] = vetted_translation
@@ -146,7 +147,7 @@ class Sentences:
         vetted_translation = self.vet_translation(translation, structure)
         
         # back out of update if nothing to modify
-        if not vetted_structure or vetted_translation is None:
+        if not vetted_structure and vetted_translation is None:
             print(f"Sentences update failed - no valid translation or structure supplied")
             return
 
@@ -201,11 +202,6 @@ class Sentences:
             print(f"Failed to apply unidentified sentence named {name}")
             return
 
-        # grab list of word objects from the dictionary
-        #fetched_words = [
-        #   self.language.dictionary.lookup(word, i)
-        #   for word, i in headwords
-        #]
         # expect full entries instead of tying this to dictionary with lookups
         # TODO: high-level sentence methods with lookups from the Language
         fetched_words = [
@@ -223,7 +219,9 @@ class Sentences:
         
         # store final built units
         applied_sentence = []
-        applied_translation = []
+        # peel apart unit-per-unit translation strings and unit reference indexes
+        applied_translation, translation_indexes = list(zip(*translation))
+        applied_translation = list(applied_translation)
 
         # iterate through both sentence units and headwords
         # - unit structure is (word_classes, properties)
@@ -236,8 +234,8 @@ class Sentences:
             unit_pos, unit_properties = unit
             # compare headword class to expected word class
             if word_pos not in unit_pos:
-                print(fetched_words)
-                print(unit)
+                #print(fetched_words)
+                #print(unit)
                 print(f"Failed to apply sentence - word {word_sounds} part of speech {word_pos} does not match expected word class {unit_pos}")
                 return
             # create grammatical unit with headword and sentence unit properties
@@ -247,18 +245,21 @@ class Sentences:
                 word_classes=word_pos
             )
             # add spacing separator and unit to sentence
-            appended_unit = [spacing, *built_unit]
-            [
-                applied_sentence.append(unit_piece)
-                for unit_piece in appended_unit
-            ]
-            # translate the unit
-            unit_translation = translation[i].format(word_definition)   # format at insertion symbol (see vet_translation)
-            applied_translation.append(unit_translation)
-        
+            len(applied_sentence) > 0 and applied_sentence.append(spacing) 
+            [applied_sentence.append(unit_piece) for unit_piece in built_unit]
+
+            # Translate the unit
+            #
+            # locate unit's related translation piece
+            translation_index = translation_indexes.index(i)
+            # format with headword at insertion symbol (see vet_translation)
+            formatted_translation = applied_translation[translation_index].format(word_definition)
+            applied_translation[translation_index] = formatted_translation
+
         # format and return sentence representation
         sentence_data = {
             'sound': applied_sentence,
+            'change': applied_sentence, # TODO: run sound changes, s/c blocking spaces
             'translation': applied_translation
         }
         return sentence_data
