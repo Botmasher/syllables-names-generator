@@ -6,7 +6,7 @@
 # Sentences stores instructions for building out any
 # predefined unit structures to be filled with headwords
 class Sentences:
-    def __init__(self, grammar):
+    def __init__(self, grammar, phonology):
         # up reference for checking exponents and building units
         self.grammar = grammar
 

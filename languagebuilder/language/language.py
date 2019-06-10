@@ -5,6 +5,7 @@ from ..lexicon.dictionary import Dictionary
 from ..lexicon.corpus import Corpus
 from .paradigms import Paradigms
 import random
+import itertools
 
 # TODO: Accentuation, suprasegmentals
 
@@ -236,7 +237,60 @@ class Language:
         return
     # TODO: apply sentences looking up headwords
     def apply_sentence(self, name, headwords):
-        return
+        bases = [
+            self.dictionary.lookup(*headword)
+            for headword in headwords
+        ]
+        built_sentence = self.sentences.apply(name, bases)
+        sentence = {
+            'sound': built_sentence['sound'],
+            'change': self.change_sounds(built_sentence),
+            'definition': built_sentence['definition']
+        }
+        return sentence
+
+    # TODO: three levels of spreading change / blocking changes
+    #   - change within morphs only
+    #       - currently needs to be done from within Sentences.apply
+    #       - requires accessing 'change' value from within Grammar.build_unit
+    #   - change within words
+    #   - change within sentence
+    def change_sounds(self, sounds, blocked_by_spacing=True, spacing=" "):
+        """Run a sound change on a list of ipa symbols representing a string
+        of sounds in the language. Originally built to change built sentences.
+        Pass in spacing to recognize word boundaries. Have spacing block
+        changes from spreading beyond words."""
+
+        # group words together with itertools
+        # sound_units = list(zip(*
+        #     itertools.groupby(sounds, lambda x: x == spacing)
+        # ))
+        
+        # break ipa list into sublists for each word
+        grouped_words = [[],]
+        for symbol in sounds:
+            # split into a new list at spacing
+            if symbol == spacing:
+                grouped_words.append([])
+            # add character to end of latest split list
+            else:
+                last_i = len(grouped_words - 1)
+                grouped_words[last_i].append(symbol)
+            
+        # get rid of empty lists
+        grouped_words = list(filter(lambda x: x, grouped_words))
+
+        # change sounds for each grouped word
+        # spread sound change up to word boundary
+        if blocked_by_spacing:
+            changed_sounds = [self.phonology.apply_rules(word) for word in grouped_words]
+        # spread sound change across entire structure
+        else:
+            changed_sounds = [
+                # TODO: flatten list, change, then restructure back as original list
+            ]
+
+        return changed_sounds
 
     def translate(self, definition, properties="", word_class=""):
         """Attempt to render a single base plus grammatical properties
