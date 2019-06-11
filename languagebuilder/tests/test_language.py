@@ -366,4 +366,42 @@ class LanguageStorage(LanguageFixture):
             "failed to generate and store a base word in the language"
         )
 
-    
+class LanguageSoundChanges(LanguageFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(LanguageSoundChanges, this_class).setUpClass()
+        this_class.language.phonetics.add_map({
+            'a': ['vowel', 'front', 'open', 'unrounded', 'short'],
+            'k': ['consonant', 'voiceless', 'velar', 'stop', 'unaspirated'],
+            'kʰ': ['consonant', 'voiceless', 'velar', 'stop', 'aspirated'],
+            'gʰ': ['consonant', 'voiced', 'velar', 'stop', 'aspirated']
+        })
+        this_class.language.phonology.add_sounds({
+            'a': ['a'],
+            'gʰ': ['g']
+        })
+        this_class.language.phonology.syllables.add("VC")
+        this_class.language.phonology.add_rule("voiced", "voiceless", "V_#")
+        this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_#")
+
+    def test_change_sounds_within_words(self):
+        changed_sounds = self.language.change_sounds(
+            ["a", "gʰ", "a", "gʰ", " ", "a", "gʰ"]
+        )
+        self.assertEqual(
+            changed_sounds,
+            ["a", "gʰ", "a", "k", " ", "a", "k"],
+            "failed to change sounds of each word in a sentence"
+        )
+
+    def test_change_sounds_across_sentence(self):
+        changed_sounds = self.language.change_sounds(
+            ["a", "gʰ", "a", "gʰ", " ", "a", "gʰ"]
+        )
+        self.assertEqual(
+            changed_sounds,
+            ["a", "gʰ", "a", "gʰ", " ", "a", "k"],
+            "failed to spread sound changes across an entire sentence"
+        )
+        
+

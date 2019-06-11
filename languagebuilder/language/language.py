@@ -5,7 +5,6 @@ from ..lexicon.dictionary import Dictionary
 from ..lexicon.corpus import Corpus
 from .paradigms import Paradigms
 import random
-import itertools
 
 # TODO: Accentuation, suprasegmentals
 
@@ -260,11 +259,6 @@ class Language:
         of sounds in the language. Originally built to change built sentences.
         Pass in spacing to recognize word boundaries. Have spacing block
         changes from spreading beyond words."""
-
-        # group words together with itertools
-        # sound_units = list(zip(*
-        #     itertools.groupby(sounds, lambda x: x == spacing)
-        # ))
         
         # break ipa list into sublists for each word
         grouped_words = [[],]
@@ -280,16 +274,37 @@ class Language:
         # get rid of empty lists
         grouped_words = list(filter(lambda x: x, grouped_words))
 
-        # change sounds for each grouped word
+        # Change sounds for each grouped word
         # spread sound change up to word boundary
         if blocked_by_spacing:
+            # change each word
             changed_sounds = [self.phonology.apply_rules(word) for word in grouped_words]
+            # flatten the list and add spacing between words
+            changed_sounds = [
+                sound for word in changed_sounds
+                for sound in word + [spacing]
+            ][:-1]  # trim final added spacing
         # spread sound change across entire structure
         else:
-            changed_sounds = [
-                # TODO: flatten list, change, then restructure back as original list
-            ]
+            # TODO: verify that length and order are left unchanged
+            changed_sounds = grouped_words
+            # flatten list, change, then restructure back following original list
+            sounds_to_change = [sound for word in grouped_words for sound in word]
+            unspaced_change = self.phonology.apply_rules(sounds_to_change)
 
+            # separate changed sounds into words following the original words list
+            changed_sounds = []
+            for word, i in enumerate(grouped_words):
+                # add spacer before words except the first word
+                if changed_sounds:
+                    changed_sounds.append(spacing)
+                # find the start and end index of each word
+                changed_start = len(grouped_words[i - 1]) if i > 0 else 0
+                changed_end = len(word) + changed_start
+                # add the changed sounds for this word
+                changed_sounds += unspaced_change[changed_start:changed_end]
+        
+        # flat list of sound symbols with words separated by spacing
         return changed_sounds
 
     def translate(self, definition, properties="", word_class=""):
