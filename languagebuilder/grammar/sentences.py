@@ -6,7 +6,7 @@
 # Sentences stores instructions for building out any
 # predefined unit structures to be filled with headwords
 class Sentences:
-    def __init__(self, grammar, phonology):
+    def __init__(self, grammar):
         # up reference for checking exponents and building units
         self.grammar = grammar
 
@@ -90,9 +90,6 @@ class Sentences:
         if not translation:
             return []
         
-        # track which units are given a valid translation
-        units_translated = set()
-
         # collect valid translation piece for each unit in structure
         vetted_translation = []
         for translation_piece in translation:
@@ -126,7 +123,7 @@ class Sentences:
         vetted_translation = self.vet_translation(translation, structure)
         if not vetted_structure:
             raise ValueError(f"Sentences failed to add {name} - invalid sentence structure {structure}")
-        if not vetted_translation:
+        if vetted_translation is None:
             raise ValueError(f"Sentences failed to add {name} - invalid translation {translation}")
         
         # add units structure to sentences
@@ -198,7 +195,7 @@ class Sentences:
         # check for sentence type in collection
         sentence = self.get(name)
         translation = self.get_translation(name)
-        if not sentence or not translation:
+        if not sentence or translation is None:
             print(f"Failed to apply unidentified sentence named {name}")
             return
 
@@ -220,8 +217,9 @@ class Sentences:
         # store final built units
         applied_sentence = []
         # peel apart unit-per-unit translation strings and unit reference indexes
-        applied_translation, translation_indexes = list(zip(*translation))
-        applied_translation = list(applied_translation)
+        if translation:
+            applied_translation, translation_indexes = list(zip(*translation))
+            applied_translation = list(applied_translation)
 
         # iterate through both sentence units and headwords
         # - unit structure is (word_classes, properties)
@@ -249,7 +247,9 @@ class Sentences:
             [applied_sentence.append(unit_piece) for unit_piece in built_unit]
 
             # Translate the unit
-            #
+            # step ahead if nothing to translate
+            if not translation:
+                continue
             # locate unit's related translation piece
             translation_index = translation_indexes.index(i)
             # format with headword at insertion symbol (see vet_translation)
@@ -260,6 +260,6 @@ class Sentences:
         sentence_data = {
             'sound': applied_sentence,
             'change': applied_sentence, # TODO: run sound changes, s/c blocking spaces
-            'translation': applied_translation
+            'translation': applied_translation if translation else []
         }
         return sentence_data

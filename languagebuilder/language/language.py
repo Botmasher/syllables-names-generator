@@ -268,7 +268,7 @@ class Language:
                 grouped_words.append([])
             # add character to end of latest split list
             else:
-                last_i = len(grouped_words - 1)
+                last_i = len(grouped_words) - 1
                 grouped_words[last_i].append(symbol)
             
         # get rid of empty lists
@@ -294,7 +294,7 @@ class Language:
 
             # separate changed sounds into words following the original words list
             changed_sounds = []
-            for word, i in enumerate(grouped_words):
+            for i, word in enumerate(grouped_words):
                 # add spacer before words except the first word
                 if changed_sounds:
                     changed_sounds.append(spacing)

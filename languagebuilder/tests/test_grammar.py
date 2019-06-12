@@ -321,8 +321,6 @@ class GrammarWordClasses(GrammarFixture):
             "failed to remove added word class"
         )
 
-
-
     def test_add_word_class_to_exponent_pos(self):
         self.grammar.word_classes.add("added_exponent_pos")
         exponent_id = self.grammar.exponents.add(pre="pre", properties={'exponent_category': 'exponent_grammeme'})
@@ -661,19 +659,7 @@ class GrammarOrderSentences(GrammarFixture):
                 ["verb", "imperfective active"],
                 ["noun", "subject"],
                 ["noun", "object"]
-            ],
-            # TODO: allow translation
-            #   - look in dictionary/corpus first
-            #   - then fall back to this structure
-            #   - ? perhaps have paradigms translate using grammatical properties
-            # translation = [
-            #     "a",
-            #     1,
-            #     "did",
-            #     0,
-            #     "a",
-            #     2
-            # ]
+            ]
         )
         mock_verb = {
             'sound': 'tota',

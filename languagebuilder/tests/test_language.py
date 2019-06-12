@@ -380,9 +380,60 @@ class LanguageSoundChanges(LanguageFixture):
             'a': ['a'],
             'gʰ': ['g']
         })
-        this_class.language.phonology.syllables.add("VC")
-        this_class.language.phonology.add_rule("voiced", "voiceless", "V_#")
+        #this_class.language.phonology.syllables.add("VC")
+        this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_C")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_#")
+        this_class.language.phonology.add_rule("aspirated", "unaspirated", "#_V")
+        this_class.language.phonology.add_rule("voiced", "voiceless", "V_V")
+        this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_V")
+
+    # simple change applications
+
+    def test_change_sound_word_start(self):
+        sounds = ["a", "a", "gʰ"]
+        changed_sounds = self.language.phonology.apply_rules(sounds)
+        self.assertEqual(
+            "".join(changed_sounds),
+            "aag",
+            "failed to apply a simple sound change to the first sound in a word"
+        )
+
+    def test_change_sound_word_end(self):
+        changed_sounds = self.language.phonology.apply_rules(["gʰ", "a", "a"])
+        self.assertEqual(
+            "".join(changed_sounds),
+            "gaa",
+            "failed to apply a simple sound change to the last sound in a word"
+        )
+
+    def test_change_sound_before_consonant(self):
+        changed_sounds = self.language.phonology.apply_rules(["a", "gʰ", "gʰ", "a"])
+        self.assertEqual(
+            "".join(changed_sounds),
+            "aggʰa",
+            "failed to apply a simple sound change to the middle of a word"
+        )
+
+    def test_change_sound_between_vowels(self):
+        changed_sounds = self.language.phonology.apply_rules(["a", "gʰ", "a"])
+        self.assertEqual(
+            "".join(changed_sounds),
+            "aka",
+            "failed to apply a simple sound change between vowels"
+        )
+
+    def test_change_monophone(self):
+        changed_sounds = self.language.phonology.apply_rules(["gʰ"])
+        self.assertEqual(
+            "".join(changed_sounds),
+            "k",
+            "failed to change a word containing only a single sound"
+        )
+
+    # TODO: compound change applications
+    #   - see if various rule orders work
+
+    # sound changes in longer structures (units and sentences)
 
     def test_change_sounds_within_words(self):
         changed_sounds = self.language.change_sounds(
@@ -390,17 +441,18 @@ class LanguageSoundChanges(LanguageFixture):
         )
         self.assertEqual(
             changed_sounds,
-            ["a", "gʰ", "a", "k", " ", "a", "k"],
+            ["a", "k", "a", "gʰ", " ", "a", "gʰ"],
             "failed to change sounds of each word in a sentence"
         )
 
     def test_change_sounds_across_sentence(self):
         changed_sounds = self.language.change_sounds(
-            ["a", "gʰ", "a", "gʰ", " ", "a", "gʰ"]
+            ["a", "gʰ", "a", "gʰ", " ", "a", "gʰ"],
+            blocked_by_spacing=False
         )
         self.assertEqual(
             changed_sounds,
-            ["a", "gʰ", "a", "gʰ", " ", "a", "k"],
+            ["a", "k", "a", "k", " ", "a", "gʰ"],
             "failed to spread sound changes across an entire sentence"
         )
         
