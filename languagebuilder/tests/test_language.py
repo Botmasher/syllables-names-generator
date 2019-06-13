@@ -374,6 +374,7 @@ class LanguageSoundChanges(LanguageFixture):
             'a': ['vowel', 'front', 'open', 'unrounded', 'short'],
             'k': ['consonant', 'voiceless', 'velar', 'stop', 'unaspirated'],
             'kʰ': ['consonant', 'voiceless', 'velar', 'stop', 'aspirated'],
+            'g': ['consonant', 'voiced', 'velar', 'stop', 'unaspirated'],
             'gʰ': ['consonant', 'voiced', 'velar', 'stop', 'aspirated']
         })
         this_class.language.phonology.add_sounds({
@@ -389,21 +390,21 @@ class LanguageSoundChanges(LanguageFixture):
 
     # simple change applications
 
-    def test_change_sound_word_start(self):
+    def test_change_sound_word_end(self):
         sounds = ["a", "a", "gʰ"]
         changed_sounds = self.language.phonology.apply_rules(sounds)
         self.assertEqual(
             "".join(changed_sounds),
             "aag",
-            "failed to apply a simple sound change to the first sound in a word"
+            "failed to apply a simple sound change to the last sound in a word"
         )
 
-    def test_change_sound_word_end(self):
+    def test_change_sound_word_start(self):
         changed_sounds = self.language.phonology.apply_rules(["gʰ", "a", "a"])
         self.assertEqual(
             "".join(changed_sounds),
             "gaa",
-            "failed to apply a simple sound change to the last sound in a word"
+            "failed to apply a simple sound change to the first sound in a word"
         )
 
     def test_change_sound_before_consonant(self):

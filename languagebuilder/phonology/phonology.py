@@ -241,29 +241,33 @@ class Phonology:
     # TODO: interact with lexicon storage, adding phonetic word and sound change alongside spelling and definition
     #   - store tracks or store the changed symbols list alongside word in lexicon
 
-    def apply_rule(self, ipa_sequence, rule_id):
+    def apply_rule(self, ipa, rule_id):
         """Change a word's sounds applying one sound change rule"""
-        if not isinstance(ipa_sequence, (str, list, tuple)):
-            print(f"Phonology apply_rule failed - expected ipa string or list not {ipa_sequence}")
+        if not isinstance(ipa, (str, list, tuple)):
+            print(f"Phonology apply_rule failed - expected ipa string or list not {ipa}")
             return
+        
+        # set of word sound symbols
+        try:
+            word_sounds = set([c for c in ipa])
+        except:
+            raise ValueError(f"ipa_sequence {ipa}")
+        
+        # prepare input sound sequence for search
+        #ipa_sequence = ["#"] + list(ipa) + ["#"]   # add start and end markers
+        ipa_sequence = list(ipa)
+
+        # features for all sounds in the word
+        word_features = {
+            ipa: self.phonetics.get_features(ipa)
+            for ipa in word_sounds
+        }
 
         # store tracks for each possible rule application
         # TODO: consider if this is one instance per rule only
         #   - originally instantiated in apply_rules
         #   - how to track individual tracks across all rules given feeding?
         rule_tracker = RuleTracker()
-
-        # set of word sounds
-        try:
-            word_sounds = set([c for c in ipa_sequence])
-        except:
-            raise ValueError(f"ipa_sequence {ipa_sequence}")
-        
-        # features for all sounds in the word
-        word_features = {
-            ipa: self.phonetics.get_features(ipa)
-            for ipa in word_sounds
-        }
 
         # collect each track of rules that applies within the word ipa
         successful_tracks = []
@@ -321,33 +325,42 @@ class Phonology:
             tracks = rule_tracker.get()
             for track_id in tracks:
                 # a track is an ongoing attempt to match a single rule
-                # each track is expected to match shape of value added in _track_rule
                 track = tracks[track_id]
 
-                # the rule being matched by this track
-                # one rule may be associated with multiple (even overlapping) tracks within a sound symbols string
+                # the rule being matched by this track - one rule may be associated
+                # with multiple or overlapping tracks within a sounds sequence
                 rule = self.rules.get(track['rule'])
+                # the rule's environment slot list
+                environment = rule['environment']
 
                 # skip tracked rules with invalid ids
-                if not rule:
-                    continue
+                #if not rule:
+                #    continue
 
                 # current location in environment symbol is tested against
-                environment_slot_features = rule['environment'][track['count']]
+                environment_slot = environment[track['count']]
 
                 # log this attempt to fit symbol into rule environment
                 print(f"Applying rule: {self.rules.get_pretty(rule_id)}")
-                print(f"Looking for environment matching {environment_slot_features}")
+                print(f"Looking for environment matching {environment_slot}...")
 
                 # flag to check if rule track fails to match sound to slot
                 did_keep_tracking = False
 
+                # tracking precheck - is track looking to match word start? 
+                # sequence start match - count up and prepare to track next
+                if environment_slot == "#" and word_index == 0:
+                    rule_tracker.count_features_match(track_id)
+                    # get the next environment slot to move onto main in-word match
+                    environment_slot = environment[track['count']]
+                    ##raise Exception(f"\nEnvironment {environment_slot}\nRule: {self.rules.get_pretty(rule_id)}")
+                    
                 # environment source match - store sound to change and keep tracking
-                if rule_tracker.is_source_slot_match(sound_features, environment_slot_features, rule['source']):
+                if rule_tracker.is_source_slot_match(sound_features, environment_slot, rule['source']):
                     rule_tracker.set_source_match(track_id, source=symbol, index=word_index)
                     did_keep_tracking = True
                 # surrounding environment match - keep tracking
-                elif rule_tracker.is_environment_slot_match(sound_features, environment_slot_features):
+                elif rule_tracker.is_environment_slot_match(sound_features, environment_slot):
                     rule_tracker.count_features_match(track_id)
                     did_keep_tracking = True
                 # no match for this track - prepare to untrack
@@ -355,6 +368,16 @@ class Phonology:
                     print("Found no features match - resetting the rule")
                     tracks_to_pop.append(track_id)
                     #did_keep_tracking = False  # default
+
+                # tracking postcheck - is track looking to match word end?
+                # match sequence end and count up in order to finish tracking
+                if word_index == len(ipa_sequence) - 1 and did_keep_tracking and track['count'] < len(environment):
+                    # check for the next environment slot of successful track
+
+                    # count up one more if the slot marks the end
+                    if environment[track['count']] == "#":
+                        rule_tracker.count_features_match(track_id)
+                        raise Exception(f"\nEnvironment: {environment_slot}\nRule: {self.rules.get_pretty(rule_id)}")
 
                 # fetch track again for refreshed count and index data
                 track = rule_tracker.get(track_id=track_id)

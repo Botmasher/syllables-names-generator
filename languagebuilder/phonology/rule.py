@@ -1,4 +1,6 @@
-# TODO rule management and prioritization
+# TODO: remove class!
+#   - check no dependencies on this
+#   - verify current behavior provided by Rules
 class Rule:
     def __init__(self, source=None, target=None, environment=None):
         self.set_rule(source=source, target=target, environment=environment)
