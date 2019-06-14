@@ -12,23 +12,32 @@ class RuleTracker():
         """Add ongoing rule environment slot match check to the rules application tracker"""
         # check for valid environment sequence
         environment_structure
-        if not environment_structure:
-            print(f"RuleTracker failed to track rule - invalid environment {environment_structure}")
+        if not isinstance(environment_structure, list) or not environment_structure:
+            print(f"RuleTracker track rule failed - invalid environment {environment_structure}")
             return
-
-        print(f"RuleTracker will track rule if sound fits {environment_structure[0]}")
         
-        # compare first environment slot to see if current symbol fits
-        environment_slot = environment_structure[0]
+        # compare first environment slot to see if current symbol fits - skip to
+        # (successfully match) word start symbol if present in rule environment
+
+        # TODO: remove Phonology.apply_rule architecture looking for # matches
+        #   - this is now handled here
+        #   - also work this magic in slots below, comparing environment len to ?
+        #   - would need to know actual environment structure each time
+        count = 0
+        if environment_structure[0] == "#":
+            count += 1
+        environment_slot = environment_structure[count]
+        print(f"RuleTracker will begin tracking rule if sound fits {environment_slot}")
+        # unmatched first sound - do not track this rule
         if not self.is_features_submatch(environment_slot, sound_features):
-            print("RuleTracker failed to track - sound {0} did not match environment slot {1}".format(sound_features, environment_slot))
+            print(f"RuleTracker track failed - sound {sound_features} did not match environment slot {environment_slot}")
             return
         
         # create a new track
         track_id = uuid.uuid4()
         self.tracker[track_id] = {
             # the current slot being evaluated for sound matches
-            'count': 0,
+            'count': count,
             # the total number of slots to match before applying rule
             'length': len(environment_structure),
              # identified sounds to change
@@ -36,9 +45,11 @@ class RuleTracker():
             # index of identified sound to change
             'index': None,
             # rule object defining environment and change
-            'rule': rule_id
+            'rule': rule_id,
+            # NOTE: stored environment - added to check for word end character
+            'environment': environment_structure
         }
-        print("RuleTracker started tracking")
+        print(f"RuleTracker started tracking - sound {sound_features} fit environment slot {environment_slot}")
         return track_id
 
     def untrack(self, track_id):
@@ -101,10 +112,19 @@ class RuleTracker():
         print("Did not find a source match on {0}, even though environment up to this point matched.".format(sound_features))
         return False
 
-    def is_environment_slot_match(self, sound_features, environment_features):
+    # TODO: just pass track and sound, since track already knows environment
+    # NOTE: at this point you could handle much more here!
+    #   - send slot to match and let tracker figure out if it's source, environment, edge
+    #   - declare match done here in tracker
+    def is_environment_slot_match(self, track_id, sound_features, environment_features):
         """Determine if the sound fits in the environment slot"""
+        track = self.get(track_id)
+        environment_features = track['environment'][track['count']]
         # no environment match - reset this particular rule
         if not self.is_features_submatch(environment_features, sound_features):
             return False
         # surrounding environment match - keep tracking rule
+        # also check for end-of-string match
+        if track['count'+2] == track['length'] and track['environment'][track['count'+1]] == "#":
+            track['count'] += 1
         return True

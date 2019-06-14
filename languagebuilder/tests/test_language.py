@@ -384,7 +384,8 @@ class LanguageSoundChanges(LanguageFixture):
         #this_class.language.phonology.syllables.add("VC")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_C")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_#")
-        this_class.language.phonology.add_rule("aspirated", "unaspirated", "#_V")
+        this_class.language.phonology.add_rule("aspirated", "unaspirated", "#_")
+        this_class.language.phonology.add_rule("voiced", "voiceless", "#_#")
         this_class.language.phonology.add_rule("voiced", "voiceless", "V_V")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_V")
 

@@ -323,6 +323,10 @@ class Phonology:
             # store completed rule tracks and avoid mutating dict mid iteration
             tracks_to_pop = []
             tracks = rule_tracker.get()
+
+            if self.rules.get(rule_id)['environment'][0] == "#":
+                raise ValueError(f"Rule contains an environment with starting boundary {self.rules.get(rule_id)['environment']}")
+            
             for track_id in tracks:
                 # a track is an ongoing attempt to match a single rule
                 track = tracks[track_id]
@@ -349,11 +353,11 @@ class Phonology:
 
                 # tracking precheck - is track looking to match word start? 
                 # sequence start match - count up and prepare to track next
-                if environment_slot == "#" and word_index == 0:
+                if word_index == 0 and environment_slot == "#":
                     rule_tracker.count_features_match(track_id)
                     # get the next environment slot to move onto main in-word match
                     environment_slot = environment[track['count']]
-                    ##raise Exception(f"\nEnvironment {environment_slot}\nRule: {self.rules.get_pretty(rule_id)}")
+                    raise ValueError(f"\nStart of Environment {environment}\nRule: {self.rules.get_pretty(rule_id)}")
                     
                 # environment source match - store sound to change and keep tracking
                 if rule_tracker.is_source_slot_match(sound_features, environment_slot, rule['source']):
@@ -377,7 +381,7 @@ class Phonology:
                     # count up one more if the slot marks the end
                     if environment[track['count']] == "#":
                         rule_tracker.count_features_match(track_id)
-                        raise Exception(f"\nEnvironment: {environment_slot}\nRule: {self.rules.get_pretty(rule_id)}")
+                        #raise Exception(f"\nEnvironment: {environment_slot}\nRule: {self.rules.get_pretty(rule_id)}")
 
                 # fetch track again for refreshed count and index data
                 track = rule_tracker.get(track_id=track_id)

@@ -4,7 +4,7 @@ class Environment:
         self.set_structure(structure)
 
     def is_structure(self, structure):
-        if type(structure) is list and structure.count('_') == 1:
+        if isinstance(structure, list) and structure.count('_') == 1:
             return True
         return False
 
@@ -68,17 +68,20 @@ class Environment:
     # TODO: allow more complex environments including specific consonant/vowel features
     def set_structure(self, structure):
         """Create an environment structure from a features list or string"""
-        # parse short strings like 'C_C'
+        # parse string abbreviations like '#_V'
         if isinstance(structure, str):
-            parsed_structure = []
-            short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_", '#': "#"}
-            for symbol in structure:
-                if symbol in short_symbols.keys():
-                    parsed_structure.append(short_symbols[symbol])
-                else:
-                    print("Environment failed to set - unknown structure symbol {0}".format(symbol))
-                    return
-            structure = parsed_structure
+            short_symbols = {
+                'C': ["consonant"],
+                'V': ["vowel"],
+                '_': "_",
+                '#': "#"
+            }
+            structure = [short_symbols[symbol] for symbol in structure]
+            #try:
+            #    structure = [short_symbols[symbol] for symbol in structure]
+            #except:
+            #    print("Environment set_structure failed - unknown symbol {symbol}")
+            #    return
         # store environment elements as list
         if self.is_structure(structure):
             self.structure = structure

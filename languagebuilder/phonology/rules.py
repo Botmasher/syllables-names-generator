@@ -112,18 +112,14 @@ class Rules():
         """Create an environment structure from a features list or string"""
         # parse short strings like 'C_C'
         if isinstance(environment_structure, str):
-            parsed_structure = []
             short_symbols = {'C': ["consonant"], 'V': ["vowel"], '_': "_", '#': "#"}
-            for symbol in environment_structure:
-                if symbol in short_symbols.keys():
-                    parsed_structure.append(short_symbols[symbol])
-                else:
-                    print(f"Rules failed to set environment - unknown structure symbol {symbol}")
-                    return
+            structure = [short_symbols[symbol] for symbol in environment_structure]
+        else:
+            structure = list(environment_structure)
         # store environment elements as list
-        if not self.is_environment(parsed_structure):
-            raise ValueError(f"Rules failed to set environment with invalid structure {parsed_structure}")
-        return parsed_structure
+        if not self.is_environment(structure):
+            raise ValueError(f"Rules failed to set environment with invalid structure {structure}")
+        return structure
 
     def is_environment(self, environment_structure):
         """Check for valid rule environment structure list including one open slot"""
