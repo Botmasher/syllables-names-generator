@@ -251,7 +251,7 @@ class Phonology:
         try:
             word_sounds = set([c for c in ipa])
         except:
-            raise ValueError(f"ipa_sequence {ipa}")
+            raise ValueError(f"Phonology apply_rule failed - invalid sound sequence {ipa}")
         
         # prepare input sound sequence for search
         #ipa_sequence = ["#"] + list(ipa) + ["#"]   # add start and end markers
@@ -386,6 +386,8 @@ class Phonology:
                 # fetch track again for refreshed count and index data
                 track = rule_tracker.get(track_id=track_id)
 
+            # TODO: RuleTracker stores and updates counts, does success checks internally
+
                 # TODO: apply RuleTracker tracks in order instead of changing each here
                 #   - this overwrites sounds based on individual rule determination
                 #   - stack changes by feeding each one to the other
@@ -409,13 +411,10 @@ class Phonology:
         # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
         #
         # TODO: incorporate weighting or relative chronology in values
-        for successful_track in successful_tracks:
-            print(successful_track)
+        for successful_track in rule_tracker.successes():
             # get the sound to change
             index_to_change = successful_track['index']
             ipa_to_change = new_ipa_sequence[index_to_change]
-            applied_rule_id = successful_track['rule']
-            applied_rule = self.rules.get(applied_rule_id)
             
             # NOTE: tracker ['source'] is in this loop the original sound
             # before any changes were layered
@@ -423,14 +422,14 @@ class Phonology:
             
             # verify sound to change has not been updated to fall outside of rule
             features_to_change = self.phonetics.get_features(ipa_to_change)
-            if not rule_tracker.is_features_submatch(applied_rule['source'], features_to_change):
+            if not rule_tracker.is_features_submatch(rule['source'], features_to_change):
                 continue
 
             # perform the sound change
             changed_ipa = self.change_symbol(
-                applied_rule['source'],  # rule source features that were matched
-                applied_rule['target'],  # rule target features to transform sound
-                ipa_to_change            # the matched sound to change
+                rule['source'],  # rule source features that were matched
+                rule['target'],  # rule target features to transform sound
+                ipa_to_change    # the matched sound to change
             )
             if not changed_ipa:
                 changed_ipa = ipa_to_change
