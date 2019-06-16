@@ -10,48 +10,48 @@ import uuid     # track_ids
 #   - .match when continuing to track a rule application at subsequent sounds
 #   - .successes when finished tracking to fetch all successful tracks
 class RuleTracker():
-    def __init__(self, rule_id, environment, source_features, source_symbol="_", boundary_symbol="#"):
+    def __init__(self, environment, source_features, source_symbol="_", boundary_symbol="#"):
         # track ongoing matches of the rule
         self.tracks = {}
+        
         # store rule information
-        self.environment = environment  # environment structure list
-        self.length = len(environment)  # total slots to match before applying rule
-        self.rule_id = rule_id          # tracked rule defining environment and change
+        self.environment = environment  # environment slots for checking features and length
         self.source_features = source_features  # features to match for sound to change
+        # NOTE: rule_id no longer necessary if applying one sound change at a time
+        #self.rule_id = rule_id          # tracked rule defining environment and change
+        
         # store symbols for checking against source slots and start/end boundaries
         self.source_symbol = source_symbol
         self.boundary_symbol = boundary_symbol
 
-    def track(self, sound_features):
+    def track(self, word_index):
         """Add ongoing rule environment check to the rule application tracker
-        if the current sound features match the start of the rule environment"""
-        
+        to compare the current position in the word to the first position in
+        the rule environment. Sets up track only - does not begin checking for
+        matches until match called on the created track."""
         # compare first environment slot to see if current symbol fits - skip to
         # (successfully match) word start symbol if present in rule environment
         #
-        # TODO: remove Phonology.apply_rule architecture looking for # matches
+        # TODO: remove Phonology.apply_rule architecture looking for boundary matches
         #   - this is now handled here
         #   - also work this magic in slots below, comparing environment len to ?
         #   - would need to know actual environment structure each time
-        #
-        count = 0
-        if self.environment[0] == self.boundary_symbol:
-            count += 1
-        environment_slot = self.environment[count]
-        print(f"RuleTracker will begin tracking rule if sound fits {environment_slot}")
-        # unmatched first sound - do not track this rule
-        if not self.is_features_submatch(environment_slot, sound_features):
-            print(f"RuleTracker track failed - sound {sound_features} did not match environment slot {environment_slot}")
-            return
 
         # create a track for this rule at this position
         track_id = uuid.uuid4()
-        self.tracks[track_id] = {
-            'count': count,     # current slot being evaluated for sound matches
-            'source': "",       # identified sound to change
-            'index': None,      # index of identified sound to change
+
+        # avoid starting multiple tracks for the same rule at the same word index
+        if word_index in self.tracks:
+            print(f"RuleTracker track failed - already tracking starting at index {word_index}")
+            return
+
+        # set up track using initial index where this track was set as key
+        self.tracks[word_index] = {
+            'count': 0,     # current slot to evaluate for sound matches
+            'source': "",   # identified sound to change
+            'index': None,  # index of identified sound to change
         }
-        print(f"RuleTracker started tracking - sound {sound_features} fit environment slot {environment_slot}")
+        print(f"RuleTracker set up tracking starting at word index {word_index}")
         return track_id
 
     def untrack(self, track_id):
@@ -94,10 +94,26 @@ class RuleTracker():
         track = self.tracks[track_id]
         track['count'] += 1
         # also check for and count end boundary match
-        if track['count'+2] == self.length and self.environment[track['count'+1]] == "#":
+        if track['count'+2] >= len(self.environment) and self.environment[track['count'+1]] == "#":
             track['count'] += 1
         return self.tracks[track_id]
 
+    def finish(self):
+        """End tracking and return all successful tracks"""
+        return {
+            # filter tracks
+            track_id: track
+            for track_id, track in self.tracks
+            # define track success
+            if track['source'] and track['count'] >= len(self.environment)
+        }
+
+    def match_all(self, features, index):
+        """Match the current sound against source or environment matches for every track"""
+        for track_id in self.tracks:
+            self.match(track_id, features, index)
+        return
+    
     def match(self, track_id, features, index):
         """Check for source or environment match and update or remove track depending
         on successful match."""

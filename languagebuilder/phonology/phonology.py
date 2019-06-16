@@ -25,7 +25,10 @@ class Phonology:
         #   - the Language checks Phonetics but the injected classes remain decoupled
         self.syllables = Syllables(self)    # reference phonology for feature checking
 
+        # creating and applying rules
         self.rules = Rules()
+        self.source_symbol = "_"
+        self.boundary_symbol = "#"
 
     # inventory now managed through Phonemes (letters <> ipa) and Features (features <> ipa) instead of previous Inventory class
     def inventory(self):
@@ -254,20 +257,14 @@ class Phonology:
             raise ValueError(f"Phonology apply_rule failed - invalid sound sequence {ipa}")
         
         # prepare input sound sequence for search
-        #ipa_sequence = ["#"] + list(ipa) + ["#"]   # add start and end markers
-        ipa_sequence = list(ipa)
+        # add start and end markers
+        ipa_sequence = [self.boundary_symbol] + list(ipa) + [self.boundary_symbol]
 
         # features for all sounds in the word
         word_features = {
             ipa: self.phonetics.get_features(ipa)
             for ipa in word_sounds
         }
-
-        # store tracks for each possible rule application
-        # TODO: consider if this is one instance per rule only
-        #   - originally instantiated in apply_rules
-        #   - how to track individual tracks across all rules given feeding?
-        rule_tracker = RuleTracker()
 
         # collect each track of rules that applies within the word ipa
         successful_tracks = []
@@ -277,6 +274,17 @@ class Phonology:
         if not rule:
             print(f"Phonology apply_rule failed - invalid rule_id {rule_id}")
             return
+
+        # store tracks for each possible rule application
+        # TODO: consider if this is one instance per rule only
+        #   - originally instantiated in apply_rules
+        #   - how to track individual tracks across all rules given feeding?
+        rule_tracker = RuleTracker(
+            rule['environment'],
+            rule['source'],
+            source_symbol=self.source_symbol,
+            boundary_symbol=self.boundary_symbol
+        )
 
         # look through features and find environment matches for each step of every rule
         # use with self.rule_tracker and methods, full matches and strategy commented above to handle overlaps
@@ -297,7 +305,7 @@ class Phonology:
             # - track checked while iterating through rest of ipa_string
             # - tracker only tracks as long as environment matches
             # - zeroth nonmatches screened
-            rule_tracker.track(rule_id, rule['environment'], sound_features)
+            rule_tracker.track(word_index)
             # NOTE: your count for successful track is 0, compared to len
             # - below will recheck for 0th match.
             # - problem: what if the first is a slot match? not storing source and index here
@@ -321,7 +329,6 @@ class Phonology:
             # TODO: update tracks to continue checking or discard ongoing rule applications
 
             # store completed rule tracks and avoid mutating dict mid iteration
-            tracks_to_pop = []
             tracks = rule_tracker.get()
 
             if self.rules.get(rule_id)['environment'][0] == "#":
@@ -349,29 +356,11 @@ class Phonology:
                 print(f"Looking for environment matching {environment_slot}...")
 
                 # flag to check if rule track fails to match sound to slot
-                did_keep_tracking = False
-
-                # tracking precheck - is track looking to match word start? 
-                # sequence start match - count up and prepare to track next
-                if word_index == 0 and environment_slot == "#":
-                    rule_tracker.count_features_match(track_id)
-                    # get the next environment slot to move onto main in-word match
-                    environment_slot = environment[track['count']]
-                    raise ValueError(f"\nStart of Environment {environment}\nRule: {self.rules.get_pretty(rule_id)}")
-                    
-                # environment source match - store sound to change and keep tracking
-                if rule_tracker.is_source_slot_match(sound_features, environment_slot, rule['source']):
-                    rule_tracker.set_source_match(track_id, source=symbol, index=word_index)
-                    did_keep_tracking = True
-                # surrounding environment match - keep tracking
-                elif rule_tracker.is_environment_slot_match(sound_features, environment_slot):
-                    rule_tracker.count_features_match(track_id)
-                    did_keep_tracking = True
-                # no match for this track - prepare to untrack
-                else:
-                    print("Found no features match - resetting the rule")
-                    tracks_to_pop.append(track_id)
-                    #did_keep_tracking = False  # default
+                did_keep_tracking = rule_tracker.match(
+                    track_id,
+                    sound_features,
+                    word_index
+                )
 
                 # tracking postcheck - is track looking to match word end?
                 # match sequence end and count up in order to finish tracking
@@ -400,10 +389,10 @@ class Phonology:
                     successful_tracks.append(track)
                     
                     # drop this track from the tracker
-                    tracks_to_pop.append(track_id)
+                    #tracks_to_pop.append(track_id)
 
             # ditch any successful or failed completed track
-            [rule_tracker.untrack(track_id) for track_id in tracks_to_pop]
+            #[rule_tracker.untrack(track_id) for track_id in tracks_to_pop]
 
         # prepare an ipa representation of the word to update as rule applied
         new_ipa_sequence = list(ipa_sequence)
@@ -411,14 +400,10 @@ class Phonology:
         # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
         #
         # TODO: incorporate weighting or relative chronology in values
-        for successful_track in rule_tracker.successes():
+        for successful_track in rule_tracker.finish().values():
             # get the sound to change
             index_to_change = successful_track['index']
             ipa_to_change = new_ipa_sequence[index_to_change]
-            
-            # NOTE: tracker ['source'] is in this loop the original sound
-            # before any changes were layered
-            #original_ipa = successful_track['source']
             
             # verify sound to change has not been updated to fall outside of rule
             features_to_change = self.phonetics.get_features(ipa_to_change)
@@ -439,8 +424,14 @@ class Phonology:
             # store the changed sound
             new_ipa_sequence[index_to_change] = changed_ipa
 
+        # remove added start and end boundaries
+        if new_ipa_sequence[0] == self.boundary_symbol and new_ipa_sequence[-1] == self.boundary_symbol:
+            new_ipa_sequence = new_ipa_sequence[1:-1]
+        else:
+            raise ValueError(f"Changed word lacks expected start and end boundaries.")
+
         # send back the list of sequences with sounds changed
-        print(f"Finished applying rules to create new sequence: {new_ipa_sequence}")
+        print(f"Finished applying rule to create new sequence: {new_ipa_sequence}")
         return new_ipa_sequence
 
     def apply_rules(self, ipa_sequence):
