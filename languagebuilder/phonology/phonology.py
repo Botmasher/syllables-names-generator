@@ -256,8 +256,7 @@ class Phonology:
         except:
             raise ValueError(f"Phonology apply_rule failed - invalid sound sequence {ipa}")
         
-        # prepare input sound sequence for search
-        # add start and end markers
+        # prepare input sequence for search - add start and end markers
         ipa_sequence = [self.boundary_symbol] + list(ipa) + [self.boundary_symbol]
 
         # features for all sounds in the word
@@ -306,19 +305,9 @@ class Phonology:
             # - tracker only tracks as long as environment matches
             # - zeroth nonmatches screened
             rule_tracker.track(word_index)
-            # NOTE: your count for successful track is 0, compared to len
-            # - below will recheck for 0th match.
-            # - problem: what if the first is a slot match? not storing source and index here
-            # - solution: maybe let it do that extra check here then more detailed there
 
             # (2) Tracks Loop: do any tracked applications ("tracks") continue to match?
-            # - Untrack them if they do not
-            # - Continue tracking (update slot match count) if they do
-            # - If found slot _ match, bingo! - store the sound plus the word_i in track["index"] attr
-            # - Add track to full_matches if count reached length
-            #   - untrack and get the popped track entry
-            #   - make sure you have a source sound and an index in the track entry
-            #   - store the popped track in full_matches
+
 
             # (3) Full Tracks Loop: go through tracks
             # - go through each fully successful match
@@ -338,20 +327,9 @@ class Phonology:
                 # a track is an ongoing attempt to match a single rule
                 track = tracks[track_id]
 
-                # the rule being matched by this track - one rule may be associated
-                # with multiple or overlapping tracks within a sounds sequence
-                rule = self.rules.get(track['rule'])
-                # the rule's environment slot list
-                environment = rule['environment']
-
-                # skip tracked rules with invalid ids
-                #if not rule:
-                #    continue
-
-                # current location in environment symbol is tested against
-                environment_slot = environment[track['count']]
-
                 # log this attempt to fit symbol into rule environment
+                environment = rule_tracker.environment
+                environment_slot = environment[track['count']]
                 print(f"Applying rule: {self.rules.get_pretty(rule_id)}")
                 print(f"Looking for environment matching {environment_slot}...")
 
@@ -362,45 +340,28 @@ class Phonology:
                     word_index
                 )
 
-                # tracking postcheck - is track looking to match word end?
-                # match sequence end and count up in order to finish tracking
-                if word_index == len(ipa_sequence) - 1 and did_keep_tracking and track['count'] < len(environment):
-                    # check for the next environment slot of successful track
-
-                    # count up one more if the slot marks the end
-                    if environment[track['count']] == "#":
-                        rule_tracker.count_features_match(track_id)
-                        #raise Exception(f"\nEnvironment: {environment_slot}\nRule: {self.rules.get_pretty(rule_id)}")
+                if did_keep_tracking:
+                    print("")
+                else:
+                    print("")
 
                 # fetch track again for refreshed count and index data
-                track = rule_tracker.get(track_id=track_id)
+                #track = rule_tracker.get(track_id=track_id)
 
-            # TODO: RuleTracker stores and updates counts, does success checks internally
+                # TODO: RuleTracker stores and updates counts, does success checks internally
 
                 # TODO: apply RuleTracker tracks in order instead of changing each here
                 #   - this overwrites sounds based on individual rule determination
                 #   - stack changes by feeding each one to the other
                 #   - see if the next one applies if not pass same sound down
-
-                # matched to the end of the rule environment - add to found changes
-                if did_keep_tracking and track['count'] >= track['length']:
-                    
-                    # full ruletrack match
-                    successful_tracks.append(track)
-                    
-                    # drop this track from the tracker
-                    #tracks_to_pop.append(track_id)
-
-            # ditch any successful or failed completed track
-            #[rule_tracker.untrack(track_id) for track_id in tracks_to_pop]
-
+            
         # prepare an ipa representation of the word to update as rule applied
         new_ipa_sequence = list(ipa_sequence)
 
         # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
         #
         # TODO: incorporate weighting or relative chronology in values
-        for successful_track in rule_tracker.finish().values():
+        for successful_track in rule_tracker.successes().values():
             # get the sound to change
             index_to_change = successful_track['index']
             ipa_to_change = new_ipa_sequence[index_to_change]
