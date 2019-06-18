@@ -76,8 +76,8 @@ class RuleTracker():
             'source': "",   # identified sound to change
             'index': None,  # index of identified sound to change
             # succed/fail flags to set during sound or environment checks
-            'succes': False,
-            'failure': True
+            'success': False,
+            'failure': False
         }
         print(f"RuleTracker set up tracking starting at word index {word_index}")
         return track_id
@@ -112,32 +112,29 @@ class RuleTracker():
         # count sound match
         track = self.tracks[track_id]
         track['count'] += 1
-
-        # TODO: verify that boundary is being checked sequentially then delete!
-        # also check for and count end boundary match
-        #if track['count'+2] >= len(self.environment) and self.environment[track['count'+1]] == "#":
-        #    track['count'] += 1
-        
         return self.tracks[track_id]
     
     def check_success(self, track_id):
         """Mark a rule track as successful if it has a valid source sound and matched
         up to the length of the rule's environment. Return the track's success value."""
         if self.tracks[track_id]['count'] >= len(self.environment):
+            print(f"RuleTracker successfully tracked rule with environment: {self.environment}. Marked sound for change: {self.tracks[track_id]['source']} at word index {self.tracks[track_id]['index']}.")
             self.tracks[track_id]['success'] = True
         return self.tracks[track_id]['success']
 
     def match_all(self, features, index):
         """Match the current sound against source or environment matches for every track.
         Return ids for matched tracks."""
+        
+        # loop through tracks attempting to match each current track
         unmatched_tracks = []
         matched_tracks = []
         for track_id in self.tracks:
             did_track = self.match(track_id, features, index)
+            # keep track of both matched and unmatched tracks
             matched_tracks.append(track_id) if did_track else unmatched_tracks.append(track_id)
         
-        # NOTE: 'success' and 'failure' keys added to avoid mutating tracks during loops
-        #[self.tracks.pop(t) for t in unmatched_tracks]
+        # NOTE: track 'success' and 'failure' marked during match loop
         
         return matched_tracks
     
@@ -153,36 +150,26 @@ class RuleTracker():
         """Check for source or environment match and update or remove track depending
         on successful match. Enable each finished track's success flag and each failed
         track's failure flag. Skip previously failed and successful tracks.
-        NOTE: does not clear out unmatched tracks!
         args:
             track_id (int):     track key representing starting word index of the track
             features (list):    sound features collection to match against next environment slot
             index (int):        index of the current sound being evaluated in the word
         """
-        # expect a valid track and features
-        if not isinstance(features, (list, tuple, set)):
-            raise TypeError(f"RuleTracker match failed - invalid features collection {features}")
-        track = self.get(track_id)
-        if not track:
-            raise ValueError(f"RuleTracker match failed - invalid track id {track_id}")
-        
+        # fetch rule track and environment
+        track = self.tracks[track_id]
+    
         # do not check track if track has finished
         if track['success'] or track['failure']:
             print(f"RuleTracker match skipped {features} - track {track_id} has already {('succeeded', 'failed')[not track['success']]}.")
             return
-
+        
+        # Keep tracking if features match current slot, otherwise untrack
         environment_features = self.environment[track['count']]
 
-        # Keep tracking if features match current slot, otherwise untrack
-        
-        # NOTE: attempting to handle this case when checking environment slot match
-        # match a boundary marker at this slot
-        #if environment_features == self.boundary_symbol:
-        #    pass
-        
         # match the source sound to change
         if environment_features == self.source_symbol:
             return self.check_source_match(track_id, features, index)
+        
         # check for environment slot match, including features or word boundary
         return self.check_environment_match(track_id, features)
 
@@ -224,12 +211,17 @@ class RuleTracker():
         # read track and environment data
         track = self.tracks[track_id]
         environment_slot = self.environment[track['count']]
+        print(f"RuleTracker check_environment match trying to fit {features} to slot {environment_slot}")
+        
         # failed environment match - prepare to reset this particular track
         if not self.is_features_submatch(environment_slot, features):
             self.tracks[track_id]['failure'] = True
             return False
+        
         # surrounding environment match - count and keep tracking rule
         self.count_features_match(track_id)
+        
         # check if rule is finished and mark success
         self.check_success(track_id)         
+        
         return True

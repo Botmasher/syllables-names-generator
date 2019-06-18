@@ -383,8 +383,8 @@ class LanguageSoundChanges(LanguageFixture):
         })
         #this_class.language.phonology.syllables.add("VC")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_C")
-        this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_#")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "#_")
+        this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_#")
         this_class.language.phonology.add_rule("voiced", "voiceless", "#_#")
         this_class.language.phonology.add_rule("voiced", "voiceless", "V_V")
         this_class.language.phonology.add_rule("aspirated", "unaspirated", "V_V")
@@ -439,11 +439,12 @@ class LanguageSoundChanges(LanguageFixture):
 
     def test_change_sounds_within_words(self):
         changed_sounds = self.language.change_sounds(
-            ["a", "gʰ", "a", "gʰ", " ", "a", "gʰ"]
+            ["a", "gʰ", "a", "gʰ", " ", "a", "gʰ"],
+            blocked_by_spacing=True
         )
         self.assertEqual(
             changed_sounds,
-            ["a", "k", "a", "gʰ", " ", "a", "gʰ"],
+            ["a", "k", "a", "g", " ", "a", "g"],
             "failed to change sounds of each word in a sentence"
         )
 
@@ -454,7 +455,7 @@ class LanguageSoundChanges(LanguageFixture):
         )
         self.assertEqual(
             changed_sounds,
-            ["a", "k", "a", "k", " ", "a", "gʰ"],
+            ["a", "k", "a", "k", " ", "a", "g"],
             "failed to spread sound changes across an entire sentence"
         )
         

@@ -236,10 +236,6 @@ class Phonology:
     # - walk through the word's sounds and the phonological rules
     # - see if rule and word environments match (relying on RuleTracker for help)
     # - apply rule to change source sound in word to rule target sound if they do
-
-    # TODO: boundary hashtags
-    #   - start/end tags #string# to match rules applying at borders
-    #   - change to or from silence to add or delete sounds (e.g. katta > kata, katata > kataata)
     
     # TODO: interact with lexicon storage, adding phonetic word and sound change alongside spelling and definition
     #   - store tracks or store the changed symbols list alongside word in lexicon
@@ -259,14 +255,12 @@ class Phonology:
         # prepare input sequence for search - add start and end markers
         ipa_sequence = [self.boundary_symbol] + list(ipa) + [self.boundary_symbol]
 
-        # features for all sounds in the word
+        # features for all sounds in the word including word boundary
         word_features = {
             ipa: self.phonetics.get_features(ipa)
             for ipa in word_sounds
         }
-
-        # collect each track of rules that applies within the word ipa
-        successful_tracks = []
+        word_features[self.boundary_symbol] = self.boundary_symbol
 
         # fetch the rule object
         rule = self.rules.get(rule_id)
@@ -289,78 +283,26 @@ class Phonology:
         # use with self.rule_tracker and methods, full matches and strategy commented above to handle overlaps
         for word_index in range(len(ipa_sequence)):
             symbol = ipa_sequence[word_index]
-            try:
-                sound_features = word_features[symbol]
-            except:
-                print(f"Did not find features for symbol {symbol}")
-                continue
-            print(f"Evaluating the current sound: {sound_features}")
+            sound_features = word_features[symbol]
 
-            # (1) Rules Loop: do any new rules start to match at this symbol? Track them.
-            # check if any new rule applications can be tracked
+            # log this attempt to fit symbol into rule environment
+            print(f"Checking if rule starts applying at {sound_features}.\nRule: {self.rules.get_pretty(rule_id)}")
 
-            print(f"Checking to see if rule {rule_id} starts applying here")
-            # start tracking for full environment match
-            # - track checked while iterating through rest of ipa_string
-            # - tracker only tracks as long as environment matches
-            # - zeroth nonmatches screened
+            # Rule Track: start tracking for full environment match at this word index
             rule_tracker.track(word_index)
-
-            # (2) Tracks Loop: do any tracked applications ("tracks") continue to match?
-
-
-            # (3) Full Tracks Loop: go through tracks
-            # - go through each fully successful match
-            # - figure out which target sound to turn the source into
-            # - store the index and target sound
-            # - futureproof support later adding weight / rel chron order
-
-            # TODO: update tracks to continue checking or discard ongoing rule applications
 
             # store completed rule tracks and avoid mutating dict mid iteration
             tracks = rule_tracker.get()
 
-            if self.rules.get(rule_id)['environment'][0] == "#":
-                raise ValueError(f"Rule contains an environment with starting boundary {self.rules.get(rule_id)['environment']}")
-            
-            for track_id in tracks:
-                # a track is an ongoing attempt to match a single rule
-                track = tracks[track_id]
-
-                # log this attempt to fit symbol into rule environment
-                environment = rule_tracker.environment
-                environment_slot = environment[track['count']]
-                print(f"Applying rule: {self.rules.get_pretty(rule_id)}")
-                print(f"Looking for environment matching {environment_slot}...")
-
-                # flag to check if rule track fails to match sound to slot
-                did_keep_tracking = rule_tracker.match(
-                    track_id,
-                    sound_features,
-                    word_index
-                )
-
-                if did_keep_tracking:
-                    print("")
-                else:
-                    print("")
-
-                # fetch track again for refreshed count and index data
-                #track = rule_tracker.get(track_id=track_id)
-
-                # TODO: RuleTracker stores and updates counts, does success checks internally
-
-                # TODO: apply RuleTracker tracks in order instead of changing each here
-                #   - this overwrites sounds based on individual rule determination
-                #   - stack changes by feeding each one to the other
-                #   - see if the next one applies if not pass same sound down
+            # Tracks Loop: do any tracked applications ("tracks") continue to match?
+            # - each track is an ongoing attempt to match the rule
+            # - attempt to match word sound to each currently tracked environment slot
+            rule_tracker.match_all(sound_features, word_index)
             
         # prepare an ipa representation of the word to update as rule applied
         new_ipa_sequence = list(ipa_sequence)
 
-        # use tracker ['rule']['target'] and tracker ['index'] to layer sound changes
-        #
-        # TODO: incorporate weighting or relative chronology in values
+        # change sounds identified as source matches in successful rule tracks
         for successful_track in rule_tracker.successes().values():
             # get the sound to change
             index_to_change = successful_track['index']
