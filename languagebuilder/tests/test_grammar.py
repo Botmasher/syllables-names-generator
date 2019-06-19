@@ -164,7 +164,7 @@ class GrammarExponents(GrammarFixture):
             self.grammar.exponents.get(exponent_id),
             "could not add one new exponent"
         )
-    
+
     def test_add_exponent_empty(self):
         self.assertIsNone(
             self.grammar.exponents.add(),
@@ -363,11 +363,13 @@ class GrammarBuildWords(GrammarFixture):
         this_class.grammar.properties.add("category", "grammeme_noun")
         this_class.grammar.properties.add("category", "grammeme_verb")
         this_class.grammar.properties.add("category", "nonexponented_grammeme")
+        this_class.grammar.properties.add("category", "infix")
         # add basic exponents
         this_class.grammar.exponents.add(post="-verb", properties={'category': 'grammeme_verb'}, bound=True)
         this_class.grammar.exponents.add(pre="noun-", properties={'category': 'grammeme_noun'}, pos="noun", bound=True)
         this_class.grammar.exponents.add(pre="nounish", properties={'category': ['grammeme', 'grammeme_noun']}, pos="noun", bound=False)
         this_class.grammar.exponents.add(pre="circum-", post="-fix", properties={'category': 'grammeme'}, bound=True)
+        this_class.grammar.exponents.add(mid="-in-", properties={'category': 'infix'}, bound=True)
 
     def test_build_unit(self):
         unit = self.grammar.build_unit(
@@ -469,6 +471,19 @@ class GrammarBuildWords(GrammarFixture):
             unit,
             "circum-baseword-fix",
             "could not build grammatical unit with material both before and after the base"
+        )
+
+    def test_build_unit_infix(self):
+        unit = self.grammar.build_unit(
+            "baseword",
+            properties={'category': "infix"},
+            mid_target=4,
+            as_string=True
+        )
+        self.assertEqual(
+            unit,
+            "base-in-word",
+            "failed to build grammatical unit with an infix"
         )
 
     def test_build_unit_existing_property_nonexisting_exponent(self):

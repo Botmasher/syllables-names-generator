@@ -206,7 +206,25 @@ class LanguageWords(LanguageFixture):
             affix[0],
             "failed to generate a new grammatical word in the language"
         )
-        
+
+    def test_generate_grammatical_infix(self):
+        self.language.grammar.properties.add("category", "infix0")
+        affix = self.language.generate(
+            length=2,
+            pre=False,
+            mid=True,
+            post=False,
+            bound=True,
+            word_class="noun",
+            properties="infix0"
+        )
+        affix_entry = self.language.dictionary.lookup(*affix)
+        self.assertEqual(
+            "".join(affix_entry['spelling']),
+            affix[0],
+            "failed to generate a grammatical infix in the language"
+        )
+
     def test_apply_grammar(self):
         base = self.language.generate(2)
         base_entry = self.language.dictionary.lookup(*base)
@@ -219,6 +237,30 @@ class LanguageWords(LanguageFixture):
             "".join(unit['sound']),
             "".join(base_entry['sound']) + "ka",
             "failed to generate a new root + grammatical unit in the language"
+        )
+
+    def test_apply_grammatical_infix(self):
+        self.language.grammar.properties.add("category", "infix1")
+        affix = self.language.generate(
+            length=1,
+            mid=True,
+            bound=True,
+            word_class="noun",
+            properties="infix1"
+        )
+        affix_entry = self.language.dictionary.lookup(*affix)
+        base = self.language.generate(2, mid_target=1)
+        base_entry = self.language.dictionary.lookup(*base)       
+        unit = self.language.attach(
+            *base,
+            properties="infix1",
+            word_classes="noun"
+        )
+        expected_unit = base_entry['sound'][:2] + affix_entry['sound'] + base_entry['sound'][2:]
+        self.assertEqual(
+            "".join(unit['sound']),
+            "".join(expected_unit),
+            "failed to generate and apply a grammatical infix inside of a generated word"
         )
 
     def test_build_unit(self):

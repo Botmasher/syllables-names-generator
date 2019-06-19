@@ -109,7 +109,7 @@ class Language:
         return (self.syllables_min, self.syllables_max)
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, length=None, definition="", spell_after_change=True, pre=False, post=False, bound=False, properties=None, word_class=None):
+    def generate(self, length=None, definition="", spell_after_change=True, mid_target=None, pre=False, mid=False, post=False, bound=False, properties=None, word_class=None):
         """Create a word or grammatical piece that follows language's phonology and grammar"""
         # choose a random number of syllables if no syllable count supplied
         if not length:
@@ -119,25 +119,35 @@ class Language:
             print(f"Language failed to generate word - invalid number of syllables {length}")
             return
         
-        # generate the created phonemes in syllables
-        word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
-        
-        # add as grammatical word
-        if pre or post:
+        # generate and add grammatical word
+        if pre or mid or post:
+            # default for uncreated exponents
             empty_entry = {
                 'spelling': [],
                 'sound': [],
                 'change': []
             }
-            # determine word to attach before or after
-            pre_word = word if pre else empty_entry
-            post_word = word if post else empty_entry
-            # generate a second word piece for circum material
-            if pre and post:
-                post_word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
+
+            # generate grammatical pieces for before, inside, after
+            pre_word = self.phonology.build_word(
+                length=length,
+                spell_after_change=spell_after_change
+            ) if pre else empty_entry
+
+            mid_word = self.phonology.build_word(
+                length=length,
+                spell_after_change=spell_after_change
+            ) if mid else empty_entry
+
+            post_word = self.phonology.build_word(
+                length=length,
+                spell_after_change=spell_after_change
+            ) if post else empty_entry
+
             # create the exponent
             exponent_id = self.grammar.exponents.add(
                 pre=pre_word['sound'],
+                mid=mid_word['sound'],
                 post=post_word['sound'],
                 properties=properties,
                 bound=bound,
@@ -149,17 +159,21 @@ class Language:
                 print(f"Language generate failed - unable to create grammatical exponent")
                 return
             
-            # store sound changes and spelling for both grammatical pieces
+            # store sound changes and spelling for grammatical pieces
             pre_change = pre_word['change']
+            mid_change = mid_word['change']
             post_change = post_word['change']
             pre_spelling = pre_word['spelling']
+            mid_spelling = mid_word['spelling']
             post_spelling = post_word['spelling']
             # determine text linkers for formatted dictionary storage
             grammatical_spacing = {
                 'circumfix': "- -",
+                #'infix': "-{}-",
                 'prefix': "-",
                 'suffix': "-",
                 'circumposition': " ... ",
+                #'midposition': "... ...",
                 'preposition': "",
                 'postposition': ""
             }
@@ -187,13 +201,12 @@ class Language:
                 exponent_id=exponent_id
             )
         
-        # Store and return a base word entry
-        
+        # Generate and store a base word entry
+        word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
         # check supplied part of speech
         if word_class and not self.grammar.word_classes.get(word_class):
             print(f"Language generate failed - invalid word class {word_class}")
             return
-
         # store created word or word piece and return lookup info
         return self.store(
             word=word['sound'],
@@ -203,7 +216,7 @@ class Language:
             word_class=word_class
         )
 
-    def add_grammar(self, entry_headword, entry_index, pre=False, post=False, bound=False, properties="", word_classes=""):
+    def add_grammar(self, entry_headword, entry_index, pre=False, mid=False, post=False, bound=False, properties="", word_classes=""):
         """Add grammatical data to an existing stored entry"""
         if not self.dictionary.lookup(entry_headword, entry_index):
             print(f"Language add_grammar could not grammaticalize invalid entry {entry_headword}({entry_index})")
@@ -213,6 +226,7 @@ class Language:
         
         exponent_id = self.grammar.exponents.add(
             pre=pre,
+            mid=mid,
             post=post,
             bound=bound,
             properties=vetted_properties,
