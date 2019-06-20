@@ -114,21 +114,29 @@ class Grammar:
         # trim the final delimiter and send back pretty string
         return formatted_properties.strip(delimiter)
 
-    def grammatical_form(self, pre=False, post=False, bound=False):
+    def grammatical_form(self, pre=False, mid=False, post=False, bound=False):
         """Map exponent characteristics to a string representing its general
         grammatical form, such as preposition or prefix"""
         # dict mapping bool args to terms
         grammatical_forms = {
-            (True, True, True): "circumfix",
-            (True, False, True): "prefix",
-            (False, True, True): "suffix",
-            (True, True, False): "circumposition",
-            (True, False, False): "preposition",
-            (False, True, False): "postposition",
-            (False, False, False): "unpositioned exponent"
+            (True, False, True, True): "circumfix",
+            (True, False, False, True): "prefix",
+            (False, False, True, True): "suffix",
+            (False, True, False, True): "infix",
+            (True, True, False, True): "multifix",
+            (False, True, True, True): "multifix",
+            (True, True, True, True): "multifix",
+            (True, False, True, False): "circumposition",
+            (True, False, False, False): "preposition",
+            (False, False, True, False): "postposition",
+            (False, False, False, False): "unpositioned exponent",
+            (False, True, False, False): "interposition",
+            (True, True, False, False): "multiposition",
+            (False, True, True, False): "multiposition",
+            (True, True, True, False): "multiposition"
         }
         # look up the term
-        return grammatical_forms[pre, post, bound]
+        return grammatical_forms[pre, mid, post, bound]
 
     def autodefine(self, exponent_id):
         """Create a definition from properties and word classes of an existing exponent"""

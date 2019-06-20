@@ -167,30 +167,46 @@ class Language:
             mid_spelling = mid_word['spelling']
             post_spelling = post_word['spelling']
             # determine text linkers for formatted dictionary storage
-            grammatical_spacing = {
-                'circumfix': "- -",
-                #'infix': "-{}-",
-                'prefix': "-",
-                'suffix': "-",
-                'circumposition': " ... ",
-                #'midposition': "... ...",
-                'preposition': "",
-                'postposition': ""
+            grammatical_format = {
+                'circumfix': "{}- -{}",
+                'infix': "-{}-",
+                'prefix': "{}-",
+                'suffix': "-{}",
+                'multifix': "{}-{}-{}",
+                'circumposition': "{}...{}",
+                'interposition': "...{}...",
+                'preposition': "{}",
+                'postposition': "{}",
+                'multiposition': "{}...{}...{}"
             }
             # basic term to define forms
-            grammatical_form = self.grammar.grammatical_form(pre, post, bound)
-            # concatenator to place before, between or after forms
-            spacing = grammatical_spacing.get(grammatical_form, "")
+            grammatical_form = self.grammar.grammatical_form(pre, mid, post, bound)
             
+            # Format sound, spelling, and change strings
             # TODO: use exponents to create a formatted properties and word class string
+            #   - aren't the exponent pieces in lists though?
+            #   - simplify spacing
+            #   - really store this extra formatting in the dictionary?
+            # 
+            if mid and (pre or post):
+                formatted_word = grammatical_format[grammatical_form].format(pre_word['sound'], mid_word['sound'], post_word['sound'])
+                formatted_change = grammatical_format[grammatical_form].format(pre_change, mid_change, post_change)
+                formatted_spelling = grammatical_format[grammatical_form].format(pre_spelling, mid_spelling, post_spelling)
+            elif mid:
+                formatted_word = grammatical_format[grammatical_form].format(mid_word['sound'])
+                formatted_change = grammatical_format[grammatical_form].format(mid_change)
+            elif pre and post:
+                formatted_word = grammatical_format[grammatical_form].format(pre_word['sound'], post_word['sound'])
+                formatted_change = grammatical_format[grammatical_form].format(pre_change, post_change)
+            elif pre:
+                formatted_word = grammatical_format[grammatical_form].format(pre_word['sound'])
+                formatted_change = grammatical_format[grammatical_form].format(pre_change)
+            else:
+                formatted_word = grammatical_format[grammatical_form].format(post_word['sound'])
+                formatted_change = grammatical_format[grammatical_form].format(post_change)
 
-            # format forms with spacing
-            formatted_word = f"{pre_word}{spacing}{post_word}"
-            formatted_change = f"{pre_change}{spacing}{post_change}"
             # format definition
             formatted_definition = self.grammar.autodefine(exponent_id)
-            # format the word spelling (before/after sound changes)
-            formatted_spelling = f"{pre_spelling}{spacing}{post_spelling}"
             
             # store and return a grammatical word entry
             return self.store(
@@ -202,7 +218,10 @@ class Language:
             )
         
         # Generate and store a base word entry
-        word = self.phonology.build_word(length=length, spell_after_change=spell_after_change)
+        word = self.phonology.build_word(
+            length=length,
+            spell_after_change=spell_after_change
+        )
         # check supplied part of speech
         if word_class and not self.grammar.word_classes.get(word_class):
             print(f"Language generate failed - invalid word class {word_class}")
