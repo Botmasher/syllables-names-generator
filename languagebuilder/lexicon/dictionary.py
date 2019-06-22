@@ -165,6 +165,39 @@ class Dictionary():
     # heavily formatting pre,mid,post here or when calling this method
     #   - also define when accessed instead of stored?
     #   - go through exponent entries when using search
+    def _lookup_exponent(self, exponent_id):
+        return self.grammar.exponents.get(exponent_id)
+
+    def _format_exponent_entry(self, exponent_id):
+        exponent_details = self._lookup_exponent(exponent_id)
+        exponent_entry = {
+            'sound': [],
+            'change': [],
+            'spelling': []
+        }
+        return exponent_entry
+
+    def _display_exponent_pieces(self, pre, mid, post, bound=True):
+        """Format grammatical pieces of one exponent into a single human
+        readable string ready to display."""
+        exponent_pieces = [pre, mid, post]
+        display_list = []
+        
+        # add separators - attachment indicators if bound, spaces if unbound
+        for piece, i in enumerate(exponent_pieces):
+            if i > 0 and piece and display_list[-1] not in (self.affix_symbol, self.spacing_symbol):
+                display_list += [self.affix_symbol] if bound else [self.spacing_symbol]
+            display_list += piece
+            if bound and piece and i < len(exponent_pieces)-1:
+                display_list += [self.affix_symbol]
+        
+        # remove excess spacing
+        if display_list[0] == self.spacing_symbol:
+            display_list = display_list[1:]
+        if display_list[-1] == self.spacing_symbol:
+            display_list = display_list[:-1]
+        
+        return display_list
 
     def add(self, sound="", spelling="", change=None, definition=None, exponent=None, pos=None):
         """Create a dictionary entry and list it under the spelled headword"""
@@ -174,29 +207,17 @@ class Dictionary():
             return
 
         # ensure sound and spelling are lists of strings
-        sound = string_list.string_listify(sound, True)
         spelling = string_list.string_listify(spelling, True)
+        sound = string_list.string_listify(sound, True)
+        if not string_list.is_string_list(spelling):
+            print(f"Dictionary add failed - invalid spelling {spelling}")
         if not string_list.is_string_list(sound) and not exponent:
             print(f"Dictionary add failed - invalid sounds {sound}")
-        if not string_list.is_string_list(spelling) and not exponent:
-            print(f"Dictionary add failed - invalid spelling {spelling}")
 
         # Create an entry
 
-        # build spelling from grammatical material
-        if exponent:
-            exponent_details = self.grammar.exponents.get(exponent)
-            headword_parts = []
-            headword_parts += exponent_details['pre']
-            headword_parts += self.spacing_symbol if exponent_details['bound'] else self.affix_symbol
-            headword_parts += exponent_details['mid']
-            if exponent_details['mid'] or (exponent_details['pre'] and exponent_details['post']):
-                headword_parts += self.spacing_symbol if exponent_details['bound'] else self.affix_symbol
-            headword_parts += exponent_details['post']
-            headword = "".join(headword_parts)
-        # use passed-in spelling
-        else:
-            headword = "".join(spelling)
+        # build headword key from entry spelling
+        headword = "".join(spelling)
 
         # NOTE: keys created here are accessed throughout class
         entry = {

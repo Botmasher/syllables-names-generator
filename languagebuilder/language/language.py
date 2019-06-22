@@ -180,36 +180,31 @@ class Language:
             #     'multiposition': "{}...{}...{}"
             # }
             # basic term to define forms
-            grammatical_form = self.grammar.grammatical_form(pre, mid, post, bound)
+            #grammatical_form = self.grammar.grammatical_form(pre, mid, post, bound)
             
             # build stored representation of spelling
-            changed_pre = pre_word['change']
-            changed_mid = ([self.affix_symbol] + mid_word['change']) if mid_word['change'] else []
-            changed_post = ([self.affix_symbol] + post_word['change']) if post_word['change'] else []
-            changed_material = changed_pre + changed_mid + changed_post
-
-            # build stored representation of grammatical pieces
-            # if bound:
-            #     changed_pre = pre_word['change']
-            #     changed_mid = ([self.affix_symbol] + mid_word['change']) if mid_word['change'] else []
-            #     changed_post = ([self.affix_symbol] + post_word['change']) if post_word['change'] else []
-            #     changed_material = changed_pre + changed_mid + change_post
-
-            # build stored representation of changed word
-            #pre = pre_word['change']
-            #changed_mid = ([self.affix_symbol] + mid_word['change']) if mid_word['change'] else []
-            #changed_post = ([self.affix_symbol] + post_word['change']) if post_word['change'] else []
-            #changed_material = changed_pre + changed_mid + changed_post
-
-            # Format sound, spelling, and change strings
+            headword_letters = []
+            headword_letters += pre_word['spelling']
+            headword_letters += self.spacing_symbol if bound else self.affix_symbol
+            headword_letters += mid_word['spelling']
+            if mid_word['spelling'] or (pre_word['spelling'] and post_word['spelling']):
+                headword_letters += self.spacing_symbol if bound else self.affix_symbol
+            headword_letters += post_word['spelling']
+            # remove extra whitespace
+            if headword_letters[0] == self.spacing_symbol:
+                headword_letters = headword_letters[1:]
+            if headword_letters[-1] == self.spacing_symbol:
+                headword_letters = headword_letters[:-1]
             
-            # TODO: only store exponent id in dictionary; format display info on retrieval
-            
-            # format definition
+            # build stored definition
             formatted_definition = self.grammar.autodefine(exponent_id)
-            
+
+            # TODO: only store exponent id in dictionary;
+            # format display info on retrieval (at least 'sound' and 'change' from parts)
+
             # store and return a grammatical word entry
             return self.store(
+                spelling=headword_letters,
                 definition=formatted_definition,
                 exponent_id=exponent_id
             )
@@ -225,7 +220,7 @@ class Language:
             return
         # store created word or word piece and return lookup info
         return self.store(
-            word=word['sound'],
+            sound=word['sound'],
             change=word['change'],
             definition=definition.strip(),
             spelling=word['spelling'],
@@ -419,16 +414,13 @@ class Language:
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
     #   - core idea is to store important data for display but only 
-    def store(self, word="", definition="", spelling="", change="", exponent_id=None, word_class=None):
+    def store(self, sound="", definition="", spelling="", change="", exponent_id=None, word_class=None):
         """Pass word entry components through to the dictionary for storage"""
-        #word_class = self.grammar.exponents.get(exponent_id).get('pos')
-        #examples = self.craft_paradigm(word_class)
         return self.dictionary.add(
-            sound=word,
+            sound=sound,
             spelling=spelling,
             change=change,
             definition=definition,
             exponent=exponent_id,
             pos=word_class
-            # examples=examples
         )
