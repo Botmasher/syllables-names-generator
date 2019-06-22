@@ -69,7 +69,7 @@ import random
 # - see tasks within other class files
 
 class Language:
-    def __init__(self, name="", display_name=""):
+    def __init__(self, name="", display_name="", boundary_symbol="#", source_symbol="_", affix_symbol="-", spacing_symbol=" "):
         self.name = name
         self.display_name = display_name
         # ipa (sound symbols) and features
@@ -79,7 +79,7 @@ class Language:
         # phonemes and syllables atop phonetics
         self.phonology = Phonology(self.phonetics)
         # words with ipa, morphology, definition
-        self.dictionary = Dictionary()
+        self.dictionary = Dictionary(self.grammar, affix_symbol, spacing_symbol)
         # built units with grammar attached
         self.corpus = Corpus()
         # min and max length of a randomly generated baseword
@@ -87,6 +87,13 @@ class Language:
         self.syllables_max = 1
         # grammatical paradigms based on dictionary entries
         self.paradigms = Paradigms(self)
+
+        # stored special symbols to avoid hardcoding
+        # TODO: pass these down to Phonology, Grammar
+        self.boundary_symbol = boundary_symbol
+        self.source_symbol = source_symbol
+        self.affix_symbol = affix_symbol
+        self.spacing_symbol = spacing_symbol
 
     def rename(self, name="", display_name=""):
         """Set the id name or display name for the language"""
@@ -159,61 +166,51 @@ class Language:
                 print(f"Language generate failed - unable to create grammatical exponent")
                 return
             
-            # store sound changes and spelling for grammatical pieces
-            pre_change = pre_word['change']
-            mid_change = mid_word['change']
-            post_change = post_word['change']
-            pre_spelling = pre_word['spelling']
-            mid_spelling = mid_word['spelling']
-            post_spelling = post_word['spelling']
             # determine text linkers for formatted dictionary storage
-            grammatical_format = {
-                'circumfix': "{}- -{}",
-                'infix': "-{}-",
-                'prefix': "{}-",
-                'suffix': "-{}",
-                'multifix': "{}-{}-{}",
-                'circumposition': "{}...{}",
-                'interposition': "...{}...",
-                'preposition': "{}",
-                'postposition': "{}",
-                'multiposition': "{}...{}...{}"
-            }
+            # grammatical_format = {
+            #     'circumfix': "{}- -{}",
+            #     'infix': "-{}-",
+            #     'prefix': "{}-",
+            #     'suffix': "-{}",
+            #     'multifix': "{}-{}-{}",
+            #     'circumposition': "{}...{}",
+            #     'interposition': "...{}...",
+            #     'preposition': "{}",
+            #     'postposition': "{}",
+            #     'multiposition': "{}...{}...{}"
+            # }
             # basic term to define forms
             grammatical_form = self.grammar.grammatical_form(pre, mid, post, bound)
             
-            # Format sound, spelling, and change strings
-            # TODO: use exponents to create a formatted properties and word class string
-            #   - aren't the exponent pieces in lists though?
-            #   - simplify spacing
-            #   - really store this extra formatting in the dictionary?
-            # 
-            if mid and (pre or post):
-                formatted_word = grammatical_format[grammatical_form].format(pre_word['sound'], mid_word['sound'], post_word['sound'])
-                formatted_change = grammatical_format[grammatical_form].format(pre_change, mid_change, post_change)
-                formatted_spelling = grammatical_format[grammatical_form].format(pre_spelling, mid_spelling, post_spelling)
-            elif mid:
-                formatted_word = grammatical_format[grammatical_form].format(mid_word['sound'])
-                formatted_change = grammatical_format[grammatical_form].format(mid_change)
-            elif pre and post:
-                formatted_word = grammatical_format[grammatical_form].format(pre_word['sound'], post_word['sound'])
-                formatted_change = grammatical_format[grammatical_form].format(pre_change, post_change)
-            elif pre:
-                formatted_word = grammatical_format[grammatical_form].format(pre_word['sound'])
-                formatted_change = grammatical_format[grammatical_form].format(pre_change)
-            else:
-                formatted_word = grammatical_format[grammatical_form].format(post_word['sound'])
-                formatted_change = grammatical_format[grammatical_form].format(post_change)
+            # build stored representation of spelling
+            changed_pre = pre_word['change']
+            changed_mid = ([self.affix_symbol] + mid_word['change']) if mid_word['change'] else []
+            changed_post = ([self.affix_symbol] + post_word['change']) if post_word['change'] else []
+            changed_material = changed_pre + changed_mid + changed_post
 
+            # build stored representation of grammatical pieces
+            # if bound:
+            #     changed_pre = pre_word['change']
+            #     changed_mid = ([self.affix_symbol] + mid_word['change']) if mid_word['change'] else []
+            #     changed_post = ([self.affix_symbol] + post_word['change']) if post_word['change'] else []
+            #     changed_material = changed_pre + changed_mid + change_post
+
+            # build stored representation of changed word
+            #pre = pre_word['change']
+            #changed_mid = ([self.affix_symbol] + mid_word['change']) if mid_word['change'] else []
+            #changed_post = ([self.affix_symbol] + post_word['change']) if post_word['change'] else []
+            #changed_material = changed_pre + changed_mid + changed_post
+
+            # Format sound, spelling, and change strings
+            
+            # TODO: only store exponent id in dictionary; format display info on retrieval
+            
             # format definition
             formatted_definition = self.grammar.autodefine(exponent_id)
             
             # store and return a grammatical word entry
             return self.store(
-                word=formatted_word,
                 definition=formatted_definition,
-                change=formatted_change,
-                spelling=formatted_spelling,
                 exponent_id=exponent_id
             )
         

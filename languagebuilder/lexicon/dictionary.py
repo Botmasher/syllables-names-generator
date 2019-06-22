@@ -12,8 +12,12 @@ from ..tools import flat_list
 #   - what about pronunciation variants of "pecan"?
 #   - currently multiple options have to exist as separate entries
 class Dictionary():
-    def __init__(self):
+    def __init__(self, grammar, affix_symbol, spacing_symbol):
         self.dictionary = {}    # map of headword:[entries]
+        self.grammar = grammar  # reference to language grammar for exponent data
+        # special characters
+        self.affix_symbol = affix_symbol
+        self.spacing_symbol = spacing_symbol
 
     def is_word(self, word):
         """Check if entries exist for a spelled word"""
@@ -157,23 +161,43 @@ class Dictionary():
             return
         return self.dictionary[headword][entry_index]['definition']
 
+    # TODO: access exponent information through Grammar instead of
+    # heavily formatting pre,mid,post here or when calling this method
+    #   - also define when accessed instead of stored?
+    #   - go through exponent entries when using search
+
     def add(self, sound="", spelling="", change=None, definition=None, exponent=None, pos=None):
         """Create a dictionary entry and list it under the spelled headword"""
         # expect both valid spelling and phones
-        if not (sound and spelling):
-            print (f"Dictionary add failed - expected both spelling and sound")
+        if not (sound and spelling) and not exponent:
+            print (f"Dictionary add failed - expected both spelling and sound or an exponent reference")
             return
 
         # ensure sound and spelling are lists of strings
         sound = string_list.string_listify(sound, True)
         spelling = string_list.string_listify(spelling, True)
-        if not string_list.is_string_list(sound):
+        if not string_list.is_string_list(sound) and not exponent:
             print(f"Dictionary add failed - invalid sounds {sound}")
-        if not string_list.is_string_list(sound):
+        if not string_list.is_string_list(spelling) and not exponent:
             print(f"Dictionary add failed - invalid spelling {spelling}")
 
-        # create an entry
-        headword = "".join(spelling)
+        # Create an entry
+
+        # build spelling from grammatical material
+        if exponent:
+            exponent_details = self.grammar.exponents.get(exponent)
+            headword_parts = []
+            headword_parts += exponent_details['pre']
+            headword_parts += self.spacing_symbol if exponent_details['bound'] else self.affix_symbol
+            headword_parts += exponent_details['mid']
+            if exponent_details['mid'] or (exponent_details['pre'] and exponent_details['post']):
+                headword_parts += self.spacing_symbol if exponent_details['bound'] else self.affix_symbol
+            headword_parts += exponent_details['post']
+            headword = "".join(headword_parts)
+        # use passed-in spelling
+        else:
+            headword = "".join(spelling)
+
         # NOTE: keys created here are accessed throughout class
         entry = {
             # representation of entry in letters
