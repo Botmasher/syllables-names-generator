@@ -79,7 +79,7 @@ class Language:
         # phonemes and syllables atop phonetics
         self.phonology = Phonology(self.phonetics)
         # words with ipa, morphology, definition
-        self.dictionary = Dictionary(self.grammar, affix_symbol, spacing_symbol)
+        self.dictionary = Dictionary(self.grammar, self.phonology, affix_symbol, spacing_symbol)
         # built units with grammar attached
         self.corpus = Corpus()
         # min and max length of a randomly generated baseword
@@ -182,20 +182,6 @@ class Language:
             # basic term to define forms
             #grammatical_form = self.grammar.grammatical_form(pre, mid, post, bound)
             
-            # build stored representation of spelling
-            headword_letters = []
-            headword_letters += pre_word['spelling']
-            headword_letters += self.spacing_symbol if bound else self.affix_symbol
-            headword_letters += mid_word['spelling']
-            if mid_word['spelling'] or (pre_word['spelling'] and post_word['spelling']):
-                headword_letters += self.spacing_symbol if bound else self.affix_symbol
-            headword_letters += post_word['spelling']
-            # remove extra whitespace
-            if headword_letters[0] == self.spacing_symbol:
-                headword_letters = headword_letters[1:]
-            if headword_letters[-1] == self.spacing_symbol:
-                headword_letters = headword_letters[:-1]
-            
             # build stored definition
             formatted_definition = self.grammar.autodefine(exponent_id)
 
@@ -204,7 +190,6 @@ class Language:
 
             # store and return a grammatical word entry
             return self.store(
-                spelling=headword_letters,
                 definition=formatted_definition,
                 exponent_id=exponent_id
             )

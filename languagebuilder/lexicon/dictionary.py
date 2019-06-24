@@ -12,9 +12,10 @@ from ..tools import flat_list
 #   - what about pronunciation variants of "pecan"?
 #   - currently multiple options have to exist as separate entries
 class Dictionary():
-    def __init__(self, grammar, affix_symbol, spacing_symbol):
-        self.dictionary = {}    # map of headword:[entries]
-        self.grammar = grammar  # reference to language grammar for exponent data
+    def __init__(self, grammar, phonology, affix_symbol, spacing_symbol):
+        self.dictionary = {}        # map of headword:[entries]
+        self.grammar = grammar      # reference to language grammar for exponent data
+        self.phonology = phonology  # reference to phonology for sound change and spelling
         # special characters
         self.affix_symbol = affix_symbol
         self.spacing_symbol = spacing_symbol
@@ -32,16 +33,44 @@ class Dictionary():
     def search(self, spelling="", keywords="", sound="", change="", exact=False, max_results=10):
         """Search dictionary for entries with a matching attribute. Only one attribute
         is searched per call."""
-        if spelling:
-            return self._search_spellings(spelling, max_results=max_results)
-        if keywords:
-            return self._search_definitions(keywords, exact=exact, max_results=max_results)
-        if change:
-            return self._search_sounds(change, sound_change=True, max_results=max_results)
-        if sound:
-            return self._search_sounds(sound, sound_change=False, max_results=max_results)
-        raise ValueError("Dictionary search missing one or more values to search for")
+        #if not spelling and not keywords and not sound and not change:        
+        #    raise ValueError("Dictionary search missing one or more values to search for")
 
+        # TODO: matches for exponents
+        matches = []
+        for headword, entries in self.dictionary:
+            for entry, i in entries.items():
+                if entry['exponent']:
+                    match['spelling'] = []
+                    match['sound'] = []
+                    match['change'] = []
+                    match['definition'] = entry['definition']
+                else:
+                    match = dict(entry)
+                did_match = True
+                if sound and sound != match['sound']:
+                    did_match = False
+                if spelling and spelling != match['spelling']:
+                    did_match = False
+                if change and change != match['change']:
+                    did_match = False
+                if keywords and list(filter(lambda w: w not in match['definition'], keywords)):
+                    did_match = False
+                if did_match:
+                    matches.append((headword, i))
+                if len(matches) >= max_results:
+                    return matches
+        return matches
+
+        # if spelling:
+        #     return self._search_spellings(spelling, max_results=max_results)
+        # if keywords:
+        #     return self._search_definitions(keywords, exact=exact, max_results=max_results)
+        # if change:
+        #     return self._search_sounds(change, sound_change=True, max_results=max_results)
+        # if sound:
+        #     return self._search_sounds(sound, sound_change=False, max_results=max_results)
+    
     def _search_definitions(self, keywords, exact=False, max_results=10):
         """Search entry definitions for keyword matches"""
         # check for valid keywords
@@ -180,17 +209,28 @@ class Dictionary():
     def _display_exponent_pieces(self, pre, mid, post, bound=True):
         """Format grammatical pieces of one exponent into a single human
         readable string ready to display."""
-        exponent_pieces = [pre, mid, post]
+        
+        # create list of exponent pieces with separators
         display_list = []
-        
-        # add separators - attachment indicators if bound, spaces if unbound
-        for piece, i in enumerate(exponent_pieces):
-            if i > 0 and piece and display_list[-1] not in (self.affix_symbol, self.spacing_symbol):
-                display_list += [self.affix_symbol] if bound else [self.spacing_symbol]
-            display_list += piece
-            if bound and piece and i < len(exponent_pieces)-1:
+        # pre/circum material
+        display_list += pre
+        if pre:
+            if bound:
                 display_list += [self.affix_symbol]
-        
+            display_list += [self.spacing_symbol]
+        # mid/infix material
+        if mid and bound:
+            display_list += [self.affix_symbol]
+        display_list += mid
+        if mid:
+            if bound:
+                display_list += [self.affix_symbol]
+            display_list += [self.spacing_symbol]
+        # post/circum material
+        if post and bound:
+            display_list += [self.affix_symbol]
+        display_list += post
+
         # remove excess spacing
         if display_list[0] == self.spacing_symbol:
             display_list = display_list[1:]
@@ -199,7 +239,7 @@ class Dictionary():
         
         return display_list
 
-    def add(self, sound="", spelling="", change=None, definition=None, exponent=None, pos=None):
+    def add(self, sound=None, spelling=None, change=None, definition=None, exponent=None, pos=None):
         """Create a dictionary entry and list it under the spelled headword"""
         # expect both valid spelling and phones
         if not (sound and spelling) and not exponent:
@@ -209,17 +249,30 @@ class Dictionary():
         # ensure sound and spelling are lists of strings
         spelling = string_list.string_listify(spelling, True)
         sound = string_list.string_listify(sound, True)
-        if not string_list.is_string_list(spelling):
+        if not string_list.is_string_list(spelling) and not exponent:
             print(f"Dictionary add failed - invalid spelling {spelling}")
         if not string_list.is_string_list(sound) and not exponent:
             print(f"Dictionary add failed - invalid sounds {sound}")
 
         # Create an entry
-
-        # build headword key from entry spelling
         headword = "".join(spelling)
 
-        # NOTE: keys created here are accessed throughout class
+        # build headword key from entry spelling
+        if exponent:
+            # combine grammatical material and format into
+            # TODO: either use post_change spelling here or handle inside Grammar 
+            exponent_details = self.grammar.exponents.get(exponent)
+            pre_spelling = self.phonology.spell(exponent_details['pre'])
+            mid_spelling = self.phonology.spell(exponent_details['mid'])
+            post_spelling = self.phonology.spell(exponent_details['post'])
+            headword = self._display_exponent_pieces(pre_spelling, mid_spelling, post_spelling, exponent_details['bound'])
+            # clear out details to rely on grammatical exponents data on fetch
+            spelling = ""
+            sound = ""
+            change = ""
+        else:
+            headword = "".join(spelling)
+
         entry = {
             # representation of entry in letters
             'spelling': spelling,
