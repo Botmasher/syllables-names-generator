@@ -30,33 +30,39 @@ class Dictionary():
 
     # TODO: intersect matches from multiple attributes
     # TODO: exact match (see _search_definitions)
-    def search(self, spelling="", keywords="", sound="", change="", exact=False, max_results=10):
-        """Search dictionary for entries with a matching attribute. Only one attribute
-        is searched per call."""
-        #if not spelling and not keywords and not sound and not change:        
-        #    raise ValueError("Dictionary search missing one or more values to search for")
+    def search(self, spelling=None, keywords=None, sound=None, change=None, exact=False, max_results=10):
+        """Search dictionary for entries with matching attributes. If only keywords are
+        supplied, look for relevant definitions. Otherwise, attempt to find entries with
+        all supplied attributes."""
+        if not spelling and not keywords and not sound and not change:        
+            raise ValueError("Dictionary search missing one or more values to search for")
+        
+        # return a sorted list after searching only for relevant definitions
+        if keywords and not spelling and not sound and not change:
+            return self._search_definitions(keywords, exact=exact, max_results=max_results)
+
+        # list sequences of letters and sounds
+        spelling = string_list.string_listify(spelling) if spelling else []
+        sound = string_list.string_listify(sound) if sound else []
+        change = string_list.string_listify(change) if change else []
 
         # TODO: matches for exponents
+        # build and return a list of matching 
         matches = []
         for headword, entries in self.dictionary:
             for entry, i in entries.items():
                 if entry['exponent']:
-                    match['spelling'] = []
-                    match['sound'] = []
-                    match['change'] = []
+                    match = self._format_exponent_entry(entry['exponent'])
                     match['definition'] = entry['definition']
                 else:
                     match = dict(entry)
-                did_match = True
-                if sound and sound != match['sound']:
-                    did_match = False
-                if spelling and spelling != match['spelling']:
-                    did_match = False
-                if change and change != match['change']:
-                    did_match = False
-                if keywords and list(filter(lambda w: w not in match['definition'], keywords)):
-                    did_match = False
-                if did_match:
+                compared = {
+                    'sound': sound if sound else match['sound'],
+                    'change': change if change else match['change'],
+                    'spelling': spelling if spelling else match['spelling'],
+                    'definition': None if list(filter(lambda w: w not in match['definition'], keywords)) else match['definition']
+                }
+                if match == compared:
                     matches.append((headword, i))
                 if len(matches) >= max_results:
                     return matches
@@ -194,21 +200,26 @@ class Dictionary():
     # heavily formatting pre,mid,post here or when calling this method
     #   - also define when accessed instead of stored?
     #   - go through exponent entries when using search
-    def _lookup_exponent(self, exponent_id):
-        return self.grammar.exponents.get(exponent_id)
-
-    def _format_exponent_entry(self, exponent_id):
-        exponent_details = self._lookup_exponent(exponent_id)
+    def _format_exponent_entry(self, exponent_id, spell_after_change=True):
+        # prepare details for presentation
+        exponent_details = self.grammar.exponents.get(exponent_id)
+        sound = self._display_exponent_pieces(exponent_details['pre'], exponent_details['mid'], exponent_details['post'])
+        changed_pre = self.phonology.apply_rules(exponent_details['pre'])
+        changed_mid = self.phonology.apply_rules(exponent_details['mid'])
+        changed_post = self.phonology.apply_rules(exponent_details['post'])
+        change = self._display_exponent_pieces(changed_pre, changed_mid,changed_post)
+        spelling = self.phonology.spell(change, sound)
+        # create entry
         exponent_entry = {
-            'sound': [],
-            'change': [],
-            'spelling': []
+            'sound': sound,
+            'change': change,
+            'spelling': spelling
         }
         return exponent_entry
 
     def _display_exponent_pieces(self, pre, mid, post, bound=True):
-        """Format grammatical pieces of one exponent into a single human
-        readable string ready to display."""
+        """Format grammatical pieces of one exponent into a single list
+        ready to display."""
         
         # create list of exponent pieces with separators
         display_list = []
