@@ -1,7 +1,7 @@
-from ..grammar.grammar import Grammar
+from ..grammar.grammar import Grammar, Sentences
 from ..phonetics.phonetics import Phonetics
 from ..phonology.phonology import Phonology
-from ..lexicon.dictionary import Dictionary
+from ..lexicon.vocabulary import Vocabulary
 from ..lexicon.corpus import Corpus
 from .paradigms import Paradigms
 import random
@@ -61,7 +61,7 @@ import random
 #   - check before passing non C xor V to syll
 #   - check before adding consonant or vowel to inventory
 #   - check before adding features to phone
-# - language dictionary storing created words and definitions
+# - language vocabulary storing created base words and definitions
 # - set up default letters and symbols
 # - have language check inventory, environment, rules
 #   - e.g. avoid ['smiles', '_', 'sauce'] allow ['vowel', '_', 'vowel']
@@ -76,10 +76,12 @@ class Language:
         self.phonetics = Phonetics()
         # word classes, properties, exponents
         self.grammar = Grammar()
+        # for building and applying sentences
+        self.sentences = Sentences()
         # phonemes and syllables atop phonetics
         self.phonology = Phonology(self.phonetics)
         # words with ipa, morphology, definition
-        self.dictionary = Dictionary(self.grammar, self.phonology, affix_symbol, spacing_symbol)
+        self.vocabulary = Vocabulary()
         # built units with grammar attached
         self.corpus = Corpus()
         # min and max length of a randomly generated baseword
@@ -166,28 +168,12 @@ class Language:
                 print(f"Language generate failed - unable to create grammatical exponent")
                 return
             
-            # determine text linkers for formatted dictionary storage
-            # grammatical_format = {
-            #     'circumfix': "{}- -{}",
-            #     'infix': "-{}-",
-            #     'prefix': "{}-",
-            #     'suffix': "-{}",
-            #     'multifix': "{}-{}-{}",
-            #     'circumposition': "{}...{}",
-            #     'interposition': "...{}...",
-            #     'preposition': "{}",
-            #     'postposition': "{}",
-            #     'multiposition': "{}...{}...{}"
-            # }
-            # basic term to define forms
-            #grammatical_form = self.grammar.grammatical_form(pre, mid, post, bound)
-            
             # build stored definition
             formatted_definition = self.grammar.autodefine(exponent_id)
 
-            # TODO: only store exponent id in dictionary;
-            # format display info on retrieval (at least 'sound' and 'change' from parts)
-
+            # TODO: only store base words in vocabulary
+            #   - handle the rest in exponents, summary
+            
             # store and return a grammatical word entry
             return self.store(
                 definition=formatted_definition,
@@ -214,7 +200,7 @@ class Language:
 
     def add_grammar(self, entry_headword, entry_index, pre=False, mid=False, post=False, bound=False, properties="", word_classes=""):
         """Add grammatical data to an existing stored entry"""
-        if not self.dictionary.lookup(entry_headword, entry_index):
+        if not self.vocabulary.lookup(entry_headword, entry_index):
             print(f"Language add_grammar could not grammaticalize invalid entry {entry_headword}({entry_index})")
             return
         vetted_properties = self.grammar.parse_properties(properties)
@@ -233,13 +219,13 @@ class Language:
         #   - non-exponents can have a word class
         #   - exponents can be restricted to providing to certain word classs
         # TODO: abstract grammar definition creation from .generate 
-        self.dictionary.update(
+        self.vocabulary.update(
             entry_headword,
             entry_index,
             definition=self.grammar.autodefine(exponent_id),
             exponent=exponent_id
         )
-        return self.dictionary.lookup(entry_headword, entry_index)
+        return self.vocabulary.lookup(entry_headword, entry_index)
 
     # TODO: create sentences checking grammar 
     def create_sentence(self, name, structure):
@@ -247,7 +233,7 @@ class Language:
     # TODO: apply sentences looking up headwords
     def apply_sentence(self, name, headwords):
         bases = [
-            self.dictionary.lookup(*headword)
+            self.vocabulary.lookup(*headword)
             for headword in headwords
         ]
         built_sentence = self.sentences.apply(name, bases)
@@ -320,7 +306,7 @@ class Language:
     def translate(self, definition, properties="", word_class=""):
         """Attempt to render a single base plus grammatical properties
         in the target language"""
-        words = self.dictionary.search(definition)
+        words = self.vocabulary.search(definition)
         if not words:
             print(f"Language failed to translate - no word for {definition}")
             return
@@ -338,7 +324,7 @@ class Language:
         # - produce a unit
         # - or produce a table of all possible forms
         # - store the unit in the corpus
-        if lookup and not self.dictionary.is_word(base):
+        if lookup and not self.vocabulary.is_word(base):
             print(f"Language attach failed - unrecognized base word {base}")
             return
 
@@ -346,7 +332,7 @@ class Language:
         
         # locate headword entry for base
         if lookup:
-            base_entry = self.dictionary.lookup(headword=base, entry_index=entry_index)
+            base_entry = self.vocabulary.lookup(headword=base, entry_index=entry_index)
             base_sounds = base_entry['sound']
             base_definition = base_entry['definition']
         # use given one-off base
@@ -401,7 +387,7 @@ class Language:
     #   - core idea is to store important data for display but only 
     def store(self, sound="", definition="", spelling="", change="", exponent_id=None, word_class=None):
         """Pass word entry components through to the dictionary for storage"""
-        return self.dictionary.add(
+        return self.vocabulary.add(
             sound=sound,
             spelling=spelling,
             change=change,
