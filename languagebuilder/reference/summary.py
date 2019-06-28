@@ -24,9 +24,68 @@ class Summary:
     def print_rules(self):
         return
 
-    # TODO: concatenate using language spacers/separators
-    def combine_exponent_pieces(self, pre, mid, post, bound=True):
-        return []
+    def combine_exponent_pieces(self, pre=None, mid=None, post=None, bound=True):
+        """Concatenate all pieces of an exponent into one sequence list for display
+        or readability, using language spacing and affix symbols to mark them
+        off from each other."""
+        # fetch and decide material between pieces
+        separator = self.language.affix_symbol if bound else ""
+        spacer = self.language.spacing_symbol
+        
+        # build flat pieces sequence with separated material
+        pieces = []
+        pieces += pre if pre else []
+        if pre:
+            pieces += separator
+        if mid or post:
+            pieces += spacer
+        if mid:
+            pieces += separator
+        pieces += mid if mid else []
+        if mid:
+            pieces += separator
+        if mid and post:
+            pieces += spacer
+        if post:
+            pieces += separator
+        pieces += post if post else []
+
+        # remove extra beginning or trailing spacers
+        if pieces[0] == spacer:
+            pieces = pieces[1:]
+        if pieces[-1] == spacer:
+            pieces = pieces[:-1]
+
+        return pieces
+
+def combine_exponent_pieces(self, pre, mid, post, bound=True):
+    """Concatenate all pieces of an exponent into one sequence list for display
+    or readability, using language spacing and affix symbols to mark them
+    off from each other."""
+    # fetch and decide material between pieces
+    separator = "-" if bound else ""
+    spacer = " "
+    # build flat pieces sequence with separated material
+    pieces = []
+    pieces += pre
+    if pre:
+        pieces += separator
+    if mid or post:
+        pieces += spacer
+    if mid:
+        pieces += separator
+    pieces += mid
+    if mid:
+        pieces += separator
+    if mid and post:
+        pieces += spacer
+        pieces += separator
+    pieces += post
+    if pieces[0] == spacer:
+        pieces = pieces[1:]
+    if pieces[-1] == spacer:
+        pieces = pieces[:-1]
+    return pieces
 
     def summarize_exponents(self, spell_after_change=True):
         summary = {}
