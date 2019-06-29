@@ -58,35 +58,6 @@ class Summary:
 
         return pieces
 
-def combine_exponent_pieces(self, pre, mid, post, bound=True):
-    """Concatenate all pieces of an exponent into one sequence list for display
-    or readability, using language spacing and affix symbols to mark them
-    off from each other."""
-    # fetch and decide material between pieces
-    separator = "-" if bound else ""
-    spacer = " "
-    # build flat pieces sequence with separated material
-    pieces = []
-    pieces += pre
-    if pre:
-        pieces += separator
-    if mid or post:
-        pieces += spacer
-    if mid:
-        pieces += separator
-    pieces += mid
-    if mid:
-        pieces += separator
-    if mid and post:
-        pieces += spacer
-        pieces += separator
-    pieces += post
-    if pieces[0] == spacer:
-        pieces = pieces[1:]
-    if pieces[-1] == spacer:
-        pieces = pieces[:-1]
-    return pieces
-
     def summarize_exponents(self, spell_after_change=True):
         summary = {}
         for exponent_id, exponent in self.language.grammar.exponents.get().items():
@@ -135,13 +106,33 @@ def combine_exponent_pieces(self, pre, mid, post, bound=True):
                 'sound': sound,
                 'change': change,
                 'spelling': spelling,
-                'definition': definition
+                'definition': definition,
+                'properties': exponent['properties'],
+                'bound': exponent['bound'],
+                'pos': exponent['pos']
             }
 
         return summary
 
-    def print_grammar(self):
-        return
+    def print_grammar(self, spell_after_change=True):
+        exponents = self.summarize_exponents(spell_after_change=spell_after_change)
+
+        # build map of exponent ids nested under pos:category:grammemes
+        # NOTE: None entry for zero word class    
+        exponents_by_pos = {}
+        for exponent_id, exponent_entry in exponents.items():
+            exponent_pos = exponent_entry['pos'] if exponent_entry['pos'] else None
+            exponents_by_pos.setdefault(exponent_pos, {})
+            for category in exponent_entry['properties']:
+                exponents_by_pos[exponent_pos].setdefault(category, {})
+                for grammeme in exponent_entry['properties'][category]:
+                    exponents_by_pos[exponent_pos][category].setdefault(grammeme, set())
+                    exponents_by_pos[exponent_pos][category][grammeme].add(exponent_id)
+
+        # TODO: use exponents by word class to print display text
+        display = f""
+
+        return display
 
     def print_sentences(self):
         return
