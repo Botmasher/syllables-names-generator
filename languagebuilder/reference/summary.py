@@ -114,7 +114,9 @@ class Summary:
 
         return summary
 
-    def print_grammar(self, spell_after_change=True):
+    def print_grammar(self, spell_after_change=True, print_display=True):
+        """Build a display text summary of the language's grammatical words and
+        word pieces, return the text and optionally log the text out."""
         exponents = self.summarize_exponents(spell_after_change=spell_after_change)
 
         # build map of exponent ids nested under pos:category:grammemes
@@ -122,6 +124,10 @@ class Summary:
         exponents_by_pos = {}
         for exponent_id, exponent_entry in exponents.items():
             exponent_pos = exponent_entry['pos'] if exponent_entry['pos'] else None
+            # TODO: place each exponent once only
+            #   - make optimal decisions about multiproperty exponents
+            #   - determine which property should be top
+            #   - nest others below that one
             exponents_by_pos.setdefault(exponent_pos, {})
             for category in exponent_entry['properties']:
                 exponents_by_pos[exponent_pos].setdefault(category, {})
@@ -129,8 +135,33 @@ class Summary:
                     exponents_by_pos[exponent_pos][category].setdefault(grammeme, set())
                     exponents_by_pos[exponent_pos][category][grammeme].add(exponent_id)
 
-        # TODO: use exponents by word class to print display text
-        display = f""
+        # use exponents by word class to print display text
+        display = "-- Grammar Summary --"
+        for pos in exponents_by_pos:
+            if not pos:
+                display += "General:\n"
+            else:
+                display += f"{pos}:\n"
+            for category in exponents_by_pos[pos]:
+                # split affixes from adpositions
+                affixes = set()
+                adpositions = set()
+                for exponent_id in exponents_by_pos[pos][category].values():
+                    if exponents[exponent_id]['bound']:
+                        affixes.add(exponent_id)
+                    else:
+                        adpositions.add(exponent_id)
+                display += f"{category} affixes:\n"
+                for affix_id in affixes:
+                    exponent = exponents[affix_id]
+                    display += f"{exponent['spelling']}\t{exponent['definition']}\n"
+                display += f"{category} adpositions/particles:"
+                for adposition_id in adpositions:
+                    exponent = exponents[adposition_id]
+                    display += f"{exponent['spelling']}\t{exponent['definition']}\n"
+        
+        display += "-- End Grammar Summary --"
+        print_display and print(display)
 
         return display
 
