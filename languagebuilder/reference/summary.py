@@ -58,60 +58,63 @@ class Summary:
 
         return pieces
 
+    def summarize_exponent(self, exponent_id, spell_after_change=True):
+        exponent = self.language.grammar.exponents.get(exponent_id)
+        # get sounds and spellings for grammatical pieces
+        pre_sound = exponent['pre']
+        mid_sound = exponent['mid']
+        post_sound = exponent['post']
+        pre_change = self.language.phonology.apply_rules(pre_sound)
+        mid_change = self.language.phonology.apply_rules(mid_sound)
+        post_change = self.language.phonology.apply_rules(post_sound)
+        pre_spelling = self.language.phonology.spell(
+            pre_change if spell_after_change else pre_sound,
+            fallback_phonemes=pre_sound
+        )
+        mid_spelling = self.language.phonology.spell(
+            mid_change if spell_after_change else mid_sound,
+            mid_sound
+        )
+        post_spelling = self.language.phonology.spell(
+            post_change if spell_after_change else post_sound,
+            post_sound
+        )
+        definition = self.language.grammar.autodefine(exponent_id)
+
+        # string pieces together
+        sound = self.combine_exponent_pieces(
+            pre_sound,
+            mid_sound,
+            post_sound,
+            bound=exponent['bound']
+        )
+        change = self.combine_exponent_pieces(
+            pre_change,
+            mid_change,
+            post_change,
+            bound=exponent['bound']
+        )
+        spelling = self.combine_exponent_pieces(
+            pre_spelling,
+            mid_spelling,
+            post_spelling,
+            bound=exponent['bound']
+        )
+
+        return {
+            'sound': sound,
+            'change': change,
+            'spelling': spelling,
+            'definition': definition,
+            'properties': exponent['properties'],
+            'bound': exponent['bound'],
+            'pos': exponent['pos']
+        }
+
     def summarize_exponents(self, spell_after_change=True):
         summary = {}
-        for exponent_id, exponent in self.language.grammar.exponents.get().items():
-            # get sounds and spellings for grammatical pieces
-            pre_sound = exponent['pre']
-            mid_sound = exponent['mid']
-            post_sound = exponent['post']
-            pre_change = self.language.phonology.apply_rules(pre_sound)
-            mid_change = self.language.phonology.apply_rules(mid_sound)
-            post_change = self.language.phonology.apply_rules(post_sound)
-            pre_spelling = self.language.phonology.spell(
-                pre_change if spell_after_change else pre_sound,
-                fallback_phonemes=pre_sound
-            )
-            mid_spelling = self.language.phonology.spell(
-                mid_change if spell_after_change else mid_sound,
-                mid_sound
-            )
-            post_spelling = self.language.phonology.spell(
-                post_change if spell_after_change else post_sound,
-                post_sound
-            )
-            definition = self.language.grammar.autodefine(exponent_id)
-
-            # string pieces together
-            sound = self.combine_exponent_pieces(
-                pre_sound,
-                mid_sound,
-                post_sound,
-                bound=exponent['bound']
-            )
-            change = self.combine_exponent_pieces(
-                pre_change,
-                mid_change,
-                post_change,
-                bound=exponent['bound']
-            )
-            spelling = self.combine_exponent_pieces(
-                pre_spelling,
-                mid_spelling,
-                post_spelling,
-                bound=exponent['bound']
-            )
-
-            summary[exponent_id] = {
-                'sound': sound,
-                'change': change,
-                'spelling': spelling,
-                'definition': definition,
-                'properties': exponent['properties'],
-                'bound': exponent['bound'],
-                'pos': exponent['pos']
-            }
-
+        for exponent_id in self.language.grammar.exponents.get():
+            summary[exponent_id] = self.summarize_exponent(exponent_id)
         return summary
 
     def print_grammar(self, spell_after_change=True, print_display=True):

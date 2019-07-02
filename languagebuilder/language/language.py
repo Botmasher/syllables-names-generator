@@ -1,8 +1,9 @@
 from ..grammar.grammar import Grammar, Sentences
 from ..phonetics.phonetics import Phonetics
 from ..phonology.phonology import Phonology
-from ..lexicon.vocabulary import Vocabulary
-from ..lexicon.corpus import Corpus
+from ..reference.vocabulary import Vocabulary
+from ..reference.summary import Summary
+from ..reference.corpus import Corpus
 from .paradigms import Paradigms
 import random
 
@@ -77,13 +78,14 @@ class Language:
         # word classes, properties, exponents
         self.grammar = Grammar()
         # for building and applying sentences
-        self.sentences = Sentences()
+        self.sentences = Sentences(self.grammar)
         # phonemes and syllables atop phonetics
         self.phonology = Phonology(self.phonetics)
         # words with ipa, morphology, definition
         self.vocabulary = Vocabulary()
-        # built units with grammar attached
+        # grammar storage and display
         self.corpus = Corpus()
+        self.summary = Summary(self)
         # min and max length of a randomly generated baseword
         self.syllables_min = 1
         self.syllables_max = 1
@@ -118,7 +120,7 @@ class Language:
         return (self.syllables_min, self.syllables_max)
 
     # TODO: send built grammar back up here to cache in a history
-    def generate(self, length=None, definition="", spell_after_change=True, mid_target=None, pre=False, mid=False, post=False, bound=False, properties=None, word_class=None):
+    def generate(self, length=None, definition="", spell_after_change=True, midpoint=None, pre=False, mid=False, post=False, bound=False, properties=None, word_class=None):
         """Create a word or grammatical piece that follows language's phonology and grammar"""
         # choose a random number of syllables if no syllable count supplied
         if not length:
@@ -169,16 +171,13 @@ class Language:
                 return
             
             # build stored definition
-            formatted_definition = self.grammar.autodefine(exponent_id)
+            #formatted_definition = self.grammar.autodefine(exponent_id)
 
             # TODO: only store base words in vocabulary
             #   - handle the rest in exponents, summary
             
             # store and return a grammatical word entry
-            return self.store(
-                definition=formatted_definition,
-                exponent_id=exponent_id
-            )
+            return self.summary.summarize_exponent(exponent_id)
         
         # Generate and store a base word entry
         word = self.phonology.build_word(
@@ -195,7 +194,8 @@ class Language:
             change=word['change'],
             definition=definition.strip(),
             spelling=word['spelling'],
-            word_class=word_class
+            word_class=word_class,
+            midpoint=midpoint
         )
 
     def add_grammar(self, entry_headword, entry_index, pre=False, mid=False, post=False, bound=False, properties="", word_classes=""):
@@ -380,18 +380,16 @@ class Language:
     # NOTE: use Paradigms
     #   - take in a definition
     #   - take in a word class
-    #   - for grammar, send to corpus 
-    #   - also store grammar in dictionary but with exponent id
+    #   - for grammar rely on Summary instead
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
-    #   - core idea is to store important data for display but only 
-    def store(self, sound="", definition="", spelling="", change="", exponent_id=None, word_class=None):
+    def store(self, sound="", definition="", spelling="", change="", word_class=None, midpoint=None):
         """Pass word entry components through to the dictionary for storage"""
         return self.vocabulary.add(
             sound=sound,
             spelling=spelling,
             change=change,
             definition=definition,
-            exponent=exponent_id,
+            midpoint=midpoint,
             pos=word_class
         )
