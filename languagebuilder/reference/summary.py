@@ -102,6 +102,7 @@ class Summary:
         )
 
         return {
+            'id': exponent_id,
             'sound': sound,
             'change': change,
             'spelling': spelling,

@@ -143,10 +143,15 @@ class Grammar:
         # read exponent data
         exponent = self.exponents.get(exponent_id)
         # decide basic term to define form
-        is_bound = exponent['bound']
-        is_pre = bool(exponent['pre'])
-        is_post = bool(exponent['post'])
-        grammatical_form = self.grammatical_form(pre=is_pre, post=is_post, bound=is_bound)
+        has_pre = bool(exponent['pre'])
+        has_mid = bool(exponent['mid'])
+        has_post = bool(exponent['post'])
+        grammatical_form = self.grammatical_form(
+            pre=has_pre,
+            mid=has_mid,
+            post=has_post,
+            bound=exponent['bound']
+        )
         # structure the definition
         grammatical_definition = f"{grammatical_form} for {self.pretty_properties(exponent['properties'])}"
         grammatical_definition += (" " + "s, ".join(exponent['pos']) + "s")

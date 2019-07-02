@@ -55,8 +55,8 @@ class Vocabulary():
 
         # build and return a list of matching word entries
         matches = []
-        for headword, entries in searched_vocabulary:
-            for entry, i in entries.items():
+        for headword, entries in searched_vocabulary.items():
+            for i, entry in enumerate(entries):
                 compared = {
                     'sound': not sound or sound == entry['sound'],
                     'change': not change or change == entry['change'],

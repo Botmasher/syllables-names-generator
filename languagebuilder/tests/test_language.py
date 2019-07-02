@@ -200,10 +200,8 @@ class LanguageWords(LanguageFixture):
             word_class="verb",
             properties="grammeme"
         )
-        affix_entry = self.language.dictionary.lookup(*affix)
-        self.assertEqual(
-            "".join(affix_entry['spelling']),
-            affix[0],
+        self.assertIsNotNone(
+            affix.get('spelling'),
             "failed to generate a new grammatical word in the language"
         )
 
@@ -218,16 +216,14 @@ class LanguageWords(LanguageFixture):
             word_class="noun",
             properties="infix0"
         )
-        affix_entry = self.language.dictionary.lookup(*affix)
-        self.assertEqual(
-            "".join(affix_entry['spelling']),
-            affix[0],
+        self.assertIsNotNone(
+            affix.get('spelling'),
             "failed to generate a grammatical infix in the language"
         )
 
     def test_apply_grammar(self):
         base = self.language.generate(2)
-        base_entry = self.language.dictionary.lookup(*base)
+        base_entry = self.language.vocabulary.lookup(*base)
         unit = self.language.attach(
             *base,
             properties="imperfective future",
@@ -248,15 +244,14 @@ class LanguageWords(LanguageFixture):
             word_class="noun",
             properties="infix1"
         )
-        affix_entry = self.language.dictionary.lookup(*affix)
-        base = self.language.generate(2, mid_target=1)
-        base_entry = self.language.dictionary.lookup(*base)       
+        base = self.language.generate(2, midpoint=1)
+        base_entry = self.language.vocabulary.lookup(*base)       
         unit = self.language.attach(
             *base,
             properties="infix1",
             word_classes="noun"
         )
-        expected_unit = base_entry['sound'][:2] + affix_entry['sound'] + base_entry['sound'][2:]
+        expected_unit = base_entry['sound'][:2] + affix['sound'] + base_entry['sound'][2:]
         self.assertEqual(
             "".join(unit['sound']),
             "".join(expected_unit),
@@ -265,7 +260,7 @@ class LanguageWords(LanguageFixture):
 
     def test_build_unit(self):
         base = self.language.generate(2)
-        base_entry = self.language.dictionary.lookup(*base)
+        base_entry = self.language.vocabulary.lookup(*base)
         unit = self.language.attach(
             *base,
             properties="imperfective future",
@@ -300,8 +295,8 @@ class LanguageWords(LanguageFixture):
 
     def test_spell_word(self):
         word = self.language.generate(2)
-        word_entry = self.language.dictionary.lookup(*word)
-        matches = self.language.dictionary.search(spelling=word_entry['spelling'])
+        word_entry = self.language.vocabulary.lookup(*word)
+        matches = self.language.vocabulary.search(spelling=word_entry['spelling'])
         self.assertIn(
             word,
             matches,
@@ -324,7 +319,7 @@ class LanguageWords(LanguageFixture):
     
     def test_lookup_word(self):
         word = self.language.generate(2, "cat")
-        word_entry = self.language.dictionary.lookup(*word)
+        word_entry = self.language.vocabulary.lookup(*word)
         self.assertEqual(
             "".join(word_entry['spelling']),
             word[0],
@@ -333,7 +328,7 @@ class LanguageWords(LanguageFixture):
     
     def test_define_word(self):
         word = self.language.generate(2, "dog")
-        definition = self.language.dictionary.define(*word)
+        definition = self.language.vocabulary.define(*word)
         self.assertEqual(
             definition,
             "dog",
@@ -344,18 +339,17 @@ class LanguageWords(LanguageFixture):
         word_0 = self.language.generate(2, definition="round")
         word_1 = self.language.generate(2, definition="round table")
         self.language.generate(2, definition="table")
-        results = self.language.dictionary.search(keywords="round")
+        results = self.language.vocabulary.search(keywords="round")
         self.assertTrue(
             len(results) == 2 and word_0 in results and word_1 in results,
             f"failed to find generated words in a keyword search: found {results}"
         )   
     
     def test_read_grammatical_definition(self):
-        headword = self.language.generate(pre=False, post=True, bound=True, properties="imperfective future", word_class="verb")
-        definition = self.language.dictionary.lookup(*headword)['definition']
-        exponent_id = self.language.dictionary.lookup(*headword)['exponent']
-        exponent_pos = self.language.grammar.exponents.get(exponent_id)['pos']
-        exponent_properties = self.language.grammar.exponents.get(exponent_id)['properties']
+        exponent = self.language.generate(pre=False, post=True, bound=True, properties="imperfective future", word_class="verb")
+        definition = exponent['definition']
+        exponent_pos = exponent['pos']
+        exponent_properties = exponent['properties']
         self.assertEqual(
             definition,
             "suffix for imperfective aspect, future tense verbs",
@@ -393,7 +387,7 @@ class LanguageStorage(LanguageFixture):
 
     def test_store_sound_list(self):
         base = self.language.generate(length=3)
-        stored_base = self.language.dictionary.lookup(*base)
+        stored_base = self.language.vocabulary.lookup(*base)
         self.assertGreaterEqual(
             len({"pʰ", "tʰ", "kʰ"} & set(stored_base.get('sound', []))),
             1,
@@ -402,7 +396,7 @@ class LanguageStorage(LanguageFixture):
 
     def test_store_generated_base(self):
         base = self.language.generate(length=2, word_class="verb")
-        entry = self.language.dictionary.lookup(*base)
+        entry = self.language.vocabulary.lookup(*base)
         self.assertIsNotNone(
             entry.get('sound'),
             "failed to generate and store a base word in the language"
