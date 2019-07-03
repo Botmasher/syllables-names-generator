@@ -83,7 +83,8 @@ class Exponents:
 
         # ensure exponent has either valid pre or post material
         if not (vetted_pre or vetted_mid or vetted_post):
-            raise ValueError("Exponents add failed - expected pre, mid or post material")
+            print("Exponents add failed - expected pre, mid or post material")
+            return
 
         # vet and check provided grammatical properties
         parsed_properties = self.grammar.parse_properties(properties) if isinstance(properties, str) else properties

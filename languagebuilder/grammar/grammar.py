@@ -303,7 +303,7 @@ class Grammar:
         return
 
     # the main public method for making use of data stored in the grammar
-    def build_unit(self, base, properties=None, word_classes=None, exact_pos=False, spacing=" ", all_requested=False, all_or_none=False, as_string=False):
+    def build_unit(self, base, properties=None, word_classes=None, exact_pos=False, spacing=" ", midpoint=0, all_requested=False, all_or_none=False, as_string=False):
         """Build up relevant morphosyntax around a base using the given grammatical terms.
 
         Args:
@@ -312,6 +312,7 @@ class Grammar:
             word_classes (list): All word classes this root belongs to.
             exact_pos (bool): Use only exponents associated with matching word classes.
             spacing (str): Symbol to use when surrounding with unbound exponents.
+            midpoint (int): Word index for positioning added mid/infix material.
             all_requested (bool): Move forward only if all requested properties exist.
             all_or_none (bool): Ensure all requested properties are provided.
             as_string (bool): Return the built unit as a string instead of a list.
@@ -445,7 +446,9 @@ class Grammar:
         # attach the best matches from the mapped and reduced exponents
         built_word = self.attach_exponents(
             base,
-            reduced_exponents
+            reduced_exponents,
+            midpoint=midpoint,
+            spacing=spacing
         )
 
         # allow returning string instead of list
@@ -459,7 +462,7 @@ class Grammar:
         #raise ValueError(f"list contains more than symbols: {built_word}")
         return built_word
 
-    def attach_exponents(self, base, exponent_ids, spacing=" ", as_string=False, reorder=True):
+    def attach_exponents(self, base, exponent_ids, spacing=" ", midpoint=0, as_string=False, reorder=True):
         """Exponent a complex word to correctly position a root, prefixes, postfixes, prepositions, postpositions"""
         # expect a collection of exponent ids and a word-building map
         if not isinstance(exponent_ids, (list, set, tuple)):
@@ -468,6 +471,7 @@ class Grammar:
 
         # exponent attachment types in in sequential order
         attachment_sequence = (
+            'infix',
             'preposition',
             'prefix',
             'base',
@@ -490,6 +494,7 @@ class Grammar:
             # NOTE: arranges a list of ids ordered from outermost to innermost
             #   - placement decided on outer vs inner
             #   - outermost ("last") post will be considered the first one in the list
+            #   - mid material will be added L-R inside the word
             #   - outermost ("first") pre will be considered the first one in the list
             #   - both lists contain ids so traversing requires extra lookups
             sorted_ids = self.morphosyntax.arrange_exponents(exponent_ids)
@@ -498,22 +503,29 @@ class Grammar:
             #   - 'post' appear later in list when they're less "inner" (more "post") than another
             ordered_exponents = {
                 'pre': sorted_ids,
+                'mid': sorted_ids,
                 'post': list(reversed(sorted_ids))
             }
         # use whatever order exponents found in
         else:
             ordered_exponents = {
                 'pre': exponent_ids,
+                'mid': exponent_ids,
                 'post': exponent_ids
             }
 
+        # set up positional relations of exponent material to attachment order
+        attachment_keys = {
+            ('pre', True): 'prefix',
+            ('pre', False): 'preposition',
+            ('mid', True): 'infix',
+            ('mid', False): 'infix',        # NOTE: all mid material treated bound
+            ('post', True): 'postfix',
+            ('post', False): 'postposition'
+        }
+   
         # go through exponents and map them as prescribed in the exponent
         for position in ordered_exponents:
-            # set up positional keys and checks
-            attachment_keys = ('preposition', 'prefix') if position == 'pre' else ('postposition', 'postfix')
-            is_pre = position == 'pre'
-            is_post = position == 'post'
-
             # traverse and compile exponents destined for this position
             for exponent_id in ordered_exponents[position]:
                 exponent_details = self.exponents.get(exponent_id)
@@ -524,7 +536,8 @@ class Grammar:
                     continue
                 
                 # use binding to determine placement and spacing
-                attachment_key = attachment_keys[exponent_details['bound']]
+                attachment_settings = (position, exponent_details['bound'])
+                attachment_key = attachment_keys[attachment_settings]
                 # add spaces next to filled exponents that are unbound
                 spacing = "" if exponent_details['bound'] or not exponent_details[position] else spacing
 
@@ -532,13 +545,14 @@ class Grammar:
                 exponent_material = exponent_details[position]
 
                 # add both spacing and material to the relevant attachment list
-                if is_post:
+                # NOTE: no spacing added for mid material
+                if position == 'post':
                     exponented_word_map[attachment_key].append(spacing)
                 [
                     exponented_word_map[attachment_key].append(sound)
                     for sound in exponent_material
                 ]
-                if is_pre and not is_post:
+                if position == 'pre':
                     exponented_word_map[attachment_key].append(spacing)
 
         # flattend word piece map sequences and remove empty strings
@@ -549,8 +563,8 @@ class Grammar:
                 exponented_word_map[piece_name]
             ))
         
-        # turn exponenting map into one sound sequence
-        # following the order of attachments
+        # turn exponenting map into sound sequence following order of attachments
+        # TODO: pre, break base word, add mid material, add end base word, post
         exponented_word = [
             piece for attachment in attachment_sequence
             for piece in exponented_word_map[attachment]

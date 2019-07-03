@@ -477,7 +477,7 @@ class GrammarBuildWords(GrammarFixture):
         unit = self.grammar.build_unit(
             "baseword",
             properties={'category': "infix"},
-            mid_target=4,
+            midpoint=4,
             as_string=True
         )
         self.assertEqual(
