@@ -119,9 +119,9 @@ class Language:
             self.syllables_max = max_count
         return (self.syllables_min, self.syllables_max)
 
-    # TODO: send built grammar back up here to cache in a history
-    def generate(self, length=None, definition="", spell_after_change=True, midpoint=None, pre=False, mid=False, post=False, bound=False, properties=None, word_class=None):
-        """Create a word or grammatical piece that follows language's phonology and grammar"""
+    def decide_length(self, length=None):
+        """Check for valid length integer or choose a length if none supplied.
+        Intended for generating words with length number of syllables."""
         # choose a random number of syllables if no syllable count supplied
         if not length:
             length = random.randint(self.syllables_min, self.syllables_max)
@@ -129,56 +129,12 @@ class Language:
         if not isinstance(length, int):
             print(f"Language failed to generate word - invalid number of syllables {length}")
             return
-        
-        # generate and add grammatical word
-        if pre or mid or post:
-            # default for uncreated exponents
-            empty_entry = {
-                'spelling': [],
-                'sound': [],
-                'change': []
-            }
+        return length
 
-            # generate grammatical pieces for before, inside, after
-            pre_word = self.phonology.build_word(
-                length=length,
-                spell_after_change=spell_after_change
-            ) if pre else empty_entry
-
-            mid_word = self.phonology.build_word(
-                length=length,
-                spell_after_change=spell_after_change
-            ) if mid else empty_entry
-
-            post_word = self.phonology.build_word(
-                length=length,
-                spell_after_change=spell_after_change
-            ) if post else empty_entry
-
-            # create the exponent
-            exponent_id = self.grammar.exponents.add(
-                pre=pre_word['sound'],
-                mid=mid_word['sound'],
-                post=post_word['sound'],
-                properties=properties,
-                bound=bound,
-                pos=word_class
-            )
-
-            # back out if exponent not created
-            if not exponent_id:
-                print(f"Language generate failed - unable to create grammatical exponent")
-                return
-            
-            # build stored definition
-            #formatted_definition = self.grammar.autodefine(exponent_id)
-
-            # TODO: only store base words in vocabulary
-            #   - handle the rest in exponents, summary
-            
-            # store and return a grammatical word entry
-            return self.summary.summarize_exponent(exponent_id)
-        
+    def create_base(self, length=None, definition="", spell_after_change=True, midpoint=None, word_class=None):
+        """Generate a base word in the language and store it in the vocabulary,
+        returning the headword lookup pair for its vocabulary entry."""
+        length = self.decide_length(length)
         # Generate and store a base word entry
         word = self.phonology.build_word(
             length=length,
@@ -197,6 +153,67 @@ class Language:
             word_class=word_class,
             midpoint=midpoint
         )
+
+    # TODO: send built grammar back up here to cache in a history
+    def create_grammar(self, length=None, definition="", pre=False, mid=False, post=False, bound=True, properties=None, word_class=None):
+        """Generate a grammatical exponent, returning the grammatical summary of the
+        created pieces and their attributes, including exponent id in the grammar."""
+        length = self.decide_length(length)
+        # default for uncreated exponents
+        empty_entry = {
+            'spelling': [],
+            'sound': [],
+            'change': []
+        }
+
+        # generate grammatical pieces for before, inside, after
+        pre_word = self.phonology.build_word(
+            length=length,
+            spell_after_change=spell_after_change
+        ) if pre else empty_entry
+
+        mid_word = self.phonology.build_word(
+            length=length,
+            spell_after_change=spell_after_change
+        ) if mid else empty_entry
+
+        post_word = self.phonology.build_word(
+            length=length,
+            spell_after_change=spell_after_change
+        ) if post else empty_entry
+
+        # create the exponent
+        exponent_id = self.grammar.exponents.add(
+            pre=pre_word['sound'],
+            mid=mid_word['sound'],
+            post=post_word['sound'],
+            properties=properties,
+            bound=bound,
+            pos=word_class
+        )
+
+        # back out if exponent not created
+        if not exponent_id:
+            print(f"Language generate failed - unable to create grammatical exponent")
+            return
+        
+        # build stored definition
+        #formatted_definition = self.grammar.autodefine(exponent_id)
+
+        # TODO: only store base words in vocabulary
+        #   - handle the rest in exponents, summary
+        
+        # store and return a grammatical word entry
+        return self.summary.summarize_exponent(exponent_id)
+
+    def generate(self, length=None, definition="", spell_after_change=True, midpoint=None, pre=False, mid=False, post=False, bound=True, properties=None, word_class=None):
+        """Create a word or grammatical piece that follows the phonology and grammar"""        
+        # generate grammatical word
+        if pre or mid or post:
+            return self.create_grammar(length, definition, pre, mid, post, bound, properties, word_class)
+        # generate base word
+        else:
+            return self.create_base(length, definition, spell_after_change, midpoint, word_class)
 
     def add_grammar(self, entry_headword, entry_index, pre=False, mid=False, post=False, bound=False, properties="", word_classes=""):
         """Add grammatical data to an existing stored entry"""
