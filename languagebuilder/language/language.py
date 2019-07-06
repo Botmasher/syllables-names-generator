@@ -135,7 +135,7 @@ class Language:
         """Generate a base word in the language and store it in the vocabulary,
         returning the headword lookup pair for its vocabulary entry."""
         length = self.decide_length(length)
-        # Generate and store a base word entry
+        # generate a base word entry
         word = self.phonology.build_word(
             length=length,
             spell_after_change=spell_after_change
@@ -145,48 +145,36 @@ class Language:
             print(f"Language generate failed - invalid word class {word_class}")
             return
         # store created word or word piece and return lookup info
-        return self.store(
+        return self.vocabulary.add(
             sound=word['sound'],
             change=word['change'],
-            definition=definition.strip(),
             spelling=word['spelling'],
-            word_class=word_class,
-            midpoint=midpoint
+            definition=definition.strip(),
+            midpoint=midpoint,
+            pos=word_class
         )
 
     # TODO: send built grammar back up here to cache in a history
     def create_grammar(self, length=None, definition="", pre=False, mid=False, post=False, bound=True, properties=None, word_class=None):
         """Generate a grammatical exponent, returning the grammatical summary of the
         created pieces and their attributes, including exponent id in the grammar."""
-        length = self.decide_length(length)
-        # default for uncreated exponents
-        empty_entry = {
-            'spelling': [],
-            'sound': [],
-            'change': []
-        }
-
         # generate grammatical pieces for before, inside, after
-        pre_word = self.phonology.build_word(
-            length=length,
-            spell_after_change=spell_after_change
-        ) if pre else empty_entry
-
-        mid_word = self.phonology.build_word(
-            length=length,
-            spell_after_change=spell_after_change
-        ) if mid else empty_entry
-
-        post_word = self.phonology.build_word(
-            length=length,
-            spell_after_change=spell_after_change
-        ) if post else empty_entry
+        length = self.decide_length(length)
+        pieces = {
+            'pre': pre,
+            'mid': mid,
+            'post': post,
+        }
+        pieces = {
+            k: self.phonology.build_word(length)['sound']
+            for k, v in pieces.items() if v
+        }
 
         # create the exponent
         exponent_id = self.grammar.exponents.add(
-            pre=pre_word['sound'],
-            mid=mid_word['sound'],
-            post=post_word['sound'],
+            pre=pieces.get('pre'),
+            mid=pieces.get('mid'),
+            post=pieces.get('post'),
             properties=properties,
             bound=bound,
             pos=word_class
@@ -197,13 +185,8 @@ class Language:
             print(f"Language generate failed - unable to create grammatical exponent")
             return
         
-        # build stored definition
-        #formatted_definition = self.grammar.autodefine(exponent_id)
-
-        # TODO: only store base words in vocabulary
-        #   - handle the rest in exponents, summary
-        
-        # store and return a grammatical word entry
+        # return a grammatical exponent summary
+        # NOTE: only base words stored in vocabulary; exponents can be summarized
         return self.summary.summarize_exponent(exponent_id)
 
     def generate(self, length=None, definition="", spell_after_change=True, midpoint=None, pre=False, mid=False, post=False, bound=True, properties=None, word_class=None):
@@ -400,13 +383,3 @@ class Language:
     #   - for grammar rely on Summary instead
     #   - should results of sound changes really be stored? or refs to the rules?
     #   - should separate spellings be stored for changes? or flag for spelling before/after change?
-    def store(self, sound="", definition="", spelling="", change="", word_class=None, midpoint=None):
-        """Pass word entry components through to the dictionary for storage"""
-        return self.vocabulary.add(
-            sound=sound,
-            spelling=spelling,
-            change=change,
-            definition=definition,
-            midpoint=midpoint,
-            pos=word_class
-        )
