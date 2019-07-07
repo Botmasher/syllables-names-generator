@@ -244,6 +244,7 @@ class LanguageWords(LanguageFixture):
             word_class="noun",
             properties="infix1"
         )
+        # TODO: have midpoint count num input sylls not resulting sounds
         base = self.language.generate(2, midpoint=1)
         base_entry = self.language.vocabulary.lookup(*base)       
         unit = self.language.attach(
@@ -251,6 +252,7 @@ class LanguageWords(LanguageFixture):
             properties="infix1",
             word_classes="noun"
         )
+        # build word with infix for comparison
         expected_unit = base_entry['sound'][:2] + affix['sound'] + base_entry['sound'][2:]
         self.assertEqual(
             "".join(unit['sound']),

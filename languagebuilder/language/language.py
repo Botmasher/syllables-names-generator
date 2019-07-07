@@ -144,6 +144,14 @@ class Language:
         if word_class and not self.grammar.word_classes.get(word_class):
             print(f"Language generate failed - invalid word class {word_class}")
             return
+        
+        # set target infix break in base word
+        # NOTE: read input as syllables count, change to sound count
+        #
+        # TODO: count number of syllables from left and
+        if midpoint:
+            midpoint = 0 if midpoint > length else midpoint
+
         # store created word or word piece and return lookup info
         return self.vocabulary.add(
             sound=word['sound'],
@@ -325,27 +333,28 @@ class Language:
         # - or produce a table of all possible forms
         # - store the unit in the corpus
         if lookup and not self.vocabulary.is_word(base):
-            print(f"Language attach failed - unrecognized base word {base}")
-            return
+            raise KeyError(f"Language attach failed - vocabulary does not have base word {base}")
 
-        # TODO: store word classes in dictionary
-        
         # locate headword entry for base
         if lookup:
             base_entry = self.vocabulary.lookup(headword=base, entry_index=entry_index)
             base_sounds = base_entry['sound']
             base_definition = base_entry['definition']
+            midpoint = base_entry['midpoint']
         # use given one-off base
         # TODO: consider definitions
         else:
             base_sounds = list(base)
             base_definition = "(undefined)"
+            midpoint = 0
 
         # build grammatical unit with underlying sounds
         unit_sounds = self.grammar.build_unit(
             base_sounds,
             properties=properties,
-            word_classes=word_classes
+            word_classes=word_classes,
+            spacing=self.spacing_symbol,
+            midpoint=midpoint
         )
         # compute changed sounds
         unit_change = self.phonology.apply_rules(unit_sounds)

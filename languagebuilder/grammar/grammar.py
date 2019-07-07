@@ -483,14 +483,15 @@ class Grammar:
         # map of attachment types to flat lists of sound symbols
         # keep word pieces accounting for possible positions and spacing
         exponented_word_map = {
-            attachment: deque()
+            attachment: []
             for attachment in attachment_sequence
         }
         # add all base word symbols to word pieces
+        midpoint = midpoint if midpoint is not None else 0
         base_0 = base[:midpoint]
         base_1 = base[midpoint:]
-        [exponented_word_map['base_0'].append(base_sound) for base_sound in base_0]
-        [exponented_word_map['base_1'].append(base_sound) for base_sound in base_1]
+        [exponented_word_map['base_0'].append(sound) for sound in base_0]
+        [exponented_word_map['base_1'].append(sound) for sound in base_1]
         
         # rearrange exponents using morphosyntax ordering
         if reorder:
@@ -559,7 +560,7 @@ class Grammar:
                 if position == 'pre':
                     exponented_word_map[attachment_key].append(spacing)
 
-        # flattend word piece map sequences and remove empty strings
+        # flatten attachment sequences and remove empty strings
         for piece_name in exponented_word_map:
             flat_list.flatten(exponented_word_map[piece_name])
             exponented_word_map[piece_name] = list(filter(
@@ -579,7 +580,7 @@ class Grammar:
             return "".join(exponented_word)
         return list(exponented_word)
     
-    def attach_exponent(self, base, exponent_id=None, as_string=False):
+    def attach_exponent(self, base, exponent_id=None, midpoint=0, spacing=" ", as_string=False):
         """Attach one grammatical exponent around a root word"""
         # check for a good stem and an exponent to attach to it
         if type(base) is not str:
@@ -593,15 +594,17 @@ class Grammar:
         exponent = self.exponents.get(exponent_id)
         pre = exponent['pre']
         post = exponent['post']
+        mid = exponent['mid']
+        base_0 = base[:midpoint]
+        base_1 = base[midpoint:]
 
         # include spaces around the root for non-affixes
-        spacing = " " if not exponent['bound'] else ""
+        spacing = spacing if not exponent['bound'] else ""
 
         # sequentially collect exponented material around root including spacing
-        exponented_word = [pre, spacing, base, spacing, post]
+        exponented_word = [pre, spacing, base_0, mid, base_1, spacing, post]
 
         # return the word plus exponent either as string or list
         if as_string:
             return "".join(exponented_word)
-        else:
-            return exponented_word
+        return exponented_word
