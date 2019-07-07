@@ -471,10 +471,11 @@ class Grammar:
 
         # exponent attachment types in in sequential order
         attachment_sequence = (
-            'infix',
             'preposition',
             'prefix',
-            'base',
+            'base_0',
+            'infix',
+            'base_1',
             'postfix',
             'postposition'
         )
@@ -486,7 +487,10 @@ class Grammar:
             for attachment in attachment_sequence
         }
         # add all base word symbols to word pieces
-        [exponented_word_map['base'].append(base_sound) for base_sound in base]
+        base_0 = base[:midpoint]
+        base_1 = base[midpoint:]
+        [exponented_word_map['base_0'].append(base_sound) for base_sound in base_0]
+        [exponented_word_map['base_1'].append(base_sound) for base_sound in base_1]
         
         # rearrange exponents using morphosyntax ordering
         if reorder:
