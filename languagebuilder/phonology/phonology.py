@@ -355,8 +355,20 @@ class Phonology:
         return new_ipa_sequence
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True, as_string=False):
-        """Form a word following the defined inventory and syllable structure"""
+    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True, as_string=False, syllable_event=None):
+        """Form a word following the defined inventory and syllable structure.
+        Run optional syllable event on each successful syllable built.
+        
+        args:
+            length (int): number of syllables in the built word
+            apply_rules (bool): whether to apply sound change rules to the word
+            spell_after_change (bool): whether to base the spelling on the changed sounds
+            order_rules (bool): apply sound change rules in order or randomly
+            as_string (bool): return the word as a string instead of a list of ipa symbols
+            syllable_event (func): callback to run on each successful syllable built
+        return:
+            sequence of characters representing a built word following the phonology
+        """
         # form a list of possible syllables to choose from
         syllables = self.syllables.get()
         if not syllables:
@@ -378,6 +390,7 @@ class Phonology:
 
         # TODO: choose ipa by frequency (commonness) using Phoneme 'weight'
         for syllable_structure in syllable_structures:
+            built_syllable = []
             for feature_set in syllable_structure:
                 # find all inventory ipa that have these features
                 symbols = self.phonetics.get_ipa(feature_set, filter_phonemes=self.inventory())
@@ -390,7 +403,11 @@ class Phonology:
                 if symbols:
                     # choose from ipa symbols that matched subset of features
                     symbol = random.choice(symbols)
-                    word_ipa.append(symbol)
+                    # storage
+                    word_ipa.append(symbol)         # for word output
+                    built_syllable.append(symbol)   # for syllable-by-syllable callback
+            # send back 
+            syllable_event and syllable_event(built_syllable)
 
         # TODO: affixation before sound changes
         #   - have Language method for building and applying sound change atop units

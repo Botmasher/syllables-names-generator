@@ -252,8 +252,15 @@ class LanguageWords(LanguageFixture):
             properties="infix1",
             word_classes="noun"
         )
+        # strip affix of surrounding infix indicators
+        affix_symbol = "-" 
+        affix_start = affix['sound'][:len(affix_symbol)]
+        affix_end = affix['sound'][-len(affix_symbol):]
+        affix_sounds = affix['sound']
+        affix_sounds = affix_sounds[len(affix_symbol):] if affix_symbol == affix_start else affix_sounds
+        affix_sounds = affix_sounds[:len(affix_symbol)] if affix_symbol == affix_end else affix_sounds
         # build word with infix for comparison
-        expected_unit = base_entry['sound'][:2] + affix['sound'] + base_entry['sound'][2:]
+        expected_unit = base_entry['sound'][:2] + affix_sounds + base_entry['sound'][2:]
         self.assertEqual(
             "".join(unit['sound']),
             "".join(expected_unit),

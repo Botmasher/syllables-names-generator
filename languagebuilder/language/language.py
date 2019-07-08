@@ -135,10 +135,18 @@ class Language:
         """Generate a base word in the language and store it in the vocabulary,
         returning the headword lookup pair for its vocabulary entry."""
         length = self.decide_length(length)
+        
+        midpoint_countup = 0
+        def count_midpoint(_generated_syllable, syllable_counter, midpoint):
+            if syllable_counter < midpoint:
+                syllable_counter += 1
+            return syllable_counter
+        
         # generate a base word entry
         word = self.phonology.build_word(
             length=length,
-            spell_after_change=spell_after_change
+            spell_after_change=spell_after_change,
+            syllable_event=lambda x: count_midpoint(x, midpoint_countup, midpoint) if midpoint else None
         )
         # check supplied part of speech
         if word_class and not self.grammar.word_classes.get(word_class):
@@ -148,9 +156,9 @@ class Language:
         # set target infix break in base word
         # NOTE: read input as syllables count, change to sound count
         #
-        # TODO: count number of syllables from left and
+        # TODO: count number of syllables from left and assign to midpoint
         if midpoint:
-            midpoint = 0 if midpoint > length else midpoint
+            midpoint = 0 if midpoint > length else midpoint_countup
 
         # store created word or word piece and return lookup info
         return self.vocabulary.add(
