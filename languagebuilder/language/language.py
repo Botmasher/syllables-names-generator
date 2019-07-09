@@ -131,46 +131,32 @@ class Language:
             return
         return length
 
+    # TODO: adjust midpoint for infixes like fi-n-dere
     def create_base(self, length=None, definition="", spell_after_change=True, midpoint=None, word_class=None):
         """Generate a base word in the language and store it in the vocabulary,
         returning the headword lookup pair for its vocabulary entry."""
         length = self.decide_length(length)
         
-        def count_to_midpoint(midpoint_distance, syllable_count=0, midpoint_characters=0):
-            def count_syllable_characters(syllable=""):
-                if syllable_count < midpoint_distance:
-                    midpoint_characters += len(syllable)
-                syllable_count += 1
-                return midpoint_characters
-            return count_syllable_characters
-
-        syllable_event = count_to_midpoint(midpoint) if midpoint else None
-        
         # generate a base word entry
         word = self.phonology.build_word(
             length=length,
             spell_after_change=spell_after_change,
-            syllable_event=syllable_event
+            # build_word calculates target infix break in base word
+            # NOTE: reads input as syllables count, changes to sound count
+            midpoint=midpoint
         )
         # check supplied part of speech
         if word_class and not self.grammar.word_classes.get(word_class):
             print(f"Language generate failed - invalid word class {word_class}")
             return
         
-        # set target infix break in base word
-        # NOTE: read input as syllables count, change to sound count
-        #
-        # TODO: count number of syllables from left and assign to midpoint
-        if midpoint:
-            midpoint = 0 if midpoint > length else syllable_event([])
-
         # store created word or word piece and return lookup info
         return self.vocabulary.add(
             sound=word['sound'],
             change=word['change'],
             spelling=word['spelling'],
             definition=definition.strip(),
-            midpoint=midpoint,
+            midpoint=word['midpoint'],
             pos=word_class
         )
 

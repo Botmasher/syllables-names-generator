@@ -355,7 +355,7 @@ class Phonology:
         return new_ipa_sequence
 
     # TODO add affixes, apply rules and store word letters and symbols
-    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True, as_string=False, syllable_event=None):
+    def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True, as_string=False, midpoint=None):
         """Form a word following the defined inventory and syllable structure.
         Run optional syllable event on each successful syllable built.
         
@@ -365,9 +365,13 @@ class Phonology:
             spell_after_change (bool): whether to base the spelling on the changed sounds
             order_rules (bool): apply sound change rules in order or randomly
             as_string (bool): return the word as a string instead of a list of ipa symbols
-            syllable_event (func): callback to run on each successful syllable built
+            midpoint (int): number of syllables to the left of word split point
         return:
-            sequence of characters representing a built word following the phonology
+            map entry representing a built word following the phonology. map attributes:
+            'sound' (list): string list containing the basic sounds in the word
+            'change' (list): string list containing sounds after sound changes applied
+            'spelling' (list): string list containing spelling symbols derived from sounds
+            'midpoint' (int): the split/infix point within the sound symbols
         """
         # form a list of possible syllables to choose from
         syllables = self.syllables.get()
@@ -388,6 +392,10 @@ class Phonology:
         # TODO store same-length lists of letters and ipa in dictionary instead of strings
         word_ipa = []
 
+        if midpoint:
+            syllable_count = 0
+            midpoint_sound_count = 0
+
         # TODO: choose ipa by frequency (commonness) using Phoneme 'weight'
         for syllable_structure in syllable_structures:
             built_syllable = []
@@ -406,8 +414,11 @@ class Phonology:
                     # storage
                     word_ipa.append(symbol)         # for word output
                     built_syllable.append(symbol)   # for syllable-by-syllable callback
-            # send back 
-            syllable_event and syllable_event(built_syllable)
+            # count up the number of sounds to the left of the midpoint
+            if midpoint:
+                if syllable_count < midpoint:
+                    midpoint_sound_count += len(built_syllable) 
+                syllable_count += 1
 
         # TODO: affixation before sound changes
         #   - have Language method for building and applying sound change atop units
@@ -428,7 +439,8 @@ class Phonology:
         word_entry = {
             'spelling': word_spelling,
             'sound': word_ipa,
-            'change': word_changed
+            'change': word_changed,
+            'midpoint': midpoint_sound_count if midpoint else None
         }
 
         # optionally turn lists of sound symbols into strings
