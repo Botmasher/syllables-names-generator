@@ -136,17 +136,21 @@ class Language:
         returning the headword lookup pair for its vocabulary entry."""
         length = self.decide_length(length)
         
-        midpoint_countup = 0
-        def count_midpoint(_generated_syllable, syllable_counter, midpoint):
-            if syllable_counter < midpoint:
-                syllable_counter += 1
-            return syllable_counter
+        def count_to_midpoint(midpoint_distance, syllable_count=0, midpoint_characters=0):
+            def count_syllable_characters(syllable=""):
+                if syllable_count < midpoint_distance:
+                    midpoint_characters += len(syllable)
+                syllable_count += 1
+                return midpoint_characters
+            return count_syllable_characters
+
+        syllable_event = count_to_midpoint(midpoint) if midpoint else None
         
         # generate a base word entry
         word = self.phonology.build_word(
             length=length,
             spell_after_change=spell_after_change,
-            syllable_event=lambda x: count_midpoint(x, midpoint_countup, midpoint) if midpoint else None
+            syllable_event=syllable_event
         )
         # check supplied part of speech
         if word_class and not self.grammar.word_classes.get(word_class):
@@ -158,7 +162,7 @@ class Language:
         #
         # TODO: count number of syllables from left and assign to midpoint
         if midpoint:
-            midpoint = 0 if midpoint > length else midpoint_countup
+            midpoint = 0 if midpoint > length else syllable_event([])
 
         # store created word or word piece and return lookup info
         return self.vocabulary.add(
