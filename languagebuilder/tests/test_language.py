@@ -253,7 +253,13 @@ class LanguageWords(LanguageFixture):
             word_classes="noun"
         )
         # build word with infix for comparison
-        expected_unit = base_entry['sound'][:2] + affix['sound'] + base_entry['sound'][2:]
+        affix_symbol = "-"
+        affix_sound = affix['sound']
+        if affix_sound[0] == affix_symbol:
+            affix_sound = affix_sound[1:]
+        if affix_sound[-1] == affix_symbol:
+            affix_sound = affix_sound[:-1]
+        expected_unit = base_entry['sound'][:2] + affix_sound + base_entry['sound'][2:]
         self.assertEqual(
             "".join(unit['sound']),
             "".join(expected_unit),

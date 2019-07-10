@@ -292,7 +292,7 @@ class Phonology:
             rule_tracker.track(word_index)
 
             # store completed rule tracks and avoid mutating dict mid iteration
-            tracks = rule_tracker.get()
+            #tracks = rule_tracker.get()
 
             # Tracks Loop: do any tracked applications ("tracks") continue to match?
             # - each track is an ongoing attempt to match the rule
@@ -354,7 +354,6 @@ class Phonology:
         # return the changed sequence fed through all rules
         return new_ipa_sequence
 
-    # TODO add affixes, apply rules and store word letters and symbols
     def build_word(self, length=1, apply_rules=True, spell_after_change=False, order_rules=True, as_string=False, midpoint=None):
         """Form a word following the defined inventory and syllable structure.
         Run optional syllable event on each successful syllable built.
@@ -385,13 +384,12 @@ class Phonology:
             for i in range(length)
         ]
 
-        print("Choosing from syllable structures: ")
-        print(syllable_structures)
+        print(f"Choosing from syllable structures:\n{syllable_structures}")
 
         # store sound (phonemes) forms of words being built
-        # TODO store same-length lists of letters and ipa in dictionary instead of strings
         word_ipa = []
 
+        # prepare to count number of sounds before midpoint syllable
         if midpoint:
             syllable_count = 0
             midpoint_sound_count = 0
@@ -423,16 +421,12 @@ class Phonology:
         # TODO: affixation before sound changes
         #   - have Language method for building and applying sound change atop units
 
-        # original word sounds chosen
-        #word_ipa = word_ipa
-
         # apply sound changes to built word
         word_changed = self.apply_rules(word_ipa) if apply_rules else word_ipa
 
         #raise ValueError(f"oh no it's {word_ipa}, which changed into {word_changed}")
 
         # respell word either before or following sound changes
-        # NOTE: expect word_changed and word_ipa have same elements count!         
         word_spelling = self.spell(word_changed, word_ipa) if spell_after_change else self.spell(word_ipa)
         
         # send back phones, sound change result and spelling result
@@ -444,17 +438,16 @@ class Phonology:
         }
 
         # optionally turn lists of sound symbols into strings
-        # NOTE: only for custom, manual, readable output; language and
-        # grammar methods deal with lists of strings!
+        # NOTE: intended for custom output; language methods expect lists of strings!
         if as_string:
-            return {k: "".join(v) for k,v in word_entry.items()}
+            return {
+                k: "".join(v) if isinstance(v, list) else v
+                for k, v in word_entry.items()
+            }
 
         return word_entry
 
     # TODO: handle spelling rules and environments
-    # TODO: track down errors due to fallback_phonemes[i] out of range
-    #       - changed phonemes is string like "iðixtsu"
-    #       - fallback_phonemes is list like ['i', 't', 'i', 'x', 'ts', 'u']
     def spell(self, phonemes, fallback_phonemes=None):
         """Transform a list of sounds into a list of letters (including multigraphs)
         representing a spelled word. Use optional fallback list in case changed
