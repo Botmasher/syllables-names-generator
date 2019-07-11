@@ -246,7 +246,7 @@ class LanguageWords(LanguageFixture):
         )
         # TODO: have midpoint count num input sylls not resulting sounds
         base = self.language.generate(2, midpoint=1)
-        base_entry = self.language.vocabulary.lookup(*base)       
+        base_entry = self.language.vocabulary.lookup(*base)  
         unit = self.language.attach(
             *base,
             properties="infix1",
@@ -254,16 +254,22 @@ class LanguageWords(LanguageFixture):
         )
         # build word with infix for comparison
         affix_symbol = "-"
-        affix_sound = affix['sound']
-        if affix_sound[0] == affix_symbol:
-            affix_sound = affix_sound[1:]
-        if affix_sound[-1] == affix_symbol:
-            affix_sound = affix_sound[:-1]
-        expected_unit = base_entry['sound'][:2] + affix_sound + base_entry['sound'][2:]
+        expected_unit = base_entry['sound'][:2] + affix['sound'] + base_entry['sound'][2:]
         self.assertEqual(
-            "".join(unit['sound']),
-            "".join(expected_unit),
+            "".join([sound for sound in unit['sound'] if sound != affix_symbol]),
+            "".join([sound for sound in expected_unit if sound != affix_symbol]),
             "failed to generate and apply a grammatical infix inside of a generated word"
+        )
+
+    def test_change_midpoint(self):
+        base = self.language.generate(3, midpoint=2)
+        base_entry = self.language.vocabulary.lookup(*base)
+        self.language.set_midpoint(*base, midpoint=1)
+        modified_base_entry = self.language.vocabulary.lookup(*base)
+        self.assertNotEqual(
+            base_entry['midpoint'],
+            modified_base_entry['midpoint'],
+            "failed to update the infix midpoint of a generated vocabulary item"
         )
 
     def test_build_unit(self):

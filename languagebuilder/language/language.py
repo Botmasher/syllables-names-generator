@@ -160,6 +160,13 @@ class Language:
             pos=word_class
         )
 
+    def set_midpoint(self, headword, entry_index, midpoint=0):
+        """Change the split/infix midpoint for an existing vocabulary word"""
+        vocabulary_entry = self.vocabulary.lookup(headword, entry_index)
+        vocabulary_entry['midpoint'] = midpoint
+        self.vocabulary.vocabulary[headword][entry_index] = vocabulary_entry
+        return vocabulary_entry
+
     # TODO: send built grammar back up here to cache in a history
     def create_grammar(self, length=None, definition="", pre=False, mid=False, post=False, bound=True, properties=None, word_class=None):
         """Generate a grammatical exponent, returning the grammatical summary of the
