@@ -211,14 +211,29 @@ class Language:
         else:
             return self.create_base(length, definition, spell_after_change, midpoint, word_class)
 
-    def add_grammar(self, entry_headword, entry_index, pre=False, mid=False, post=False, bound=False, properties="", word_classes=""):
-        """Add grammatical data to an existing stored entry"""
-        if not self.vocabulary.lookup(entry_headword, entry_index):
-            print(f"Language add_grammar could not grammaticalize invalid entry {entry_headword}({entry_index})")
+    # TODO: link grammaticalized vocabulary items to associated grammatical exponent
+    def grammaticalize(self, entry_headword, entry_index, pre=False, mid=False, post=False, bound=False, properties="", word_classes=""):
+        """Grammaticalize a vocabulary item and add it to the language's summary"""
+        # check for valid word 
+        vocabulary_item = self.vocabulary.lookup(entry_headword, entry_index)
+        if not vocabulary_item:
+            print(f"Language could not grammaticalize invalid entry {entry_headword}({entry_index})")
             return
+        
+        # check for valid grammar
         vetted_properties = self.grammar.parse_properties(properties)
         vetted_word_classes = self.grammar.parse_word_classes(word_classes)
-        
+        # expect only one of pre, mid, post
+        if pre or mid or post:
+            print(f"Language could not grammaticalize {entry_headword} - expected one pre, mid, post flag to be true")
+            return
+
+        # TODO: filter for a single exponent positional value
+        #   - check for pre or mid or post
+        #   - set the vocabulary['sound'] to that pre,mid,post
+        #   - add as an exponent to the grammar
+        #   - NOTE: what happens if collides with existing exponent?
+
         exponent_id = self.grammar.exponents.add(
             pre=pre,
             mid=mid,
@@ -228,17 +243,16 @@ class Language:
             pos=vetted_word_classes
         )
 
+        # create and store grammatical definition
+        # TODO: check if already done in summary
+        definition = self.grammar.autodefine(exponent_id)
+
         # NOTE: grammar treating as word with pos or as exponent
         #   - non-exponents can have a word class
         #   - exponents can be restricted to providing to certain word classs
-        # TODO: abstract grammar definition creation from .generate 
-        self.vocabulary.update(
-            entry_headword,
-            entry_index,
-            definition=self.grammar.autodefine(exponent_id),
-            exponent=exponent_id
-        )
-        return self.vocabulary.lookup(entry_headword, entry_index)
+        
+        # TODO: fix reading a correct summary of the exponent
+        return self.summary.summarize_exponent(exponent_id)
 
     # TODO: create sentences checking grammar 
     def create_sentence(self, name, structure):

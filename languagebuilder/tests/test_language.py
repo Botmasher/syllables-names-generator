@@ -261,15 +261,37 @@ class LanguageWords(LanguageFixture):
             "failed to generate and apply a grammatical infix inside of a generated word"
         )
 
-    def test_change_midpoint(self):
+    def test_initialize_midpoint(self):
+        base = self.language.generate(5, midpoint=2)
+        midpoint = self.language.vocabulary.lookup(*base).get('midpoint')
+        # NOTE: expect class phonology to remain CV so 2 syllables -> 4 sounds
+        self.assertEqual(
+            midpoint,
+            4,
+            f"failed to correctly set initial infix midpoint of a generated vocabulary item"
+        )
+
+    def test_change_midpoint_int(self):
         base = self.language.generate(3, midpoint=2)
-        base_entry = self.language.vocabulary.lookup(*base)
         self.language.set_midpoint(*base, midpoint=1)
-        modified_base_entry = self.language.vocabulary.lookup(*base)
-        self.assertNotEqual(
+        base_entry = self.language.vocabulary.lookup(*base)
+        self.assertEqual(
             base_entry['midpoint'],
-            modified_base_entry['midpoint'],
+            1,
             "failed to update the infix midpoint of a generated vocabulary item"
+        )
+
+    def test_change_midpoint_syllable_to_sound(self):
+        base = self.language.generate(3, midpoint=2)
+        initial_midpoint = self.language.vocabulary.lookup(*base)['midpoint']
+        # letters midpoint should not match initialized syllable midpoint given phonology
+        # so this makes a change to the stored value 
+        self.language.set_midpoint(*base, midpoint=2)
+        modified_midpoint = self.language.vocabulary.lookup(*base)['midpoint']
+        self.assertNotEqual(
+            initial_midpoint,
+            modified_midpoint,
+            f"confused initial syllable midpoint with modified sound midpoint in vocabulary"
         )
 
     def test_build_unit(self):
