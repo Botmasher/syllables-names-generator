@@ -224,35 +224,26 @@ class Language:
         vetted_properties = self.grammar.parse_properties(properties)
         vetted_word_classes = self.grammar.parse_word_classes(word_classes)
         # expect only one of pre, mid, post
-        if pre or mid or post:
-            print(f"Language could not grammaticalize {entry_headword} - expected one pre, mid, post flag to be true")
+        if (pre, mid, post).count(True) != 1:
+            print(f"Language could not grammaticalize {entry_headword} - indicate only one of pre, mid, post")
             return
 
-        # TODO: filter for a single exponent positional value
-        #   - check for pre or mid or post
-        #   - set the vocabulary['sound'] to that pre,mid,post
-        #   - add as an exponent to the grammar
-        #   - NOTE: what happens if collides with existing exponent?
+        # determine a single exponent positional value to add
+        # NOTE: what happens if collides with existing exponent?
+        vocabulary_sounds = vocabulary_item['sound']
+        added_pre = vocabulary_sounds if pre else None
+        added_mid = vocabulary_sounds if mid else None
+        added_post = vocabulary_sounds if post else None
 
-        exponent_id = self.grammar.exponents.add(
-            pre=pre,
-            mid=mid,
-            post=post,
+        # add element to the grammar and send back its id
+        return self.grammar.exponents.add(
+            pre=added_pre,
+            mid=added_mid,
+            post=added_post,
             bound=bound,
             properties=vetted_properties,
             pos=vetted_word_classes
         )
-
-        # create and store grammatical definition
-        # TODO: check if already done in summary
-        definition = self.grammar.autodefine(exponent_id)
-
-        # NOTE: grammar treating as word with pos or as exponent
-        #   - non-exponents can have a word class
-        #   - exponents can be restricted to providing to certain word classs
-        
-        # TODO: fix reading a correct summary of the exponent
-        return self.summary.summarize_exponent(exponent_id)
 
     # TODO: create sentences checking grammar 
     def create_sentence(self, name, structure):

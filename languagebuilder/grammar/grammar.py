@@ -52,6 +52,10 @@ from .sentences import Sentences
 # - properties are category:grammemes pairs
 # - word classes help filter or limit the application of exponents to built words
 
+# NOTE: Grammar treats bases as word with pos; exponents as providing properties
+# - non-exponents can have a word class
+# - exponents can be restricted to providing to certain word class
+
 # TODO: modularize grammar.exponents, grammar.properties, grammar.word_classes
 
 # TODO: handle non-pre/post kinds of exponents like apophony

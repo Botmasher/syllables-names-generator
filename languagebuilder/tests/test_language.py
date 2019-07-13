@@ -438,6 +438,23 @@ class LanguageStorage(LanguageFixture):
             "failed to generate and store a base word in the language"
         )
 
+    def test_grammaticalize_vocabulary_item(self):
+        base = self.language.generate(length=3, word_class="noun")
+        base_sound = self.language.vocabulary.lookup(*base)['sound']
+        exponent_id = self.language.grammaticalize(
+            *base,
+            post=True,
+            bound=True,
+            properties="marked",
+            word_classes="noun"
+        )
+        exponent_sound = self.language.grammar.exponents.get(exponent_id)['post']
+        self.assertEqual(
+            base_sound,
+            exponent_sound,
+            "failed to turn a vocabulary entry into a grammatical element"
+        )
+
 class LanguageSoundChanges(LanguageFixture):
     @classmethod
     def setUpClass(this_class):
