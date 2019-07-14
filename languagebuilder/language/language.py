@@ -335,7 +335,7 @@ class Language:
             word_classes=word_class
         )
 
-    def attach(self, base="", entry_index=0, properties=None, word_classes=None, lookup=True, spell_after_change=True):
+    def attach(self, base="", entry_index=0, properties=None, word_classes=None, lookup=True, spell_after_change=True, blocked_by_spacing=True):
         """Attach grammatical pieces around a base headword. Look up the base in the
         language's dictionary and use added exponents from the language's grammar."""
         # - iterate through grammar for that part of speech
@@ -358,17 +358,21 @@ class Language:
             base_definition = "(undefined)"
             midpoint = 0
 
+        # prepare grammatical properties and parts of speech
+        vetted_properties = self.grammar.vet_build_word_properties(properties)
+        vetted_word_classes = self.grammar.vet_build_word_classes(word_classes)
+        
         # build grammatical unit with underlying sounds
         unit_sounds = self.grammar.build_unit(
             base_sounds,
-            properties=properties,
-            word_classes=word_classes,
+            properties=vetted_properties,
+            word_classes=vetted_word_classes,
             spacing=self.spacing_symbol,
             midpoint=midpoint
         )
         # compute changed sounds
-        unit_change = self.phonology.apply_rules(unit_sounds)
-        
+        unit_change = self.change_sounds(unit_sounds, blocked_by_spacing=blocked_by_spacing, spacing=self.spacing_symbol)
+
         # obtain and store spelling
         if spell_after_change:
             unit_spelling = self.phonology.spell(unit_change, unit_sounds)
@@ -379,20 +383,21 @@ class Language:
         if not unit_spelling:
             raise ValueError(f"Language attach failed to spell unit - missing letters for built sounds {unit_sounds}")
 
+        # determine the exponents that provided these properties for these pos
         # TODO: get out the exponents used to build the unit
-        #       - this way corpus can store then and their properties can be read later
-        #       - alternatively store semantics with base definition, properties, word_classes
+        # - this way corpus can store then and their properties can be read later
+        # - alternatively store semantics with base definition, properties, word_classes
         exponents = []
 
         # format and store entry for built grammatical unit
-        # TODO: vet properties and pos
-        # TODO: sound changes across boundaries (units spacing character " ")
         return self.corpus.add(
             sound=unit_sounds,
             change=unit_change,
             spelling=unit_spelling,
             definition=base_definition,
-            exponents=exponents
+            exponents=exponents,
+            properties=vetted_properties,
+            word_classes=vetted_word_classes
         )
     
     # TODO: generate and store examples in either dictionary or corpus
