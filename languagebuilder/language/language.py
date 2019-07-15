@@ -387,7 +387,7 @@ class Language:
         # TODO: get out the exponents used to build the unit
         # - this way corpus can store then and their properties can be read later
         # - alternatively store semantics with base definition, properties, word_classes
-        exponents = []
+        exponents = self.grammar.provide(vetted_properties, word_classes=word_classes)
 
         # format and store entry for built grammatical unit
         return self.corpus.add(

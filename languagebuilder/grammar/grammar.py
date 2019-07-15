@@ -306,33 +306,21 @@ class Grammar:
         # unexpected properties value given
         return
 
-    # the main public method for making use of data stored in the grammar
-    def build_unit(self, base, properties=None, word_classes=None, exact_pos=False, spacing=" ", midpoint=0, all_requested=False, all_or_none=False, as_string=False):
-        """Build up relevant morphosyntax around a base using the given grammatical terms.
-
-        Args:
-            base (list): Base word sounds to build around.
-            properties (list): All grammatical properties requested for the unit.
-            word_classes (list): All word classes this root belongs to.
-            exact_pos (bool): Use only exponents associated with matching word classes.
-            spacing (str): Symbol to use when surrounding with unbound exponents.
-            midpoint (int): Word index for positioning added mid/infix material.
-            all_requested (bool): Move forward only if all requested properties exist.
-            all_or_none (bool): Ensure all requested properties are provided.
-            as_string (bool): Return the built unit as a string instead of a list.
+    def provide(self, properties, word_classes=None, all_or_none=True, all_requested=True, exact_pos=True):
+        """List exponents that provide the requested properties optionally restricted
+        to the given word classes. Optimizes selection of exponents for full coverage
+        of all properties while limiting overlaps.
         
+        Args:
+            properties (dict, str): Map of grammatical properties (or parsable string).
+            word_classes (list): All word classes restricting provision.
+            exact_pos (bool): Use only exponents associated with matching word classes.
+            all_requested (bool): Ensure all input properties are vetted as requested properties.
+            all_or_none (bool): Ensure all requested properties are provided.
+            
         Returns:
-            A list of sound symbols representing the grammatically exponented base,
-            with or without spacing depending on exponent binding settings.
+            A list of exponent ids.
         """
-        # TODO: better docstring particularly for this method
-
-        # verify that a valid base word is supplied
-        base = list(base) if isinstance(base, str) else base
-        if not isinstance(base, list):
-            print(f"Grammar build_word failed - invalid base word {base}")
-            return
-
         # make usable word class set collecting valid and recognizable pos terms
         requested_word_classes = self.vet_build_word_classes(word_classes)
 
@@ -340,23 +328,11 @@ class Grammar:
         # TODO: enhance method to search for pos - (properties, word_classes != None)
         requested_properties = self.vet_build_word_properties(properties, all_requested=all_requested)
         
-        # dead end when did not turn up a good map of vetted properties
+        # dead end if bad map of vetted properties
         if not self.properties.is_properties_map(requested_properties):
-            print(f"Grammar build_word failed for {base} - invalid properties {requested_properties}")
+            print(f"Grammar failed to provide exponents - invalid properties {requested_properties}")
             return
-
-        # Below map-reduce exponents using vetted_properties and vetted_word_classes
-        # 1. Map traversal:
-        #   - use properties to find an exponent with matching category:grammemes
-        #   - use word_classes to filter for exponent includes/excludes
-        # 2. Reduce traversal:
-        #   - use resulting match set to find exponents providing the most properties
-        #   - ditch subproperties
-        # 3. Exponent word:
-        #   - attach mapped-reduced exponents to root
-
-        # 1. Map matching exponents
-
+        
         # collect exponents that provide at least one property
         matching_exponents = set()      # exponent ids set for exponents that have matching properties
 
@@ -368,6 +344,15 @@ class Grammar:
             for grammeme in requested_properties[category]
         }
 
+        # Map-reduce exponents using vetted properties and vetted word classes
+        # 1. Map traversal:
+        #   - use properties to find an exponent with matching category:grammemes
+        #   - use word_classes to filter for exponent includes/excludes
+        # 2. Reduce traversal:
+        #   - use resulting match set to find exponents providing the most properties
+        #   - ditch subproperties
+
+        # 1. Map matching exponents
         # find exponents that match one or more properties and word class includes/excludes
         for exponent_id, exponent_details in self.exponents.get_items():
             
@@ -444,13 +429,49 @@ class Grammar:
             # save the best match
             reduced_exponents.add(best_exponent_match)
 
-        # 3. Exponent word
+        return reduced_exponents
+
+    # the main public method for making use of data stored in the grammar
+    def build_unit(self, base, properties=None, word_classes=None, exact_pos=False, spacing=" ", midpoint=0, all_requested=False, all_or_none=False, as_string=False):
+        """Build up relevant morphosyntax around a base using the given grammatical terms.
+
+        Args:
+            base (list): Base word sounds to build around.
+            properties (dict): All grammatical properties requested for the unit.
+            word_classes (list): All word classes this root belongs to.
+            exact_pos (bool): Use only exponents associated with matching word classes.
+            spacing (str): Symbol to use when surrounding with unbound exponents.
+            midpoint (int): Word index for positioning added mid/infix material.
+            all_requested (bool): Move forward only if all requested properties exist.
+            all_or_none (bool): Ensure all requested properties are provided.
+            as_string (bool): Return the built unit as a string instead of a list.
+        
+        Returns:
+            A list of sound symbols representing the grammatically exponented base,
+            with or without spacing depending on exponent binding settings.
+        """
+        # verify that a valid base word is supplied
+        base = list(base) if isinstance(base, str) else base
+        if not isinstance(base, list):
+            print(f"Grammar build_word failed - invalid base word {base}")
+            return
+
+        # determine exponents to add
+        exponents = self.provide(
+            properties,
+            word_classes=word_classes,
+            all_or_none=all_or_none,
+            all_requested=all_requested,
+            exact_pos=exact_pos
+        )
+        if not exponents:
+            print(f"Grammar failed to build unit around base {base} - ")       
 
         # add exponents to build up the word
         # attach the best matches from the mapped and reduced exponents
         built_word = self.attach_exponents(
             base,
-            reduced_exponents,
+            exponents,
             midpoint=midpoint,
             spacing=spacing
         )
