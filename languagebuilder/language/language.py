@@ -335,7 +335,7 @@ class Language:
             word_classes=word_class
         )
 
-    def attach(self, base="", entry_index=0, properties=None, word_classes=None, lookup=True, spell_after_change=True, blocked_by_spacing=True):
+    def attach(self, base="", definition="", entry_index=0, properties=None, word_classes=None, lookup=True, spell_after_change=True, blocked_by_spacing=True):
         """Attach grammatical pieces around a base headword. Look up the base in the
         language's dictionary and use added exponents from the language's grammar."""
         # - iterate through grammar for that part of speech
@@ -389,16 +389,29 @@ class Language:
         # - alternatively store semantics with base definition, properties, word_classes
         exponents = self.grammar.provide(vetted_properties, word_classes=word_classes)
 
+        # TODO: refine generated definition
+        if not definition:
+            properties_string = ""
+            for category in vetted_properties:
+                for grammeme in vetted_properties[category]:
+                    properties_string += f" {grammeme},"
+                properties_string = properties_string[:-1]
+                properties_string += f"{category}"
+            unit_definition = f"{base_definition} ({properties_string})"
+        else:
+            unit_definition = definition
+
         # format and store entry for built grammatical unit
-        return self.corpus.add(
+        corpus_id = self.corpus.add(
             sound=unit_sounds,
             change=unit_change,
             spelling=unit_spelling,
-            definition=base_definition,
+            definition=unit_definition,
             exponents=exponents,
             properties=vetted_properties,
-            word_classes=vetted_word_classes
+            pos=vetted_word_classes
         )
+        return self.corpus.get(corpus_id)
     
     # TODO: generate and store examples in either dictionary or corpus
     # NOTE: use Paradigms
