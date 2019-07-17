@@ -9,6 +9,8 @@ import random
 
 # TODO: Accentuation, suprasegmentals
 
+# TODO: medial manipulation requiring replacement: același/aceeași, sing/sang, ...
+
 # TODO: consider also storing bound flag for bases
 
 # NOTE: throughout the code "ipa" (usu uncaps) denotes any stored phonetic symbols
@@ -384,9 +386,6 @@ class Language:
             raise ValueError(f"Language attach failed to spell unit - missing letters for built sounds {unit_sounds}")
 
         # determine the exponents that provided these properties for these pos
-        # TODO: get out the exponents used to build the unit
-        # - this way corpus can store then and their properties can be read later
-        # - alternatively store semantics with base definition, properties, word_classes
         exponents = self.grammar.provide(vetted_properties, word_classes=word_classes)
 
         # TODO: refine generated definition
