@@ -92,18 +92,19 @@ class Inventory:
             feature in new_features and self.ipa_by_feature[feature].add(symbol)
         return {symbol: self.get_features(symbol)}
 
-    def get_syllables(self):
-        """Read all syllables listed in the inventory"""
-        return list(self.syllables)
+    # NOTE: Syllables now handled separately
+    # def get_syllables(self):
+    #     """Read all syllables listed in the inventory"""
+    #     return list(self.syllables)
 
-    def add_syllable(self, syllable):
-        """Add a syllable structure to the inventory syllables collection"""
-        if type(syllable).__name__ == 'Syllable' and syllable not in self.syllables:
-            self.syllables.add(syllable)
-        return self.syllables
+    # def add_syllable(self, syllable):
+    #     """Add a syllable structure to the inventory syllables collection"""
+    #     if type(syllable).__name__ == 'Syllable' and syllable not in self.syllables:
+    #         self.syllables.add(syllable)
+    #     return self.syllables
 
-    def remove_syllable(self, syllable):
-        """Remove a syllable structure from the inventory syllables collection"""
-        if syllable in self.syllables:
-            self.syllables.remove(syllable)
-        return self.syllables
+    # def remove_syllable(self, syllable):
+    #     """Remove a syllable structure from the inventory syllables collection"""
+    #     if syllable in self.syllables:
+    #         self.syllables.remove(syllable)
+    #     return self.syllables
