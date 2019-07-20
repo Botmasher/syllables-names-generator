@@ -7,11 +7,13 @@ class Suprasegmentals:
     def __init__(self, phonology):
         # store phonology for checking syllable types
         self.phonology = phonology
-        self.syllabifications = {
+        self.marked_syllable = {
             # headword: {
             #   'syllables': [],    # list of syllable-long string lists
             #   'syllable':  0,     # target syllable containing marked sound
             #   'sound':     0      # target sound this mark applies to
+            #   'mark':      'id',  # pointer to the mark details
+            # }
         # NOTE: code for allowing multiple marks per sound, multiple marks per syllable
         }
         self.accents = {
@@ -28,12 +30,12 @@ class Suprasegmentals:
     # TODO: allow setting pattern like always high-pitch final syllable 
     def represent(self, headword, syllable_target=0, sound_target=0, is_syllabified=True):
         syllables = self.resyllabify(headword) if not is_syllabified else headword
-        self.syllabifications[headword] = {
+        self.marked_syllable[headword] = {
             'syllables': syllables,
             'target': syllable_target,
             'sound_target': sound_target,
         }
-        return self.syllabifications[headword]
+        return self.marked_syllable[headword]
 
     def shift_accent(self, sounds, syllables=0):
         return

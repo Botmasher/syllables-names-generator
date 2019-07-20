@@ -306,3 +306,40 @@ class PhonologySpelling(PhonologyFixture):
             ["cozozozo", "zozozozo"],  # changes result in ts,dz > dz | V_(V)
             "failed to generate a word with valid spelling"
         )
+
+class PhonologySuprasegmentals(PhonologyFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(PhonologySuprasegmentals, this_class).setUpClass()
+        this_class.phonetics.add("ts", ["consonant", "voiceless", "alveolar", "affricate"])
+        this_class.phonetics.add("o", ["vowel", "back", "mid", "rounded"])
+        this_class.phonology.phonemes.add("ts", ["c"])
+        this_class.phonology.phonemes.add("o", ["o"])
+        this_class.phonology.syllables.add("CV")
+        this_class.phonology.suprasegmentals.add("`", stress="primary", pitch=None)
+        
+    def test_mark_accent(self):
+        word = self.phonology.build_word(
+            length=3,
+            apply_rules=True,
+            spell_after_change=False
+        )
+        # NOTE: or store marking info in built word?
+        word = self.phonology.suprasegmentals.mark(word['sound'], 2, stress="primary")
+        self.assertEqual(
+            word,
+            "tsotsòtso",
+            "failed to mark a generated word with an accent"
+        )
+
+    def test_move_accent(self):
+        word = self.phonology.build_word(length=4, apply_rules=True)
+        # NOTE: mark name still needed to retrieve which mark to adjust
+        # TODO: how to represent word-wide pitch contours
+        self.phonology.suprasegmentals.mark(word['sound'], 3, stress="primary")
+        word = self.phonology.suprasegmentals.move(word['sound'], 4, stress="primary")
+        self.assertEqual(
+            word,
+            "tsotsotsòtso",
+            "failed to move a generated word's accent to a new syllable"
+        )

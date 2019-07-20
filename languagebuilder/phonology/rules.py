@@ -1,6 +1,7 @@
 import uuid
 
 # TODO: move single Rule methods and map/attrs here
+# find a rule based on source/target/environment
 
 class Rules():
     def __init__(self):
