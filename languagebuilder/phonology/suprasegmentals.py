@@ -6,11 +6,14 @@ from uuid import uuid4
 # sound's internal value (see Phonetics for those features).
 class Suprasegmentals:
     def __init__(self, phonology):
+        
         # store phonology for checking syllable types
         self.phonology = phonology
         self.marked_words = {
             # word_id: [mark_ids]
         }
+
+        # NOTE: code for allowing multiple marks per sound, multiple marks per syllable
         self.marks = {
             # mark_id: { data }     # see info below
             # headword: {
@@ -19,7 +22,6 @@ class Suprasegmentals:
             #   'sound':     0      # target sound this mark applies to
             #   'mark':      'id',  # pointer to the mark details
             # }
-        # NOTE: code for allowing multiple marks per sound, multiple marks per syllable
         }
         self.accents = {
             # ipa: orthography pairs
@@ -54,19 +56,54 @@ class Suprasegmentals:
     def get_mark(self, mark_id):
         return self.marks[mark_id]
 
-    def add_mark(self, headword, syllabified_word, target_syllable=0, target_sound=None):
-        # TODO: decide on headword structure
-        #   - matches vocabulary entry (word, entry_n)?
-        # TODO: allow targeted syllable without specific targeted sound
+    def is_syllabified(self, word):
+        """Check for a syllabified word containing a list of syllable lists each
+        containing sound strings"""
+        # is a list
+        if not isinstance(word, (tuple, list)):
+            return False
+        # is a list of syllable lists
+        for syllable in word:
+            if not isinstance(syllable, (tuple, list)):
+                return False
+            # is a sound string
+            for sound in syllable:
+                if not isinstance(sound, str) or not self.phonology.has_sound(sound):
+                    return False
+        return True
+
+    def add_mark(self, vocabulary_item, syllabified_word=None, symbol="", pitch=None, stress=None, target_syllable=0, target_sound=None, do_syllabify=False):
+        """Mark a single word on a specific syllable, optionally a specific sound
+        within that syllable"""
+        # expect headword structure to match vocabulary (word, index) pair
+        if not len(vocabulary_item) == 2 and isinstance(vocabulary_item[0], str) and isinstance(vocabulary_item[1], int):
+            print(f"Suprasegmentals failed to add mark - invalid vocabulary item {vocabulary_item}")
+            return
+
+        # allow targeted syllable without specific targeted sound
         if not isinstance(target_sound, int):
             target_sound = None
+
+        # ensure quality syllabification
+        if do_syllabify:
+            syllabified_word = self.resyllabify(vocabulary_item[0])
+        if not syllabified_word:
+            print(f"")
+            return
+
+        # TODO: combining symbol mapping
+        # TODO: vet characteristicts (symbol, pitch, stress)
+
         mark_id = f"mark-{uuid4()}"
         added_mark = {
+            'symbol': symbol,
+            'pitch': pitch,
+            'stress': stress,
             'syllable': target_syllable,
             'sound': target_sound
         }
         self.marks[mark_id] = added_mark
-        self.marked_words.setdefault(headword, {
+        self.marked_words.setdefault(vocabulary_item, {
             'syllabification': syllabified_word,
             'marks': set()
         })['marks'].add(mark_id)
