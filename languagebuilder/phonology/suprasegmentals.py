@@ -6,7 +6,12 @@ from uuid import uuid4
 # sound's internal value (see Phonetics for those features).
 class Suprasegmentals:
     def __init__(self, phonology):
-        
+        # map diacritical marks per letter to rendered letters 
+        self.diacritics = {
+            # mark: { symbol: modified_symbol, ... },
+            # ...
+        }
+
         # store phonology for checking syllable types
         self.phonology = phonology
         self.marked_words = {
@@ -72,7 +77,17 @@ class Suprasegmentals:
                     return False
         return True
 
-    def add_mark(self, vocabulary_item, syllabified_word=None, symbol="", pitch=None, stress=None, target_syllable=0, target_sound=None, do_syllabify=False):
+    def map_diacritic(self, diacritic, symbol, modified_symbol):
+        self.diacritics.setdefault(diacritic, {})
+        self.diacritics[diacritic][symbol] = modified_symbol
+        return self.diacritics[diacritic]
+    def unmap_diacritic(self, diacritic, symbol):
+        return self.diacritics[diacritic].pop(symbol, None)
+    def remove_diacritic(self, diacritic):
+        return self.diacritics.pop(diacritic, None)
+
+    # TODO: split marking word from adding mark
+    def add_mark(self, vocabulary_item, syllabified_word=None, symbol="", is_diacritic=True, pitch=None, stress=None, target_syllable=0, target_sound=None, do_syllabify=False):
         """Mark a single word on a specific syllable, optionally a specific sound
         within that syllable"""
         # expect headword structure to match vocabulary (word, index) pair
@@ -84,12 +99,17 @@ class Suprasegmentals:
         if not isinstance(target_sound, int):
             target_sound = None
 
-        # ensure quality syllabification
+        # make or check useful syllabification
         if do_syllabify:
             syllabified_word = self.resyllabify(vocabulary_item[0])
-        if not syllabified_word:
-            print(f"")
+        if not syllabified_word or not self.is_syllabified(syllabified_word):
+            print(f"Suprasegmentals failed to add mark - unrecognized syllabified word {syllabified_word}")
             return
+
+        if is_diacritic and not self.diacritics.get(symbol):
+            print(f"Supgrasegmentals failed to mark {vocabulary_item} - unrecognized diacritic {symbol}")
+            return
+        # TODO: otherwise place where with respect to each syllable - above? before?
 
         # TODO: combining symbol mapping
         # TODO: vet characteristicts (symbol, pitch, stress)
@@ -97,6 +117,7 @@ class Suprasegmentals:
         mark_id = f"mark-{uuid4()}"
         added_mark = {
             'symbol': symbol,
+            'diacritic': is_diacritic,
             'pitch': pitch,
             'stress': stress,
             'syllable': target_syllable,
@@ -113,6 +134,9 @@ class Suprasegmentals:
     def update_mark(self, mark_id):
         return
     def remove_mark(self, mark_id):
+        return
+
+    def render_marks(self, marked_word):
         return
 
     def move(self, word_id, mark_id, syllable_target):
