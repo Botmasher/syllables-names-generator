@@ -1,5 +1,6 @@
 from ..tools import flat_list
 from uuid import uuid4
+import collections
 
 # NOTE: what's called "suprasegmental" is actually meant to "mark" extra info around
 # a single sound that can be configured, toggled or changed independently of that
@@ -85,6 +86,28 @@ class Suprasegmentals:
         return self.diacritics[diacritic].pop(symbol, None)
     def remove_diacritic(self, diacritic):
         return self.diacritics.pop(diacritic, None)
+
+    def apply_marks(self, word_id):
+        word_details = self.marked_words.get(word_id)
+        if not word_details:
+            return
+        syllabification = word_details['syllabification'][:]
+        marked_syllables = {}
+        marks = word_details['marks']
+        for mark_id in marks:
+            mark = self.marks.get(mark_id)
+            if not mark:
+                continue
+            symbol = mark['symbol']
+            if not mark['sound']:
+                marked_syllables.setdefault(3, set()).add(symbol)
+            # add/alter character marks
+            modified_symbol = self.diacritics[symbol][syllabification[mark['syllable']][mark['sound']]]
+            syllabification[mark['syllable']][mark['sound']] = modified_symbol
+        # prepend syllable marks
+        for syllable_n, syllable_mark in collections.OrderedDict(marked_syllables).items():
+            syllabification[syllable_n] = [syllable_mark] + syllabification[syllable_n]
+        return syllabification
 
     # TODO: split marking word from adding mark
     def add_mark(self, vocabulary_item, syllabified_word=None, symbol="", is_diacritic=True, pitch=None, stress=None, target_syllable=0, target_sound=None, do_syllabify=False):
