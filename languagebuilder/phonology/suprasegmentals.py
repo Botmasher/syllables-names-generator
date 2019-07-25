@@ -8,10 +8,11 @@ import collections
 class Suprasegmentals:
     def __init__(self, phonology):
         # map diacritical marks per letter to rendered letters 
-        self.diacritics = {
-            # mark: { symbol: modified_symbol, ... },
+        self.diacritic_sounds = {
+            # mark: { symbol: { sound: "", spelling: "" }, ... },
             # ...
         }
+        self.diacritic_spellings = {}
 
         # store phonology for checking syllable types
         self.phonology = phonology
@@ -78,16 +79,21 @@ class Suprasegmentals:
                     return False
         return True
 
-    def map_diacritic(self, diacritic, symbol, modified_symbol):
-        self.diacritics.setdefault(diacritic, {})
-        self.diacritics[diacritic][symbol] = modified_symbol
-        return self.diacritics[diacritic]
-    def unmap_diacritic(self, diacritic, symbol):
-        return self.diacritics[diacritic].pop(symbol, None)
-    def remove_diacritic(self, diacritic):
-        return self.diacritics.pop(diacritic, None)
+    def map_diacritic(self, diacritic, symbol, modified_symbol, is_spelling=False):
+        diacritics = self.diacritic_spellings if is_spelling else self.diacritic_sounds
+        diacritics.setdefault(diacritic, {})
+        diacritics[diacritic][symbol] = modified_symbol
+        return diacritics[diacritic]
+    def unmap_diacritic(self, diacritic, symbol, is_spelling=False):
+        diacritics = self.diacritic_spellings if is_spelling else self.diacritic_sounds
+        return diacritics[diacritic].pop(symbol, None)
+    def remove_diacritic(self, diacritic, is_spelling=False):
+        diacritics = self.diacritic_spellings if is_spelling else self.diacritic_sounds
+        return diacritics.pop(diacritic, None)
 
-    def apply_marks(self, word_id):
+    # TODO: sound changes, shifts?
+    def apply_marks(self, word_id, as_string=False, is_spelling=False):
+        """Build a representation of a word's sounds with diacritics and syllable marks"""
         word_details = self.marked_words.get(word_id)
         if not word_details:
             return
@@ -102,12 +108,20 @@ class Suprasegmentals:
             if not mark['sound']:
                 marked_syllables.setdefault(3, set()).add(symbol)
             # add/alter character marks
-            modified_symbol = self.diacritics[symbol][syllabification[mark['syllable']][mark['sound']]]
+            diacritics = self.diacritic_spellings if is_spelling else self.diacritic_sounds
+            modified_symbol = diacritics[symbol][syllabification[mark['syllable']][mark['sound']]]
             syllabification[mark['syllable']][mark['sound']] = modified_symbol
         # prepend syllable marks
         for syllable_n, syllable_mark in collections.OrderedDict(marked_syllables).items():
             syllabification[syllable_n] = [syllable_mark] + syllabification[syllable_n]
-        return syllabification
+        # flatten into list of symbols
+        resulting_symbols = [
+            syllable_symbol for syllable_list in syllabification
+            for syllable_symbol in syllable_list
+        ]
+        if as_string:
+            return "".join(resulting_symbols)
+        return resulting_symbols
 
     # TODO: split marking word from adding mark
     def add_mark(self, vocabulary_item, syllabified_word=None, symbol="", is_diacritic=True, pitch=None, stress=None, target_syllable=0, target_sound=None, do_syllabify=False):
