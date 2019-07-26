@@ -343,3 +343,38 @@ class PhonologySuprasegmentals(PhonologyFixture):
             "tsotsotsòtso",
             "failed to move a generated word's accent to a new syllable"
         )
+
+    # TODO: attach marks to syllable, persist marks through sound changes,
+    # update marks with mark changes, have marks associated with spelling
+    # Sound changes:
+    #   - what if a marked sound is deleted in a change?
+    #   - what if a marked sound falls after a deleted sound?
+    #   - what if a sound change depends on e.g. a previous accent shift?
+    #   - what if a change impacts both underlying sound and added mark?
+    # Spelling:
+    #   - how to spell vs ignore marked sounds?
+    #   - when does spelling take place?
+    #   - how are spelled letters marked? independently of marked sounds?
+
+    def test_accent_sound_and_spelling(self):
+        
+        # word = self.phonology.build_word(length=4, apply_rules=True)
+        # imagine a fixed word
+        word_sounds = "bopo'bipo"   # expected segs output
+        
+        # accomodate two changes: oxytonic stress, high V syncope C_C
+        word_change = "bopop'po"    # expected segs output
+        
+        # ensure markings are stored for seg accentuation
+        # phon_char = "'"
+        # spelled_char = "´" # also map to specific letters: á, ŕ, ...
+
+        # now based on those changes the following words should be renderable
+        # in post-change sounds and spelling form
+        spelled_sounds = self.phonology.suprasegmentals.sound_out(word_change)
+        spelled_change = self.phonology.suprasegmentals.spell_out(word_change)
+        self.assertEqual(
+            [spelled_sounds, spelled_change],
+            ["bopobípo", "bopopó"],
+            "failed to change accented phonological segments and spell the changed sounds"
+        )
