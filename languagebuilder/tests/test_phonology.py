@@ -363,7 +363,7 @@ class PhonologySuprasegmentals(PhonologyFixture):
         word_sounds = "bopo'bipo"   # expected segs output
         
         # accomodate two changes: oxytonic stress, high V syncope C_C
-        word_change = "bopop'po"    # expected segs output
+        word_change = self.phonology.apply_rules(word_sounds)  # expect "bopop'po"
         
         # ensure markings are stored for seg accentuation
         # phon_char = "'"
@@ -377,4 +377,34 @@ class PhonologySuprasegmentals(PhonologyFixture):
             [spelled_sounds, spelled_change],
             ["bopobípo", "bopopó"],
             "failed to change accented phonological segments and spell the changed sounds"
+        )
+
+    def test_accent_default(self):
+        self.phonology.suprasegmentals.default(
+            stress="primary",
+            syllable=-2
+        )
+        word = [["t", "o"], ["t", "a"], ["t", "o"]]
+        spelling = self.phonology.suprasegmentals.spell_out(word)
+        self.assertEqual(
+            spelling,
+            "totáto",
+            "failed to apply default accentuation to segments and spell the accented word"
+        )
+
+    def test_accent_exception(self):
+        self.phonology.suprasegmentals.default(
+            stress="primary",
+            syllable=-2,
+            mark_exception=True
+        )
+        word = [["t", "o"], ["t", "a"], ["t", "o"]]
+        marked_word = self.phonology.suprasegmentals.mark((word, 0), 3, stress="primary")
+        unmarked_word = self.phonology.suprasegmentals.mark((word, 1), 2, stress="primary")
+        marked_spelling = self.phonology.suprasegmentals.spell_out((word, 0))
+        unmarked_spelling = self.phonology.suprasegmentals.spell_out((word, 1))
+        self.assertEqual(
+            [marked_spelling, unmarked_spelling],
+            ["totató", "totato"],
+            "failed to mark exception to default accentuation while leaving nonexception unmarked"
         )
