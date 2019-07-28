@@ -63,6 +63,49 @@ class Suprasegmentals:
     def get_mark(self, mark_id):
         return self.marks[mark_id]
 
+    # NOTE: begin trying contours vs current hardcoded single-syll/char values
+    #   - can be use to check environment marks or to apply changes
+    #   - if useful enough structure the whole class around contours
+    # EXs: Gk clitic tonoi, J pitch accent, Zh tone interactions, movable stress, ...
+    def contour(self):
+        example_contour = [['L'], ['L'], ['L', 'H'], ['H', 'H']]
+        example_sounds = 'sasasoasoa'
+        contour_types = {
+            'dependent': True,      # previous marks carry over until inflection point
+            'individual': False,    # every syllable needs marked
+            'default': True         # 
+        }
+        default = {
+            'change': ['L', 'H'],
+            'morae': -3,
+        }
+        dependencies_after = [('H', 'H'), ('L', 'L')]
+        dependencies_before = []
+        inflection = {
+            'name': 'rise',         # mark
+            'symbol': '/',          # sound
+            'diacritic': 'acute'    # spelling
+        }
+        contours = {
+            'H': {
+                'name': 'high',
+                'symbol': None,
+                'diacritic': None
+            },
+            'L': {
+                'name': 'low',
+                'symbol': None,
+                'diacritic': None
+            }
+        }
+        syllables = self.resyllabify(example_sounds)
+        for syllable in syllables:
+            # TODO:
+            #   - count morae
+            #   - assign inflection point
+            #   - go back over and adjust contours if necessary
+            pass
+
     def is_syllabified(self, word):
         """Check for a syllabified word containing a list of syllable lists each
         containing sound strings"""
