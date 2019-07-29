@@ -40,6 +40,14 @@ class Suprasegmentals:
         self.stress = {
             # character: feature pairs
         }
+
+        # associate word lookups with contours
+        # then use contours when applying changes or checking environments
+        # TODO: support contours with one mark per unique contour key
+        # TODO: support marks with one char per marked sound
+        #   - when applying marks look for first syll char taking that mark
+        #   - also allow for syllable mark (but store whether before/after)
+        self.contours = {}
     
     # TODO: allow setting pattern like always high-pitch final syllable 
     # def represent(self, headword, syllable_target=0, sound_target=0, is_syllabified=True):
@@ -63,48 +71,48 @@ class Suprasegmentals:
     def get_mark(self, mark_id):
         return self.marks[mark_id]
 
-    # NOTE: begin trying contours vs current hardcoded single-syll/char values
+    # TODO: complete contours and compare to current hardcoded single-syll/char values
     #   - can be use to check environment marks or to apply changes
     #   - if useful enough structure the whole class around contours
     # EXs: Gk clitic tonoi, J pitch accent, Zh tone interactions, movable stress, ...
-    def contour(self):
-        example_contour = [['L'], ['L'], ['L', 'H'], ['H', 'H']]
-        example_sounds = 'sasasoasoa'
-        contour_types = {
-            'dependent': True,      # previous marks carry over until inflection point
-            'individual': False,    # every syllable needs marked
-            'default': True         # 
-        }
-        default = {
-            'change': ['L', 'H'],
-            'morae': -3,
-        }
-        dependencies_after = [('H', 'H'), ('L', 'L')]
-        dependencies_before = []
-        inflection = {
-            'name': 'rise',         # mark
-            'symbol': '/',          # sound
-            'diacritic': 'acute'    # spelling
-        }
-        contours = {
-            'H': {
-                'name': 'high',
-                'symbol': None,
-                'diacritic': None
-            },
-            'L': {
-                'name': 'low',
-                'symbol': None,
-                'diacritic': None
-            }
-        }
-        syllables = self.resyllabify(example_sounds)
-        for syllable in syllables:
-            # TODO:
-            #   - count morae
-            #   - assign inflection point
-            #   - go back over and adjust contours if necessary
-            pass
+    def add_contour(self, word_id, syllabified_word=None, contour=None, do_syllabify=False, default_contour=False):
+        # example_contour = [[], [], [None, 'high'], []]
+        if not isinstance(word_id, (list, tuple)) or len(word_id) != 2 or not isinstance(word_id[0], str) or not isinstance(word_id[1], int):
+            return
+        if not contour:
+            return
+        if not do_syllabify and (not syllabified_word or len(syllabified_word) != syllabified_word):
+            return
+        #
+        # TODO: create a default contour
+        # default_contour = []
+        syllabified_word = self.resyllabify(word_id[0]) if do_syllabify else syllabified_word
+        self.contours.setdefault(word_id)
+        return self.contours.get(word_id)
+    # TODO: mark letters in syllables
+    def apply_contour(self, word_id):
+        syllabification = self.syllabifications[word_id][:]
+        contour = self.contours[word_id]
+        for syllable, i in enumerate(syllabification):
+            syllable_marks = contour[i][:]
+            current_marked = 0
+            for c, j in enumerate(syllable):
+                if c in self.diacritics:
+                    syllabification[i][j] = self.diacritics[syllable_marks[current_marked]][c]
+                    current_marked += 1
+                # TODO: instead apply syllable-wide mark to beginning/end of syll
+            if not current_marked >= len(syllable_marks):
+                # FAILED to apply all marks to syllable; syllable doesn't match contour?
+                return
+        return syllabification
+    # TODO: keep track of syllable added/removed
+    def track_contour_changes(self, word_id):
+        syllabification = self.syllabifications[word_id]
+        syllable_ids = [i for i in range(len(syllabification))]
+        def update_contour():
+            # add/remove/adjust syllable ids
+            return syllable_ids
+        return update_contour
 
     def is_syllabified(self, word):
         """Check for a syllabified word containing a list of syllable lists each
