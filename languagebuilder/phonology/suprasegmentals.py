@@ -7,12 +7,11 @@ import collections
 # sound's internal value (see Phonetics for those features).
 class Suprasegmentals:
     def __init__(self, phonology):
-        # map diacritical marks per letter to rendered letters 
-        self.diacritic_sounds = {
-            # mark: { symbol: { sound: "", spelling: "" }, ... },
-            # ...
-        }
-        self.diacritic_spellings = {}
+        # renderable marks for sounds or whole syllables
+        # NOTE: look up non-syll mark in diacritics (or separate out letters vs sounds?)
+        self.marked_sounds = {}     # mark: { syllable: False, before: True, mark: "" }
+        # marks assigning diacritics to letters
+        self.diacritics = {}        # mark: { symbol: marked_symbol }
 
         # store phonology for checking syllable types
         self.phonology = phonology
@@ -30,10 +29,6 @@ class Suprasegmentals:
             #   'mark':      'id',  # pointer to the mark details
             # }
         }
-        self.accents = {
-            # ipa: orthography pairs
-            # TODO: determine how to add to a letter
-        }
         self.intonation = {
             # pitch_range: character pairs
         }
@@ -48,16 +43,7 @@ class Suprasegmentals:
         #   - when applying marks look for first syll char taking that mark
         #   - also allow for syllable mark (but store whether before/after)
         self.contours = {}
-    
-    # TODO: allow setting pattern like always high-pitch final syllable 
-    # def represent(self, headword, syllable_target=0, sound_target=0, is_syllabified=True):
-    #     syllables = self.resyllabify(headword) if not is_syllabified else headword
-    #     self.marked_syllable[headword] = {
-    #         'syllables': syllables,
-    #         'target': syllable_target,
-    #         'sound_target': sound_target,
-    #     }
-    #     return self.marked_syllable[headword]
+        self.syllabifications = {}
 
     def shift_accent(self, sounds, syllables=0):
         return
@@ -71,10 +57,28 @@ class Suprasegmentals:
     def get_mark(self, mark_id):
         return self.marks[mark_id]
 
+    def add_syllabification(self, word_id, syllabification=None, do_syllabify=False):
+        syllabification = self.syllabify(word_id[0]) if do_syllabify else syllabification
+        if syllabification and word_id not in self.syllabifications:
+            self.syllabifications[word_id] = syllabification
+        return self.syllabifications[word_id]
+
+    def update_syllabification(self, word_id, syllabification):
+        if word_id not in self.syllabifications:
+            return
+        self.syllabifications[word_id] = syllabification
+        return self.syllabifications[word_id]
+    
+    def remove_syllabification(self, word_id):
+        return self.syllabifications.pop(word_id, None)
+
     # TODO: complete contours and compare to current hardcoded single-syll/char values
     #   - can be use to check environment marks or to apply changes
     #   - if useful enough structure the whole class around contours
     # EXs: Gk clitic tonoi, J pitch accent, Zh tone interactions, movable stress, ...
+    # 
+    # TODO: allow setting default patterns like always high-pitch final syllable 
+    #
     def add_contour(self, word_id, syllabified_word=None, contour=None, do_syllabify=False, default_contour=False):
         # example_contour = [[], [], [None, 'high'], []]
         if not isinstance(word_id, (list, tuple)) or len(word_id) != 2 or not isinstance(word_id[0], str) or not isinstance(word_id[1], int):
@@ -86,7 +90,7 @@ class Suprasegmentals:
         #
         # TODO: create a default contour
         # default_contour = []
-        syllabified_word = self.resyllabify(word_id[0]) if do_syllabify else syllabified_word
+        syllabified_word = self.syllabify(word_id[0]) if do_syllabify else syllabified_word
         self.contours.setdefault(word_id)
         return self.contours.get(word_id)
     # TODO: mark letters in syllables
@@ -189,7 +193,7 @@ class Suprasegmentals:
 
         # make or check useful syllabification
         if do_syllabify:
-            syllabified_word = self.resyllabify(vocabulary_item[0])
+            syllabified_word = self.syllabify(vocabulary_item[0])
         if not syllabified_word or not self.is_syllabified(syllabified_word):
             print(f"Suprasegmentals failed to add mark - unrecognized syllabified word {syllabified_word}")
             return
@@ -241,7 +245,7 @@ class Suprasegmentals:
                 return True       
         return False
 
-    def resyllabify(self, sounds):
+    def syllabify(self, sounds):
         # verify sounds list input
         if not isinstance(sounds, (list, tuple)):
             raise TypeError(f"Suprasegmentals resyllabify expected list of strings not {sounds}")
