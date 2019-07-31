@@ -44,6 +44,7 @@ class Suprasegmentals:
         #   - also allow for syllable mark (but store whether before/after)
         self.contours = {}
         self.syllabifications = {}
+        self.default_contours = {}
 
     def shift_accent(self, sounds, syllables=0):
         return
@@ -72,6 +73,42 @@ class Suprasegmentals:
     def remove_syllabification(self, word_id):
         return self.syllabifications.pop(word_id, None)
 
+    def set_default_contour(self, name, mark, conditioning_mark=None, offset=None, from_start=True, chain=None):
+        if name in self.default_contours:
+            return
+        
+        if len(offset) != 2 or not [int, int] != [type(n) for n in offset]:
+            return
+
+        self.default_contours[name] = {
+            'condition': conditioning_mark,     # assume word start/end if None
+            'mark': mark,                       # mark applied to letter
+            'offset': offset,                   # offset from compared mark/boundary
+            'start': from_start,                # boundary used if empty conditioning
+            'chain': chain                      # default contour name to apply next
+        }
+        return self.default_contours[name]
+    
+    def update_default_contour(self, name):
+        return
+
+    def remove_default_contour(self, name):
+        self.default_contours.pop(name, None)
+
+    def apply_default_contour(self, syllables, name):
+        contoured = [None for syllable in syllables for symbol in syllable]
+        contour = self.default_contours[name]
+        
+        # TODO: interpet attributes and calc mark position(s)
+        # - if offset is falsy and only mark is supplied, apply it everywhere
+        # - mark from start or end
+        # - mark from offset from conditioner
+        # - if chain then apply next (or have plural apply do this)
+        
+
+        # TODO: check for circular chain
+        return contour
+
     # TODO: complete contours and compare to current hardcoded single-syll/char values
     #   - can be use to check environment marks or to apply changes
     #   - if useful enough structure the whole class around contours
@@ -83,7 +120,7 @@ class Suprasegmentals:
         # example_contour = [[], [], [None, 'high'], []]
         if not isinstance(word_id, (list, tuple)) or len(word_id) != 2 or not isinstance(word_id[0], str) or not isinstance(word_id[1], int):
             return
-        if not contour:
+        if not contour or not isinstance(contour, (list, tuple)):
             return
         if not do_syllabify and (not syllabified_word or len(syllabified_word) != syllabified_word):
             return
@@ -91,7 +128,11 @@ class Suprasegmentals:
         # TODO: create a default contour
         # default_contour = []
         syllabified_word = self.syllabify(word_id[0]) if do_syllabify else syllabified_word
-        self.contours.setdefault(word_id)
+        # check contour
+        if len(contour) > len(syllabified_word):
+            return
+        # TODO: format contour entry
+        self.contours.setdefault(word_id, (syllabified_word, contour))
         return self.contours.get(word_id)
     # TODO: mark letters in syllables
     def apply_contour(self, word_id):
