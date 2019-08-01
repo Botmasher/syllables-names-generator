@@ -73,11 +73,12 @@ class Suprasegmentals:
     def remove_syllabification(self, word_id):
         return self.syllabifications.pop(word_id, None)
 
-    def set_default_contour(self, name, mark, conditioning_mark=None, offset=None, from_start=True, chain=None):
-        if name in self.default_contours:
+    def add_default_contour(self, name, mark, conditioning_mark=None, offset=None, from_start=True, chain=None, overwrite=False):
+        if not overwrite and name in self.default_contours:
             return
         
-        if len(offset) != 2 or not [int, int] != [type(n) for n in offset]:
+        # expect offset to be [syllable_index, symbol_index] pair
+        if offset and (len(offset) != 2 or False in [isinstance(n, int) for n in offset]):
             return
 
         self.default_contours[name] = {
@@ -89,11 +90,31 @@ class Suprasegmentals:
         }
         return self.default_contours[name]
     
-    def update_default_contour(self, name):
-        return
+    def update_default_contour(self, name, mark=None, conditioning_mark=None, offset=None, from_start=None, chain=None):
+        contour = self.remove_default_contour(name)
+        if not contour:
+            return
+        return self.add_default_contour(
+            name,
+            mark = mark if mark else contour['mark'],
+            conditioning_mark = conditioning_mark if conditioning_mark else contour['condition'],
+            offset = offset if offset else contour['offset'],
+            from_start = from_start if isinstance(from_start, bool) else contour['start'],
+            chain = chain if chain else contour['chain'],
+            overwrite = True
+        )
 
     def remove_default_contour(self, name):
-        self.default_contours.pop(name, None)
+        return self.default_contours.pop(name, None)
+
+    def flat_count_nested(self, nested_list, index=None, offset=1):
+        """Count offset number of values in a list of lists disregarding depth, then
+        return the nested index of that offset value. The offset is calculated from
+        the given index tuple positioning (outer_list_index, inner_list_index)."""
+        if len(index) != 2 or False in [isinstance(n, int) for n in index]:
+            return
+        outer_count, inner_count = (0, 0)
+        return (outer_count, inner_count)
 
     def apply_default_contour(self, syllables, name):
         contoured = [None for syllable in syllables for symbol in syllable]
@@ -104,10 +125,32 @@ class Suprasegmentals:
         # - mark from start or end
         # - mark from offset from conditioner
         # - if chain then apply next (or have plural apply do this)
+        if not contour['offset']:   # TODO: no need to check for condition or start?
+            contoured = [
+                contour['mark']
+                for syllable in contoured
+                for mark in syllable
+            ]
+        # mark from another symbol
+        elif contour['condition']:
+            for syllable in contoured:
+                for mark in syllable:
+                    if mark == contour['condition']:
+                        # TODO: count forwards or backwards a flat number of symbols then mark
+                        pass
+        # mark from word start or end
+        else:
+            if contour['from_start']:
+                # TODO: count forwards a flat number of symbols
+                pass
+            else:
+                # TODO: count backwards a flat number of symbols
+                pass
         
+        # TODO: check for circular chain (do in plural method)
+        next_contour = contour['chain']
 
-        # TODO: check for circular chain
-        return contour
+        return (contoured, next_contour)
 
     # TODO: complete contours and compare to current hardcoded single-syll/char values
     #   - can be use to check environment marks or to apply changes
