@@ -105,14 +105,36 @@ class Suprasegmentals:
     def remove_default_contour(self, name):
         return self.default_contours.pop(name, None)
 
-    def flat_count_nested(self, nested_list, index=None, offset=1):
+    def flat_count(self, nested_list, value=None, index=None, offset=1):
         """Count offset number of values in a list of lists disregarding depth, then
         return the nested index of that offset value. The offset is calculated from
-        the given index tuple positioning (outer_list_index, inner_list_index)."""
-        if len(index) != 2 or False in [isinstance(n, int) for n in index]:
+        either the given index tuple positioning (outer_list_index, inner_list_index)
+        or instead from the first instance of a value if one is supplied."""
+        # expect a tuple with outer, inner list indexes
+        if index and (len(index) != 2 or False in [isinstance(n, int) for n in index]):
+            print(f"Failed to flat count nested list - expected index (int, int) not {index}")
             return
-        outer_count, inner_count = (0, 0)
-        return (outer_count, inner_count)
+        # flat count up to offset
+        count = 0
+        identified_compared_value = False
+        # build outer, inner list indexes from first occurrence of given value
+        if value:
+            first_list_with_value = next(l for l in nested_list if value in l)
+            outer_i = nested_list.index(first_list_with_value)
+            inner_i = first_list_with_value.index(value)
+            index = (outer_i, inner_i)
+        # if offset is negative, do reverse look
+        outer_list = reversed(nested_list) if offset < 0 else nested_list
+        for i, l in enumerate(outer_list, index[0]):
+            inner_list = reversed(l) if offset < 0 else l
+            for j, inner_value in enumerate(inner_list):
+                if identified_compared_value:
+                    if count == offset:
+                        return (i, j)
+                    count += 1
+                elif (i, j) == index:
+                    identified_compared_value = True
+        return ()
 
     def apply_default_contour(self, syllables, name):
         contoured = [None for syllable in syllables for symbol in syllable]
@@ -140,12 +162,12 @@ class Suprasegmentals:
             ]
             # add mark forwards/backwards from conditioners
             for compared_index in compared_indexes:
-                mark_index = self.flat_count_nested(contoured, index=compared_index, offset=contour['offset'])
+                mark_index = self.flat_count(contoured, index=compared_index, offset=contour['offset'])
                 contoured[mark_index[0]][mark_index[1]] = contour['mark']
         # mark from word start or end
         else:
             # count forwards/backwards from boundary and mark
-            mark_index = self.flat_count_nested(contoured, index=(0, 0), offset=contour['offset'])
+            mark_index = self.flat_count(contoured, index=(0, 0), offset=contour['offset'])
             contoured[mark_index[0]][mark_index[1]] = contour['mark']
             
         # TODO: check for circular chain (do in plural method)
