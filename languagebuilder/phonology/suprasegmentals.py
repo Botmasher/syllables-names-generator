@@ -73,7 +73,7 @@ class Suprasegmentals:
     def remove_syllabification(self, word_id):
         return self.syllabifications.pop(word_id, None)
 
-    def add_default_contour(self, name, mark, conditioning_mark=None, offset=None, from_start=True, chain=None, overwrite=False):
+    def add_default_contour(self, name, mark, conditioning_mark=None, offset=None, chain=None, overwrite=False):
         if not overwrite and name in self.default_contours:
             return
         
@@ -85,12 +85,11 @@ class Suprasegmentals:
             'condition': conditioning_mark,     # assume word start/end if None
             'mark': mark,                       # mark applied to letter
             'offset': offset,                   # offset from compared mark/boundary
-            'start': from_start,                # boundary used if empty conditioning
             'chain': chain                      # default contour name to apply next
         }
         return self.default_contours[name]
     
-    def update_default_contour(self, name, mark=None, conditioning_mark=None, offset=None, from_start=None, chain=None):
+    def update_default_contour(self, name, mark=None, conditioning_mark=None, offset=None, chain=None):
         contour = self.remove_default_contour(name)
         if not contour:
             return
@@ -99,7 +98,6 @@ class Suprasegmentals:
             mark = mark if mark else contour['mark'],
             conditioning_mark = conditioning_mark if conditioning_mark else contour['condition'],
             offset = offset if offset else contour['offset'],
-            from_start = from_start if isinstance(from_start, bool) else contour['start'],
             chain = chain if chain else contour['chain'],
             overwrite = True
         )
@@ -133,20 +131,23 @@ class Suprasegmentals:
             ]
         # mark from another symbol
         elif contour['condition']:
-            for syllable in contoured:
-                for mark in syllable:
-                    if mark == contour['condition']:
-                        # TODO: count forwards or backwards a flat number of symbols then mark
-                        pass
+            # grab indexes where conditioner appears
+            compared_indexes = [
+                (i, j)
+                for i, syllable in enumerate(contoured)
+                for j, compared_mark in enumerate(syllable)
+                if compared_mark == contour['condition']
+            ]
+            # add mark forwards/backwards from conditioners
+            for compared_index in compared_indexes:
+                mark_index = self.flat_count_nested(contoured, index=compared_index, offset=contour['offset'])
+                contoured[mark_index[0]][mark_index[1]] = contour['mark']
         # mark from word start or end
         else:
-            if contour['from_start']:
-                # TODO: count forwards a flat number of symbols
-                pass
-            else:
-                # TODO: count backwards a flat number of symbols
-                pass
-        
+            # count forwards/backwards from boundary and mark
+            mark_index = self.flat_count_nested(contoured, index=(0, 0), offset=contour['offset'])
+            contoured[mark_index[0]][mark_index[1]] = contour['mark']
+            
         # TODO: check for circular chain (do in plural method)
         next_contour = contour['chain']
 
