@@ -73,7 +73,7 @@ class Suprasegmentals:
     def remove_syllabification(self, word_id):
         return self.syllabifications.pop(word_id, None)
 
-    def add_default_contour(self, name, mark, conditioning_mark=None, offset=None, chain=None, overwrite=False):
+    def add_default_contour(self, name, mark="", conditioning_mark=None, offset=None, chain=None, overwrite=False):
         if not overwrite and name in self.default_contours:
             return
         
@@ -87,8 +87,11 @@ class Suprasegmentals:
             'offset': offset,                   # offset from compared mark/boundary
             'chain': chain                      # default contour name to apply next
         }
-        return self.default_contours[name]
+        return name
     
+    def get_default_contour(self, name):
+        return self.default_contours.get(name)
+
     def update_default_contour(self, name, mark=None, conditioning_mark=None, offset=None, chain=None):
         contour = self.remove_default_contour(name)
         if not contour:
