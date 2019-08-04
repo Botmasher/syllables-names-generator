@@ -46,15 +46,48 @@ class Suprasegmentals:
         self.syllabifications = {}
         self.default_contours = {}
 
+    # TODO: rethink pitch/tone/accent alongside default and custom contours below
     def shift_accent(self, sounds, syllables=0):
         return
-    
     def raise_pitch(self, sounds, octaves=0.0):
         return
-
-    def contour_pitch(self, sounds, contour):
+    def reshape_pitch(self, sounds, shape):
         return
     
+    # TODO: work through all possibilities: features list, CV abbrev, sound, mark, mora
+    def detect_environment_including_marks(self, whole, parts):
+        assert isinstance(parts, list), f"Expected detectable part in whole to be list not {parts}"
+        assert isinstance(whole, (list, str)), f"Expected compared whole to be string or list not {whole}"
+        matching_parts = []     # TODO: paired info about type of match?
+        for i, symbol in enumerate(whole):
+            if matching_parts == len(parts):
+                return True     # or matching_parts list?
+            did_match = True
+            for j, part in enumerate(parts):
+                if not did_match:
+                    matching_parts = []
+                    break
+                compared_symbol = whole[i + j]
+                # treat as features
+                if set(compared_symbol).issubset(self.phonology.phonetics.features.keys()):
+                    if set(part).issubset(set(compared_symbol)):
+                        matching_parts.append(part)
+                        continue
+                # treat as single feature or abbreviation
+                if isinstance(symbol, str) and part == symbol:
+                    matching_parts.append(part)
+                    continue
+                # treat as single sound
+                if self.phonology.has_sound(symbol):
+                    matching_parts.append(part)
+                    continue
+                # treat as mark
+                if self.marks.get(symbol) and part == symbol:
+                    matching_parts.append(part)
+                    continue
+                did_match = False
+        return False   # no match
+
     def get_mark(self, mark_id):
         return self.marks[mark_id]
 
