@@ -5,6 +5,22 @@ import collections
 # NOTE: what's called "suprasegmental" is actually meant to "mark" extra info around
 # a single sound that can be configured, toggled or changed independently of that
 # sound's internal value (see Phonetics for those features).
+
+# NOTE: WAIT! let's think about the construction
+#   - count morae, including turning strings into morae
+#       - TODO: build moraics class
+#   - count syllables, including turning strings into syllables
+#       - TODO: build syllabics class
+#   - TODO: revamp this class
+#       - store seg marker names mapped to mark symbols
+#       - store mark symbols mapped to marked sounds
+#       - store marked sounds mapped to marked letters
+#           - alternatively map marks to marked letters
+#       - store marking or contour data telling how to apply marks
+#           - index to specific syllable, mora or sound
+#       - handle changes given any kind of environment
+#           - features list, CV abbrev, sound, mark, mora, syllable
+
 class Suprasegmentals:
     def __init__(self, phonology):
         # renderable marks for sounds or whole syllables
