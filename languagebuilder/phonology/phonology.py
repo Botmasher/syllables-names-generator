@@ -1,6 +1,7 @@
 # collection management
 from .phonemes import Phonemes
 from .syllables import Syllables
+from .morae import Morae
 from .rules import Rules
 from .ruletracker import RuleTracker
 from .suprasegmentals import Suprasegmentals
@@ -25,7 +26,7 @@ class Phonology:
         #   - already done with add_sound (for Phonemes), add_rule (for Rules)
         #   - the Language checks Phonetics but the injected classes remain decoupled
         self.syllables = Syllables(self)    # reference phonology for feature checking
-
+        self.morae = Morae(self)
         self.suprasegmentals = Suprasegmentals(self)
 
         # creating and applying rules

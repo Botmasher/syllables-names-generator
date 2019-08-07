@@ -345,102 +345,148 @@ class PhonologySuprasegmentals(PhonologyFixture):
             f"failed to apply a suprasegmentals default contour"
         )
 
-    # TODO: rewrite suprasegmentals tests below considering:
-    #   - custom contours
-    #   - default contours
-    #   - ability to mark both sound and spelling
-    #   - ability to mark any letters of interest (not only V)
-    #   - /!\ syllable shape checks
-    #       - accent last if long [C,V,C,(C)] otherwise penult
-    #       - high tone on second mora no matter which syllable
+    # # TODO: rewrite suprasegmentals tests below considering:
+    # #   - custom contours
+    # #   - default contours
+    # #   - ability to mark both sound and spelling
+    # #   - ability to mark any letters of interest (not only V)
+    # #   - /!\ syllable shape checks
+    # #       - accent last if long [C,V,C,(C)] otherwise penult
+    # #       - high tone on second mora no matter which syllable
 
-    def test_mark_accent(self):
-        word = self.phonology.build_word(
-            length=3,
-            apply_rules=True,
-            spell_after_change=False
-        )
-        # NOTE: or store marking info in built word?
-        word = self.phonology.suprasegmentals.mark(word['sound'], 2, stress="primary")
-        self.assertEqual(
-            word,
-            "tsotsòtso",
-            "failed to mark a generated word with an accent"
-        )
+    # def test_mark_accent(self):
+    #     word = self.phonology.build_word(
+    #         length=3,
+    #         apply_rules=True,
+    #         spell_after_change=False
+    #     )
+    #     # NOTE: or store marking info in built word?
+    #     word = self.phonology.suprasegmentals.mark(word['sound'], 2, stress="primary")
+    #     self.assertEqual(
+    #         word,
+    #         "tsotsòtso",
+    #         "failed to mark a generated word with an accent"
+    #     )
 
-    def test_move_accent(self):
-        word = self.phonology.build_word(length=4, apply_rules=True)
-        # NOTE: mark name still needed to retrieve which mark to adjust
-        # TODO: how to represent word-wide pitch contours
-        self.phonology.suprasegmentals.mark(word['sound'], 3, stress="primary")
-        word = self.phonology.suprasegmentals.move(word['sound'], 4, stress="primary")
-        self.assertEqual(
-            word,
-            "tsotsotsòtso",
-            "failed to move a generated word's accent to a new syllable"
-        )
+    # def test_move_accent(self):
+    #     word = self.phonology.build_word(length=4, apply_rules=True)
+    #     # NOTE: mark name still needed to retrieve which mark to adjust
+    #     # TODO: how to represent word-wide pitch contours
+    #     self.phonology.suprasegmentals.mark(word['sound'], 3, stress="primary")
+    #     word = self.phonology.suprasegmentals.move(word['sound'], 4, stress="primary")
+    #     self.assertEqual(
+    #         word,
+    #         "tsotsotsòtso",
+    #         "failed to move a generated word's accent to a new syllable"
+    #     )
 
-    # TODO: attach marks to syllable, persist marks through sound changes,
-    # update marks with mark changes, have marks associated with spelling
-    # Sound changes:
-    #   - what if a marked sound is deleted in a change?
-    #   - what if a marked sound falls after a deleted sound?
-    #   - what if a sound change depends on e.g. a previous accent shift?
-    #   - what if a change impacts both underlying sound and added mark?
-    # Spelling:
-    #   - how to spell vs ignore marked sounds?
-    #   - when does spelling take place?
-    #   - how are spelled letters marked? independently of marked sounds?
+    # # TODO: attach marks to syllable, persist marks through sound changes,
+    # # update marks with mark changes, have marks associated with spelling
+    # # Sound changes:
+    # #   - what if a marked sound is deleted in a change?
+    # #   - what if a marked sound falls after a deleted sound?
+    # #   - what if a sound change depends on e.g. a previous accent shift?
+    # #   - what if a change impacts both underlying sound and added mark?
+    # # Spelling:
+    # #   - how to spell vs ignore marked sounds?
+    # #   - when does spelling take place?
+    # #   - how are spelled letters marked? independently of marked sounds?
 
-    def test_accent_sound_and_spelling(self):
+    # def test_accent_sound_and_spelling(self):
         
-        # word = self.phonology.build_word(length=4, apply_rules=True)
-        # imagine a fixed word
-        word_sounds = "bopo'bipo"   # expected segs output
+    #     # word = self.phonology.build_word(length=4, apply_rules=True)
+    #     # imagine a fixed word
+    #     word_sounds = "bopo'bipo"   # expected segs output
         
-        # accomodate two changes: oxytonic stress, high V syncope C_C
-        word_change = self.phonology.apply_rules(word_sounds)  # expect "bopop'po"
+    #     # accomodate two changes: oxytonic stress, high V syncope C_C
+    #     word_change = self.phonology.apply_rules(word_sounds)  # expect "bopop'po"
         
-        # ensure markings are stored for seg accentuation
-        # phon_char = "'"
-        # spelled_char = "´" # also map to specific letters: á, ŕ, ...
+    #     # ensure markings are stored for seg accentuation
+    #     # phon_char = "'"
+    #     # spelled_char = "´" # also map to specific letters: á, ŕ, ...
 
-        # now based on those changes the following words should be renderable
-        # in post-change sounds and spelling form
-        spelled_sounds = self.phonology.suprasegmentals.sound_out(word_change)
-        spelled_change = self.phonology.suprasegmentals.spell_out(word_change)
-        self.assertEqual(
-            [spelled_sounds, spelled_change],
-            ["bopobípo", "bopopó"],
-            "failed to change accented phonological segments and spell the changed sounds"
+    #     # now based on those changes the following words should be renderable
+    #     # in post-change sounds and spelling form
+    #     spelled_sounds = self.phonology.suprasegmentals.sound_out(word_change)
+    #     spelled_change = self.phonology.suprasegmentals.spell_out(word_change)
+    #     self.assertEqual(
+    #         [spelled_sounds, spelled_change],
+    #         ["bopobípo", "bopopó"],
+    #         "failed to change accented phonological segments and spell the changed sounds"
+    #     )
+
+    # def test_accent_default(self):
+    #     self.phonology.suprasegmentals.default(
+    #         stress="primary",
+    #         syllable=-2
+    #     )
+    #     word = [["t", "o"], ["t", "a"], ["t", "o"]]
+    #     spelling = self.phonology.suprasegmentals.spell_out(word)
+    #     self.assertEqual(
+    #         spelling,
+    #         "totáto",
+    #         "failed to apply default accentuation to segments and spell the accented word"
+    #     )
+
+    # def test_accent_exception(self):
+    #     self.phonology.suprasegmentals.default(
+    #         stress="primary",
+    #         syllable=-2,
+    #         mark_exception=True
+    #     )
+    #     word = [["t", "o"], ["t", "a"], ["t", "o"]]
+    #     marked_word = self.phonology.suprasegmentals.mark((word, 0), 3, stress="primary")
+    #     unmarked_word = self.phonology.suprasegmentals.mark((word, 1), 2, stress="primary")
+    #     marked_spelling = self.phonology.suprasegmentals.spell_out((word, 0))
+    #     unmarked_spelling = self.phonology.suprasegmentals.spell_out((word, 1))
+    #     self.assertEqual(
+    #         [marked_spelling, unmarked_spelling],
+    #         ["totató", "totato"],
+    #         "failed to mark exception to default accentuation while leaving nonexception unmarked"
+    #     )
+
+class PhonologyMorae(PhonologyFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(PhonologyMorae, this_class).setUpClass()
+        this_class.phonetics.add("k", ["consonant", "voiceless", "velar", "stop"])
+        this_class.phonetics.add("o", ["vowel", "back", "mid", "rounded"])
+        this_class.phonology.phonemes.add("k", ["c"])
+        this_class.phonology.phonemes.add("o", ["o"])
+        this_class.phonology.syllables.add("VC")
+        this_class.phonology.syllables.add("VVC")
+        #this_class.phonology.morae.set_mora([])
+
+    def test_set_basic_mora(self):
+        beats = 1
+        self.phonology.morae.set_mora([["vowel"], ["consonant"]], beats=beats)
+        self.assertIn(
+            ["consonant", "vowel"],
+            self.phonology.morae.morae.get(beats, []),
+            "failed to set a new simple mora"
         )
 
-    def test_accent_default(self):
-        self.phonology.suprasegmentals.default(
-            stress="primary",
-            syllable=-2
-        )
-        word = [["t", "o"], ["t", "a"], ["t", "o"]]
-        spelling = self.phonology.suprasegmentals.spell_out(word)
+    def test_interpret_mora(self):
+        mora = self.phonology.morae.set_mora(["V", "C"])
         self.assertEqual(
-            spelling,
-            "totáto",
-            "failed to apply default accentuation to segments and spell the accented word"
+            mora,
+            [["vowel"], ["consonant"]],
+            "failed to set mora using consonant and vowel abbreviations"
         )
 
-    def test_accent_exception(self):
-        self.phonology.suprasegmentals.default(
-            stress="primary",
-            syllable=-2,
-            mark_exception=True
+    def test_check_mora(self):
+        mora = self.phonology.morae.set_mora(["V", "V", "C"], beats=2)
+        self.assertTrue(
+            self.phonology.morae.is_mora(mora),
+            "failed to find mora in stored morae"
         )
-        word = [["t", "o"], ["t", "a"], ["t", "o"]]
-        marked_word = self.phonology.suprasegmentals.mark((word, 0), 3, stress="primary")
-        unmarked_word = self.phonology.suprasegmentals.mark((word, 1), 2, stress="primary")
-        marked_spelling = self.phonology.suprasegmentals.spell_out((word, 0))
-        unmarked_spelling = self.phonology.suprasegmentals.spell_out((word, 1))
+
+    # TODO: handle mora already added but with different counts
+    #   - map of beats -> morae vs mora -> beats?
+    def test_count_beats(self):
+        mora = self.phonology.morae.set_mora(["V", "V", "C"], beats=2)
         self.assertEqual(
-            [marked_spelling, unmarked_spelling],
-            ["totató", "totato"],
-            "failed to mark exception to default accentuation while leaving nonexception unmarked"
+            self.phonology.morae.get_beats(mora),
+            2,
+            "failed to count beats in existing mora"
         )

@@ -20,6 +20,7 @@ import collections
 #           - index to specific syllable, mora or sound
 #       - handle changes given any kind of environment
 #           - features list, CV abbrev, sound, mark, mora, syllable
+#           - TODO: here list an example of each kind of change to work towards
 
 class Suprasegmentals:
     def __init__(self, phonology):
