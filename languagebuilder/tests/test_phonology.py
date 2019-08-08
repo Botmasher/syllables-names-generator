@@ -461,16 +461,16 @@ class PhonologyMorae(PhonologyFixture):
         beats = 1
         self.phonology.morae.set_mora([["vowel"], ["consonant"]], beats=beats)
         self.assertIn(
-            ["consonant", "vowel"],
-            self.phonology.morae.morae.get(beats, []),
+            (("vowel",), ("consonant",)),
+            self.phonology.morae.morae,
             "failed to set a new simple mora"
         )
-
+        
     def test_interpret_mora(self):
         mora = self.phonology.morae.set_mora(["V", "C"])
         self.assertEqual(
             mora,
-            [["vowel"], ["consonant"]],
+            self.phonology.morae.retrieve_mora_from_list([["vowel"], ["consonant"]]),
             "failed to set mora using consonant and vowel abbreviations"
         )
 
