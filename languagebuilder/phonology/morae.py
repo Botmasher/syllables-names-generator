@@ -1,3 +1,5 @@
+from ..tools.flat_list import tuplify, untuplify
+
 class Morae:
     def __init__(self, phonology):
         self.phonology = phonology
@@ -12,7 +14,7 @@ class Morae:
         mora_list = self.vet_mora(sounds_or_features)
         
         # map mora and associated beats
-        mora_key = self.store_mora_from_list(mora_list, beats=beats, overwrite=overwrite)
+        mora_key = self.store_mora_list(mora_list, beats=beats, overwrite=overwrite)
         return mora_key
 
     # TODO: search morae (beats, features)
@@ -20,7 +22,7 @@ class Morae:
 
     def get_beats(self, mora):
         if isinstance(mora, list):
-            return self.retrieve_mora_using_list(mora)
+            return self.retrieve_mora(mora)
         return self.morae.get(mora)
 
     def is_mora(self, mora):
@@ -40,20 +42,20 @@ class Morae:
             {}
         )
 
-    def store_mora_from_list(self, mora, beats=1, overwrite=False):
+    def store_mora_list(self, mora, beats=1, overwrite=False):
+        """Store mora under tuple key converted from input mora list"""
         if not isinstance(mora, list):
             raise ValueError(f"Morae expected to convert tuple key from list, not {mora}")
-        # TODO: expect list of lists -> tuple of tuples
-        #   - have already accidentally split string
-        mora_key = tuple(map(lambda x: tuple(x), mora))
+        mora_key = tuplify(mora)
         if overwrite or not self.morae.get(mora_key):
             self.morae[mora_key] = beats
         return mora_key
 
-    def retrieve_mora_from_list(self, mora):
+    def retrieve_mora(self, mora):
+        """Fetch a mora tuple key based on input mora list"""
         if not isinstance(mora, list):
             raise ValueError(f"Morae expected to convert tuple key from list, not {mora}")
-        mora_key = tuple(map(lambda x: tuple(x), mora))
+        mora_key = tuplify(mora)
         return (mora_key, None)[mora_key not in self.morae]
         
     def vet_mora(self, sounds_or_features):

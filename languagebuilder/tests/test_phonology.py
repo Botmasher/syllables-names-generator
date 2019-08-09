@@ -455,8 +455,7 @@ class PhonologyMorae(PhonologyFixture):
         this_class.phonology.phonemes.add("o", ["o"])
         this_class.phonology.syllables.add("VC")
         this_class.phonology.syllables.add("VVC")
-        #this_class.phonology.morae.set_mora([])
-
+    
     def test_set_basic_mora(self):
         beats = 1
         self.phonology.morae.set_mora([["vowel"], ["consonant"]], beats=beats)
@@ -470,7 +469,7 @@ class PhonologyMorae(PhonologyFixture):
         mora = self.phonology.morae.set_mora(["V", "C"])
         self.assertEqual(
             mora,
-            self.phonology.morae.retrieve_mora_from_list([["vowel"], ["consonant"]]),
+            self.phonology.morae.retrieve_mora([["vowel"], ["consonant"]]),
             "failed to set mora using consonant and vowel abbreviations"
         )
 
@@ -490,3 +489,5 @@ class PhonologyMorae(PhonologyFixture):
             2,
             "failed to count beats in existing mora"
         )
+
+    # TODO: make sure you can count morae, count sylls
