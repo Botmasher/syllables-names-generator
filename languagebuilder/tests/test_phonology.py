@@ -342,9 +342,25 @@ class PhonologySuprasegmentals(PhonologyFixture):
         self.assertEqual(
             "".join(flatten(accented_word)),
             "rpabapáp",
-            f"failed to apply a suprasegmentals default contour"
+            "failed to apply a suprasegmentals default contour"
         )
 
+    def test_syllabify(self):
+        word = ["ts", "o", "ts", "o", "ts", "o"]
+        self.assertEqual(
+            self.phonology.suprasegmentals.syllabify(word),
+            [['ts', 'o'], ['ts', 'o'], ['ts', 'o']],
+            "failed to split a word into syllables"
+        )
+
+    def test_count_syllables(self):
+        word = ["ts", "o", "ts", "o", "ts", "o"]
+        self.assertEqual(
+            self.phonology.suprasegmentals.count_syllables(word),
+            3,
+            "failed to count the number of syllables in a word"
+        )
+    
     # # TODO: rewrite suprasegmentals tests below considering:
     # #   - custom contours
     # #   - default contours
@@ -490,4 +506,16 @@ class PhonologyMorae(PhonologyFixture):
             "failed to count beats in existing mora"
         )
 
-    # TODO: make sure you can count morae, count sylls
+    # TODO: fix wordbuild fails a fraction of the time:
+    # ======================================================================
+    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    # ----------------------------------------------------------------------
+    # Traceback (most recent call last):
+    # File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 308, in test_build_unit
+    #     "failed to generate a new root + grammatical unit in the language"
+    # AssertionError: 'tatika' != 'taθika'
+    # - tatika
+    # ?   ^
+    # + taθika
+    # ?   ^
+    # : failed to generate a new root + grammatical unit in the language

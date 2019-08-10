@@ -395,19 +395,35 @@ class Suprasegmentals:
         """Move the targeted mark to a new syllable"""
         return
 
-    def _is_syllable(self, syllable_fragment):
+    def is_syllable(self, syllable_fragment):
         """Verify that the fragment is a subset of least one syllable in the phonology"""
         # read possible syllables from phonology
         syllables = self.phonology.syllables.get().values()
         # traverse syllables for at least one subset match
+        features = [
+            set(self.phonology.phonetics.get_features(sound))
+            for sound in syllable_fragment
+        ]
         for syllable in syllables:
-            if syllable_fragment >= len(syllable):
-                return True       
+            matches = [
+                set(syllable_features).issuperset(features[i])
+                if i < len(features) else False
+                for i, syllable_features in enumerate(syllable)
+            ]
+            if False not in matches:
+                return True
         return False
+
+    def count_syllables(self, sounds):
+        if isinstance(sounds, str):
+            sounds = str.split()
+        syllabification = self.syllabify(sounds)
+        if syllabification:
+            return len(syllabification)
 
     def syllabify(self, sounds):
         # verify sounds list input
-        if not isinstance(sounds, (list, tuple)):
+        if not isinstance(sounds, list):
             raise TypeError(f"Suprasegmentals resyllabify expected list of strings not {sounds}")
         
         # final list of lists to return
@@ -421,12 +437,12 @@ class Suprasegmentals:
             working_on_syllable = False
 
             # continue working on syllable if this sound makes it a valid syllable fragment
-            is_syllable = self._is_syllable([*current_syllable, sound])
+            is_syllable = self.is_syllable(current_syllable + [sound])
             if is_syllable:
                 # build up single syllable and move to next sound
                 current_syllable.append(sound)
                 working_on_syllable = True
-                break
+                continue
                 
             # conclude a finished syllable
             if not working_on_syllable:
@@ -434,12 +450,12 @@ class Suprasegmentals:
                 current_syllable = []
 
         # move leftover sounds into final syllable
-        if current_syllable and self._is_syllable(current_syllable):
+        if current_syllable and self.is_syllable(current_syllable):
             syllabified_word.append(current_syllable)
 
         # ensure all input sounds were syllabified
         if len(flat_list.flatten(syllabified_word)) != len(sounds):
-            print(f"Suprasegmentals failed to resyllabify - not all sounds placeable within compared phonology syllables")
+            raise Exception(f"Suprasegmentals failed to resyllabify {syllabified_word} - not all sounds placeable within compared phonology syllables")
             return
         
         return syllabified_word
