@@ -3,7 +3,7 @@ from ..tools.flat_list import tuplify, untuplify
 class Morae:
     def __init__(self, phonology):
         self.phonology = phonology
-        self.morae = {}     # map of beat counts per mora
+        self.morae = {}     # map beat count ints to morae sets
     
     def set_mora(self, sounds_or_features, beats=1, overwrite=False):
         """Add a moraic structure and its associated beat count to the stored morae"""
@@ -13,51 +13,41 @@ class Morae:
         # structure mora as list of lists
         mora_list = self.vet_mora(sounds_or_features)
         
-        # map mora and associated beats
-        mora_key = self.store_mora_list(mora_list, beats=beats, overwrite=overwrite)
-        return mora_key
+        # optionally remove mora if it already exists
+        existing_beats = self.get_beats(mora_list)
+        if existing_beats:
+            if overwrite:
+                self.morae[existing_beats].remove(mora_list)
+            else:
+                raise ValueError(f"Mora already exists in Morae: {mora_list}")
 
-    # TODO: search morae (beats, features)
-    # TODO: pretty print morae
+        # map mora to associated beats
+        self.morae.setdefault(beats, set()).add(mora_list)
+
+        return self.morae[beats]
 
     def get_beats(self, mora):
-        if isinstance(mora, list):
-            return self.retrieve_mora(mora)
-        return self.morae.get(mora)
+        mora_list = self.vet_mora(mora)
+        for beats in self.morae:
+            if mora_list in self.morae[beats]:
+                return beats
+        return
 
     def is_mora(self, mora):
-        return mora in self.morae
+        mora_list = self.vet_mora(mora)
+        beats = self.get_beats(mora_list)
+        return beats in self.morae
 
-    def red_acc(self, iterable, expression, starting_value):
-        accumulator = starting_value
-        for current_value in iterable:
-            accumulator = expression(current_value, accumulator)
-        return accumulator
-
-    def reduce_beats(self):
-        """Remap morae data from beats per moraic entry into sets of morae per beat"""
-        return self.red_acc(
-            self.morae.keys(),
-            lambda mora, morae_per_beat: morae_per_beat.setdefault(self.morae[mora], set()).add(mora),
-            {}
-        )
-
-    def store_mora_list(self, mora, beats=1, overwrite=False):
-        """Store mora under tuple key converted from input mora list"""
-        if not isinstance(mora, list):
-            raise ValueError(f"Morae expected to convert tuple key from list, not {mora}")
-        mora_key = tuplify(mora)
-        if overwrite or not self.morae.get(mora_key):
-            self.morae[mora_key] = beats
-        return mora_key
-
-    def retrieve_mora(self, mora):
-        """Fetch a mora tuple key based on input mora list"""
-        if not isinstance(mora, list):
-            raise ValueError(f"Morae expected to convert tuple key from list, not {mora}")
-        mora_key = tuplify(mora)
-        return (mora_key, None)[mora_key not in self.morae]
+    def beats_per_morae(self):
+        """Remap morae data from morae sets per beatcount into beats per mora"""
+        return {
+            tuplify(mora): beats
+            for beats, morae in self.morae.items()
+            for mora in morae
+        }
         
+    # TODO: turn this into a more general phonology list of features list method
+    #   - could be used to generate sylls, ...
     def vet_mora(self, sounds_or_features):
         """Turn a list of sounds or features lists or strings into a list of lists of
         features to be identified as a mora."""
@@ -81,6 +71,12 @@ class Morae:
                 return
         return vetted_mora
 
+    # TODO: search morae (beats, features)
+    
+    # TODO: pretty print morae
+    
+    # TODO: check for existence of any subset of features
+    #
     def count_morae(self, sounds):
         """Count the number of morae in a sound sample"""
         morae_features = [
@@ -89,15 +85,19 @@ class Morae:
         ]
         current_mora = []
         count = 0
-        morae_per_beat = self.reduce_beats()
+        # traverse sounds (feature sets) in the sample
         for features in morae_features:
             current_mora.append(features)
-            for beats in morae_per_beat:
-                # TODO: check for existence of any subset of features
-                if current_mora in morae_per_beat[beats]:
+            # add beats if this beat has been mapped
+            # TODO: widen to identify any moraic subset (see TODO at top of method)
+            # - this means current mora features should be a subset of some list of lists
+            # [{sample_features}.issuperset({morae_features}) for feature_set in current_mora]
+            for beats in self.morae:
+                if current_mora in self.morae[beats]:
                     count += beats
                     current_mora = []
+        # check for leftover beats
         if current_mora:
             return
         return count
-    
+            

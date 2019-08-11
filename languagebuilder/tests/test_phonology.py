@@ -506,16 +506,17 @@ class PhonologyMorae(PhonologyFixture):
             "failed to count beats in existing mora"
         )
 
-    # TODO: fix wordbuild fails a fraction of the time:
-    # ======================================================================
-    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
-    # ----------------------------------------------------------------------
-    # Traceback (most recent call last):
-    # File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 308, in test_build_unit
-    #     "failed to generate a new root + grammatical unit in the language"
-    # AssertionError: 'tatika' != 'taθika'
-    # - tatika
-    # ?   ^
-    # + taθika
-    # ?   ^
-    # : failed to generate a new root + grammatical unit in the language
+    # TODO: fix wordbuild fails <10% of the time (e.g. 'kifuka' != 'kipuka').
+    # Example error message:
+    ## ======================================================================
+    ## FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    ## ----------------------------------------------------------------------
+    ## Traceback (most recent call last):
+    ## File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 308, in test_build_unit
+    ##     "failed to generate a new root + grammatical unit in the language"
+    ## AssertionError: 'tatika' != 'taθika'
+    ## - tatika
+    ## ?   ^
+    ## + taθika
+    ## ?   ^
+    ## : failed to generate a new root + grammatical unit in the language
