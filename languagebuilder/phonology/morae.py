@@ -75,27 +75,35 @@ class Morae:
     
     # TODO: pretty print morae
     
-    # TODO: check for existence of any subset of features
-    #
     def count_morae(self, sounds):
         """Count the number of morae in a sound sample"""
-        morae_features = [
+        # convert sounds into a list of per-sound feature collections
+        sample_features = [
             self.phonology.phonetics.parse_features(sound)
             for sound in sounds
         ]
+        # flip beat map to traverse morae
+        beats_per_morae = self.beats_per_morae()
+
+        # traverse sounds (feature sets) in the sample
         current_mora = []
         count = 0
-        # traverse sounds (feature sets) in the sample
-        for features in morae_features:
+        for features in sample_features:
             current_mora.append(features)
-            # add beats if this beat has been mapped
-            # TODO: widen to identify any moraic subset (see TODO at top of method)
-            # - this means current mora features should be a subset of some list of lists
-            # [{sample_features}.issuperset({morae_features}) for feature_set in current_mora]
-            for beats in self.morae:
-                if current_mora in self.morae[beats]:
+            # identify moraic list-of-lists matches where stored morae
+            # are a subset of current morae features
+            for compared_mora, beats in beats_per_morae.items():
+                if len(current_mora) != len(compared_mora):
+                    continue
+                feature_match = [
+                    current_features.issuperset(compared_mora[i])
+                    for i, current_features in enumerate(current_mora)
+                    if i < len(compared_mora)
+                ]
+                if False not in feature_match:
                     count += beats
                     current_mora = []
+                    break
         # check for leftover beats
         if current_mora:
             return

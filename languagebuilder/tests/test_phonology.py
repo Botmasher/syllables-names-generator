@@ -506,6 +506,16 @@ class PhonologyMorae(PhonologyFixture):
             "failed to count beats in existing mora"
         )
 
+    def test_count_morae(self):
+        self.phonology.morae.set_mora(["V", "C"], beats=1)
+        self.phonology.morae.set_mora(["V", "V", "C"], beats=2)
+        sample = ['o', 'k', 'o', 'o', 'k', 'o', 'k']
+        self.assertEqual(
+            self.phonology.morae.count_morae(sample),
+            4,
+            "failed to return the correct count of morae in a sound sample"
+        )
+
     # TODO: fix wordbuild fails <10% of the time (e.g. 'kifuka' != 'kipuka').
     # Example error message:
     ## ======================================================================
