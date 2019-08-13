@@ -489,30 +489,51 @@ class PhonologyMorae(PhonologyFixture):
         )
 
     def test_check_mora(self):
-        mora = self.phonology.morae.add(["V", "V", "C"], beats=2)
+        moraic_id = self.phonology.morae.add(["V", "V", "C"], beats=2, overwrite=True)
         self.assertTrue(
-            self.phonology.morae.is_mora(mora),
-            "failed to find mora in stored morae"
+            self.phonology.morae.get(moraic_id),
+            "failed to find known mora id in stored morae"
         )
 
-    # TODO: handle mora already added but with different counts
-    #   - map of beats -> morae vs mora -> beats?
+    def test_find_mora(self):
+        self.phonology.morae.add(["V", "V", "C"], beats=2, overwrite=True)
+        self.assertTrue(
+            self.phonology.morae.find(["vowel", "vowel", "consonant"]),
+            "failed to find known mora when searching morae"
+        )
+
+    def test_add_invalid_mora(self):
+        moraic_id = self.phonology.morae.add(["invalid_feature!"])
+        self.assertIsNone(
+            moraic_id,
+            "failed to avoid adding invalid mora"
+        )
+    
     def test_count_beats(self):
-        mora = self.phonology.morae.add(["V", "V", "C"], beats=2)
+        self.phonology.morae.add(["V", "V", "C"], beats=3, overwrite=True)
         self.assertEqual(
-            self.phonology.morae.get_beats(mora),
-            2,
-            "failed to count beats in existing mora"
+            self.phonology.morae.get_beats(["vowel", "vowel", "consonant"]),
+            3,
+            "failed to count beats for existing valid moraic structure"
         )
 
     def test_count_morae(self):
-        self.phonology.morae.add(["V", "C"], beats=1)
-        self.phonology.morae.add(["V", "V", "C"], beats=2)
+        self.phonology.morae.add(["V", "C"], beats=1, overwrite=True)
+        self.phonology.morae.add(["V", "V", "C"], beats=2, overwrite=True)
         sample = ['o', 'k', 'o', 'o', 'k', 'o', 'k']
         self.assertEqual(
             self.phonology.morae.count(sample),
             4,
             "failed to return the correct count of morae in a sound sample"
+        )
+
+    def test_count_underextended_morae(self):
+        self.phonology.morae.add(["vowel"], beats=1, overwrite=True)
+        sample = ['o', 'k', 'o', 'o', 'o', 'o', 'k', 'o', 'k']
+        self.assertEqual(
+            self.phonology.morae.count(sample),
+            6,
+            "failed to count morae in sample where morae only considers vowels and discounts consonants"
         )
 
     # TODO: test "broken" moraic features e.g. just morae where Vowel has 1 beat,
