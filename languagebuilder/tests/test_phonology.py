@@ -472,25 +472,24 @@ class PhonologyMorae(PhonologyFixture):
         this_class.phonology.syllables.add("VC")
         this_class.phonology.syllables.add("VVC")
     
-    def test_set_basic_mora(self):
-        beats = 1
-        self.phonology.morae.set_mora([["vowel"], ["consonant"]], beats=beats)
+    def test_add_basic_mora(self):
+        moraic_id = self.phonology.morae.add([["vowel"], ["consonant"]], beats=1)
         self.assertIn(
-            (("vowel",), ("consonant",)),
-            self.phonology.morae.morae,
+            moraic_id,
+            self.phonology.morae.get(),
             "failed to set a new simple mora"
         )
-        
+
     def test_interpret_mora(self):
-        mora = self.phonology.morae.set_mora(["V", "C"])
+        mora = self.phonology.morae.add(["V", "C"], overwrite=True)
         self.assertEqual(
             mora,
-            self.phonology.morae.retrieve_mora([["vowel"], ["consonant"]]),
+            self.phonology.morae.find([["vowel"], ["consonant"]])[0],
             "failed to set mora using consonant and vowel abbreviations"
         )
 
     def test_check_mora(self):
-        mora = self.phonology.morae.set_mora(["V", "V", "C"], beats=2)
+        mora = self.phonology.morae.add(["V", "V", "C"], beats=2)
         self.assertTrue(
             self.phonology.morae.is_mora(mora),
             "failed to find mora in stored morae"
@@ -499,7 +498,7 @@ class PhonologyMorae(PhonologyFixture):
     # TODO: handle mora already added but with different counts
     #   - map of beats -> morae vs mora -> beats?
     def test_count_beats(self):
-        mora = self.phonology.morae.set_mora(["V", "V", "C"], beats=2)
+        mora = self.phonology.morae.add(["V", "V", "C"], beats=2)
         self.assertEqual(
             self.phonology.morae.get_beats(mora),
             2,
@@ -507,14 +506,17 @@ class PhonologyMorae(PhonologyFixture):
         )
 
     def test_count_morae(self):
-        self.phonology.morae.set_mora(["V", "C"], beats=1)
-        self.phonology.morae.set_mora(["V", "V", "C"], beats=2)
+        self.phonology.morae.add(["V", "C"], beats=1)
+        self.phonology.morae.add(["V", "V", "C"], beats=2)
         sample = ['o', 'k', 'o', 'o', 'k', 'o', 'k']
         self.assertEqual(
-            self.phonology.morae.count_morae(sample),
+            self.phonology.morae.count(sample),
             4,
             "failed to return the correct count of morae in a sound sample"
         )
+
+    # TODO: test "broken" moraic features e.g. just morae where Vowel has 1 beat,
+    # as many beats counted as vowels present
 
     # TODO: fix wordbuild fails <10% of the time (e.g. 'kifuka' != 'kipuka').
     # Example error message:

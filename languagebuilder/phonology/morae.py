@@ -1,50 +1,102 @@
 from ..tools.flat_list import tuplify, untuplify
+from uuid import uuid4
+
+# NOTE: idiosyncratic usage, as with other terms in this program.
+# Not every "mora" is one "beat", though this deals with storage
+# and computation and does not make a theoretical assertion. In fact,
+# if beats are not explicitly input, each stored mora has 1 beat.
+#
+# - mora: stored list of associated with any given number of beats
+# - beat: counted number of beats for a mora
 
 class Morae:
     def __init__(self, phonology):
         self.phonology = phonology
-        self.morae = {}     # map beat count ints to morae sets
+        self.morae = {}         # map moraic ids to features and beat count data
     
-    def set_mora(self, sounds_or_features, beats=1, overwrite=False):
-        """Add a moraic structure and its associated beat count to the stored morae"""
+    def get(self, moraic_id=None):
+        """Return the moraic details stored under the given id key, or all items
+        if no key is specified."""
+        if moraic_id is not None:
+            return self.morae.get(moraic_id)
+        return self.morae
+
+    def add(self, sounds_or_features, beats=1, overwrite=False):
+        """Store a moraic structure and its associated beat count. Sounds or features
+        will be converted to a valid list of features lists and used in the future
+        to identify matching morae.
+        
+        Args:
+            sounds_or_features (list): List of features lists or sound strings.
+            beats (int, float): the number of beats in the mora(e).
+        
+        Returns:
+            A string id morae dict key where the mapped value stores moraic details.
+        """
         if not isinstance(beats, (int, float)):
             raise TypeError(f"Morae expected beat count to be a number not {beats}")
 
         # structure mora as list of lists
-        mora_list = self.vet_mora(sounds_or_features)
+        moraic_list = self.vet_mora(sounds_or_features)
         
         # optionally remove mora if it already exists
-        existing_beats = self.get_beats(mora_list)
-        if existing_beats:
+        existing_moraic_ids = self.find(moraic_list)
+        if existing_moraic_ids:
             if overwrite:
-                self.morae[existing_beats].remove(mora_list)
+                [self.remove(moraic_id) for moraic_id in existing_moraic_ids]
             else:
-                raise ValueError(f"Mora already exists in Morae: {mora_list}")
+                raise ValueError(f"Mora already exists in Morae: {existing_moraic_ids}")
 
-        # map mora to associated beats
-        self.morae.setdefault(beats, set()).add(mora_list)
+        # map moraic details
+        moraic_id = f"moraic-{uuid4()}"
+        self.morae[moraic_id] = {
+            'morae': moraic_list,   # list of features lists
+            'beats': beats          # beat count
+        }
+        return moraic_id
 
-        return self.morae[beats]
+    def remove(self, moraic_id):
+        """Delete one item from the morae map"""
+        return self.morae.pop(moraic_id)
+
+    def find(self, mora, first_only=False):
+        """Return a list of ids for morae that share this moraic structure"""
+        mora_list = self.vet_mora(mora)
+        
+        # A) Find one: break and return at the very first matching moraic entry
+        if first_only:
+            for moraic_id, moraic_details in self.morae.items():
+                if moraic_details['morae'] == mora_list:
+                    return [moraic_id]
+            return None
+        
+        # B) Find all: filter for searching all morae
+        moraic_ids = list(filter(
+            lambda moraic_id: self.morae[moraic_id]['morae'] == mora_list,
+            self.morae.keys()
+        ))
+        return moraic_ids
+
+    def match(self, features_list):
+        """Return a list of ids for morae where this moraic structure is a features
+        subset match for every feature in a same-length sample superset"""
+        moraic_ids = [
+            moraic_id
+            for moraic_id, moraic_details in self.morae.items()
+            if set(features_list).issuperset(set(moraic_details['morae']))
+        ]
+        return moraic_ids
 
     def get_beats(self, mora):
+        """Read the number of beats associated with the moraic list"""
         mora_list = self.vet_mora(mora)
-        for beats in self.morae:
-            if mora_list in self.morae[beats]:
-                return beats
-        return
+        moraic_ids = self.find(mora_list, first_only=True)
+        return self.morae.get(moraic_ids[0], {}).get('beats')
 
     def is_mora(self, mora):
+        """Check if the moraic structure exists within stored morae"""
         mora_list = self.vet_mora(mora)
-        beats = self.get_beats(mora_list)
-        return beats in self.morae
-
-    def beats_per_morae(self):
-        """Remap morae data from morae sets per beatcount into beats per mora"""
-        return {
-            tuplify(mora): beats
-            for beats, morae in self.morae.items()
-            for mora in morae
-        }
+        return self.find(mora_list, first_only=True) is not None
         
     # TODO: turn this into a more general phonology list of features list method
     #   - could be used to generate sylls, ...
@@ -74,17 +126,17 @@ class Morae:
     # TODO: search morae (beats, features)
     
     # TODO: pretty print morae
+
+    # TODO: what about conflicts/overlaps, like if V counts as 1 but VC is 2?
     
-    def count_morae(self, sounds):
-        """Count the number of morae in a sound sample"""
+    def count(self, sounds):
+        """Count the number of beats in a sound sample"""
         # convert sounds into a list of per-sound feature collections
         sample_features = [
             self.phonology.phonetics.parse_features(sound)
             for sound in sounds
         ]
-        # flip beat map to traverse morae
-        beats_per_morae = self.beats_per_morae()
-
+        
         # traverse sounds (feature sets) in the sample
         current_mora = []
         count = 0
@@ -92,16 +144,18 @@ class Morae:
             current_mora.append(features)
             # identify moraic list-of-lists matches where stored morae
             # are a subset of current morae features
-            for compared_mora, beats in beats_per_morae.items():
-                if len(current_mora) != len(compared_mora):
+            for compared_mora in self.morae.values():
+                compared_features = compared_mora['features']
+                if len(current_mora) != len(compared_features):
                     continue
+                # count beats if sample features contain moraic features
                 feature_match = [
-                    current_features.issuperset(compared_mora[i])
+                    set(current_features).issuperset(set(compared_features[i]))
                     for i, current_features in enumerate(current_mora)
-                    if i < len(compared_mora)
+                    if i < len(compared_features)
                 ]
                 if False not in feature_match:
-                    count += beats
+                    count += compared_mora['beats']
                     current_mora = []
                     break
         # check for leftover beats
