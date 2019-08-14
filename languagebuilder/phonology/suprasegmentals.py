@@ -23,6 +23,16 @@ import collections
 #           - TODO: here list an example of each kind of change to work towards
 
 class Suprasegmentals:
+    # MARKS data?
+    # {
+    #   mark: mark_id,              # use to look up marked letters/symbols
+    #   prioritize: feature,        # attempt to mark this feature first
+    #   mora: 0,                    # number of morae from fixed point
+    #   relative: word/feature,     # from first/nearest occurrence, otherwise whole word
+    #   syllable: 0,                # default to syll if given? 
+    #   handedness: l/r,            # count sylls/morae either left or right
+    #   direction: before/after     # search direction if markable not in mora/syll 
+    # }
     def __init__(self, phonology):
         # renderable marks for sounds or whole syllables
         # NOTE: look up non-syll mark in diacritics (or separate out letters vs sounds?)

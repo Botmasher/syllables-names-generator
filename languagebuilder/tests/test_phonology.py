@@ -533,7 +533,7 @@ class PhonologyMorae(PhonologyFixture):
         self.assertEqual(
             self.phonology.morae.count(sample),
             6,
-            "failed to count morae in sample where morae only considers vowels and discounts consonants"
+            "failed to count sample morae while considering vowels and discounting consonants"
         )
 
     # TODO: test "broken" moraic features e.g. just morae where Vowel has 1 beat,

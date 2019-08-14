@@ -152,15 +152,47 @@ class Morae:
         current_mora = []
         count = 0
         
-        # TODO: count underextended morae (not all features in sample)
+        # TODO: build tracked-so-far combinations letter per letter
+        #   - each letter starts a new list
+        #   - list is added to tracking overlist
+        #   - each is tracked until getting to a mora
+        #   - once beats counted, dump (don't want to count overlapped right?)
+        #   - make sure sets are only being used for unsorted data
+        #       - (overal features list of lists is ordered)
+        #   - reached end unable to count mora -> err
+
+        # count underextended morae (not all features in sample)
         #   - example: only count vowels
         #   - consider tracking/using position in current mora (length?)
-
         for features in sample_features:
+            # add the latest features to the current sample window
             current_mora.append(features)
+
+            # ensure the extended mora so far matches the start of any existing mora
+            # otherwise clear it and start with just this features list
+            features_shape_in_morae = False
+            # add possible matches where start matches sample window so far
+            potential_matches = []
+            for compared_id, compared_details in self.morae.items():
+                compared_features = compared_details['features']  
+                if len(compared_features) <= len(current_mora):
+                    feature_match = [
+                        set(current_mora[i]).issuperset(set(compared_features[i]))
+                        for i in range(len(current_mora) - 1)
+                    ]
+                    if True in feature_match:
+                        potential_matches.append(compared_id)
+                        features_shape_in_morae = True
+            
+            # reset sample features window if no potential matches are in morae 
+            if not features_shape_in_morae:
+                current_mora = [features]
+                potential_matches = self.morae.keys()
+            
             # identify moraic list-of-lists matches where stored morae
             # are a subset of current morae features
-            for compared_mora in self.morae.values():
+            for compared_id in potential_matches:
+                compared_mora = self.morae[compared_id]
                 compared_features = compared_mora['features']
                 if len(current_mora) != len(compared_features):
                     continue
