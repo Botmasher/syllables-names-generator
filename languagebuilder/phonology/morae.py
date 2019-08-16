@@ -111,8 +111,8 @@ class Morae:
     # TODO: turn this into a more general phonology list of features list method
     #   - could be used to generate sylls, ...
     def vet_mora(self, sounds_or_features):
-        """Turn a list of sounds or features lists or strings into a list of lists of
-        features to be identified as a mora."""
+        """Turn a list of sounds or features into a list of lists of features
+        to be identified as a mora"""
         vetted_mora = []
         for features in sounds_or_features:
             # attempt to read as a single sound
@@ -140,8 +140,25 @@ class Morae:
 
     # TODO: what about conflicts/overlaps, like if V counts as 1 but VC is 2?
     
+    def is_superlist(self, list_of_setlists, compared_setlist, use_all=False):
+        """Check that setlists in a list of list of sets are supersets of the
+        compared setlist's sets, in order. Verifies that all or any are supersets,
+        depending on the setting of the use_all flag."""
+        matches = list(filter(
+            lambda x: x,
+            [
+                set(l[i]).issuperset(set(compared_setlist[i]))
+                if i < len(compared_setlist) else False
+                for l in list_of_setlists
+                for i in range(len(l))
+            ]
+        ))
+        if not use_all:
+            return any(matches)
+        return all(matches)
+
     def count(self, sounds):
-        """Count the number of beats in a sound sample. (NOT features!)"""
+        """Count the number of beats in a sound sample based on stored morae"""
         # convert sounds into a list of per-sound feature collections
         sample_features = [
             self.phonology.phonetics.get_features(sound)
@@ -162,43 +179,49 @@ class Morae:
             # add feature to all current morae and start a new one with current features
             [track.append(features) for track in tracked_morae]
             tracked_morae.append([features])
-            matched_so_far = []
-            did_full_match = False
+            #matched_so_far = []
+            #did_full_match = False
             # traverse morae looking for matches
             # ensure the extended mora so far matches the start of any existing mora
             # otherwise discontinue it from tracked features list
             for compared_details in self.morae.values():
-                if did_full_match:
-                    count += compared_details['beats']
-                    break
                 compared_features = compared_details['features']
-                # go through tracks comparing for full or partial matchups
-                unmatched_tracks = list(filter(
-                    lambda m: m not in matched_so_far,
-                    tracked_morae
-                ))
-                for tracked_features in unmatched_tracks:
-                    feature_matches = [
-                        set(tracked_features[i]).issuperset(set(compared_features[i]))
-                        if i < len(compared_features) else False
-                        for i in range(len(tracked_features))
-                    ]
-                    if False not in feature_matches:
-                        # total match - count and reset tracking
-                        if len(tracked_features) == len(compared_features):
-                            did_full_match = True
-                            break
-                        # partial match so far - continue tracking
-                        else:
-                            # add possible match where start matches sample window so far
-                            matched_so_far.append(tracked_features)
+                # compare tossable tracks for full or partial matchups
+                # unmatched_tracks = list(filter(
+                #     lambda m: m not in matched_so_far,
+                #     tracked_morae
+                # ))
+
+                if self.is_superlist(tracked_morae, compared_features):
+                    count += compared_details['beats']
+                    tracked_morae.clear()
+                    break
+                
+                # for tracked_features in unmatched_tracks:
+                #     # check that guessed mora isn't too long
+                #     if len(tracked_features) > len(compared_features):
+                #         continue
+                #     # attempt to match all features against stored moraic entry
+                #     feature_matches = [
+                #         set(tracked_features[i]).issuperset(set(compared_features[i]))
+                #         for i in range(len(tracked_features))
+                #     ]
+                #     # catch partial or full features match
+                #     if False not in feature_matches:
+                #         # total match - count and reset tracking
+                #         if len(tracked_features) == len(compared_features):
+                #             did_full_match = True
+                #             break
+                #         # partial match so far - continue tracking
+                #         else:
+                #             # add possible match where start matches sample window so far
+                #             matched_so_far.append(tracked_features)
             
             # reset sample window tracks if no potential matches 
-            if did_full_match or not matched_so_far:
-                tracked_morae.clear()
+            #if did_full_match:
+            #    matched_so_far.clear()
             # keep tracking only on potential matches
-            else:
-                tracked_morae = matched_so_far[:]
+            #tracked_morae = matched_so_far[:]
         
         ## TODO: figure a way to check for leftover beats
         # if leftover_beats_check():
