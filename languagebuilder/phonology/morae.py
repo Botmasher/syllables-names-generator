@@ -6,8 +6,10 @@ from uuid import uuid4
 # and computation and does not make a theoretical assertion. In fact,
 # if beats are not explicitly input, each stored mora has 1 beat.
 #
-# - mora: stored list of associated with any given number of beats
+# - mora: moraic item containing features associated with any number of beats
 # - beat: counted number of beats for a mora
+# - features (features list): same as moraic structure (ordered list of featuresets)
+# - details: moraic values under the id containing its features and beats
 
 class Morae:
     def __init__(self, phonology):
@@ -23,11 +25,11 @@ class Morae:
 
     def add(self, sounds_or_features, beats=1, overwrite=False):
         """Store a moraic structure and its associated beat count. Sounds or features
-        will be converted to a valid list of features lists and used in the future
+        will be converted to a valid list of featuresets and used in the future
         to identify matching morae.
         
         Args:
-            sounds_or_features (list): List of features lists or sound strings.
+            sounds_or_features (list): List of featuresets or sound strings.
             beats (int, float): the number of beats in the mora(e).
         
         Returns:
@@ -44,12 +46,12 @@ class Morae:
             return
         
         # optionally remove mora if it already exists
-        existing_moraic_ids = self.find(moraic_list, vet=False)
+        existing_moraic_ids = self.find(moraic_list, vet_mora=False)
         if existing_moraic_ids:
             if overwrite:
                 [self.remove(moraic_id) for moraic_id in existing_moraic_ids]
             else:
-                print(f"Mora already exists in Morae: {existing_moraic_ids}")
+                print(f"Moraic structure already exists in Morae: {existing_moraic_ids}")
                 return
 
         # map moraic details
@@ -64,24 +66,29 @@ class Morae:
         """Delete one item from the morae map"""
         return self.morae.pop(moraic_id)
 
-    def find(self, mora, vet=True, first_only=False):
-        """Return a list of ids for morae that share this moraic structure"""
-        mora_list = self.vet_mora(mora) if vet else mora
-        
-        moraic_ids = []
+    def find(self, mora=None, beats=None, vet_mora=True, first_only=False):
+        """Return a list of ids for morae that share the beatcount or moraic structure"""
+        # 
+        if not (mora or beats):
+            print(f"Morae find failed - expected moraic structure or beats to search for")
+            return
 
-        # A) Find one: break and return at the very first matching moraic entry
-        if first_only:
-            for moraic_id, moraic_details in self.morae.items():
-                if moraic_details['features'] == mora_list:
-                    moraic_ids.append(moraic_id)
+        # structure mora into list of featuresets
+        features = self.vet_mora(mora) if vet_mora and mora else mora
         
-        # B) Find all: filter for searching all morae
-        else:
-            moraic_ids += list(filter(
-                lambda moraic_id: self.morae[moraic_id]['features'] == mora_list,
-                self.morae.keys()
-            ))
+        # search for matching morae
+        moraic_ids = []
+        for moraic_id, moraic_details in self.morae.items():
+            # match morae with requested data
+            requested_details = {
+                'features': features if features else moraic_details['features'],
+                'beats': beats if beats else moraic_details['beats']
+            }
+            if requested_details == moraic_details:
+                moraic_ids.append(moraic_id)
+            # break and return at the very first matching moraic entry
+            if moraic_ids and first_only:
+                return moraic_ids
 
         return moraic_ids
 
@@ -94,14 +101,6 @@ class Morae:
             if set(features_list).issuperset(set(moraic_details['features']))
         ]
         return moraic_ids
-
-    def get_beats(self, mora):
-        """Read the number of beats associated with the moraic list"""
-        moraic_ids = self.find(mora, first_only=True)
-        if moraic_ids:
-            return self.morae.get(moraic_ids[0], {}).get('beats')
-        else:
-            return
 
     def is_mora(self, mora):
         """Check if the moraic structure exists within stored morae"""
@@ -134,23 +133,7 @@ class Morae:
                 return
         return vetted_mora
 
-    # TODO: search morae (beats, features)
-    
-    def pretty(self, moraic_id):
-        """Format text representing a pretty-printed moraic entry"""
-        moraic_details = self.get(moraic_id)
-        if not moraic_details:
-            print(f"Cannot pretty print unrecognized mora {moraic_id}")
-            return
-        beats = moraic_details['beats']
-        features_list = moraic_details['features']
-        text = ""
-        text = f"""{beats}-beat mora: {''.join([
-            ', '.join(featureset) for featureset in features_list
-        ])}"""
-        return text
-
-    # TODO: what about conflicts/overlaps, like if V counts as 1 but VC is 2?
+    # TODO: handle conflicts/overlaps, like if V counts as 1 but VC is 2
     
     def is_superlist(self, list_of_setlists, compared_setlist):
         """Check that any setlists in a list of list of sets are supersets of the
