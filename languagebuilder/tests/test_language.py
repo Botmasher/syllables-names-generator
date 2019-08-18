@@ -163,9 +163,11 @@ class LanguageWords(LanguageFixture):
             'x': ['hk']
         })
         this_class.language.phonology.syllables.add("CV")
-        this_class.language.phonology.add_rule("stop", "fricative", "V_V")
-        this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
-        
+        # order rules to yield predictable results in test_build_unit
+        rule_a = this_class.language.phonology.add_rule("stop", "fricative", "V_V")
+        rule_b = this_class.language.phonology.add_rule("bilabial fricative", "labiodental fricative", "V_V")
+        this_class.language.phonology.rules.order_before(rule_a, rule_b)
+
         # set up grammar
         this_class.language.grammar.properties.add("tense", "future")
         this_class.language.grammar.properties.add("tense", "nonfuture")
@@ -179,10 +181,6 @@ class LanguageWords(LanguageFixture):
         this_class.language.grammar.exponents.add(post="ka", properties="future imperfective", pos="verb")
         this_class.language.grammar.exponents.add(post="fa", properties="nonfuture", pos="verb")
         
-        # TODO: sounds and grammar
-        #   - phonetics, inventory, syllables
-        #   - word classes, properties, exponents (including ordering)
-
     def test_generate_root_word(self):
         root_word = self.language.generate(length=4, word_class="verb")[0]
         self.assertTrue(
@@ -307,6 +305,21 @@ class LanguageWords(LanguageFixture):
             "".join(base_entry['sound']) + "ka",
             "failed to generate a new root + grammatical unit in the language"
         )
+
+    # One out of every ~40 runs:
+    # NOTE: possibly now fixed with explicit rule ordering (no similar error in >100 runs)
+    # ======================================================================
+    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    # ----------------------------------------------------------------------
+    # Traceback (most recent call last):
+    # File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 309, in test_build_unit
+    #     "failed to generate a new root + grammatical unit in the language"
+    # AssertionError: 'kitaka' != 'kiθaka'
+    # - kitaka
+    # ?   ^
+    # + kiθaka
+    # ?   ^
+    # : failed to generate a new root + grammatical unit in the language
 
     def test_apply_sound_changes(self):
         changed_sounds = self.language.phonology.apply_rules("paputaki")

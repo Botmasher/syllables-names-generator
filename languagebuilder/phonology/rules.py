@@ -183,7 +183,7 @@ class Rules():
     # Manage rule order sequence list
 
     def order_swap(self, rule_a, rule_b):
-        """Switch the ordering position of two rule ids so that they
+        """Switch the ordering position of two rule indexes so that they
         apply in reverse order"""
         # swap position of ids
         if self.has(rule_a) and self.has(rule_b):
@@ -203,32 +203,34 @@ class Rules():
         # front-to-back rule ordering
         return self.order
 
-    def order_before(self, rule_before, rule_after):
+    def order_before(self, rule_id_before, rule_id_after):
         """Change a rule index to apply before another rule"""
-        if self.has(rule_before) and self.has(rule_after):
-            # place rule before relative id
-            before_i = self.order.index(rule_before)
-            after_i = self.order.index(rule_after)
-            self.order = self.order[:rule_after] + [rule_before] + self.order[rule_after:]
-            # remove moved id accounting for list growth
-            if after_i > before_i:
-                self.order.pop(before_i)
-            # add one if before_id was duplicated in a position before its index
-            else:
-                self.order.pop(before_i + 1)
-            return True
-        return False
+        if not (self.has(rule_id_before) and self.has(rule_id_after)):
+            print(f"Failed to reorder rules - either before or after id not found")
+            return
+        
+        # get rule order positions
+        before_i = self.order.index(rule_id_before)
+        after_i = self.order.index(rule_id_after)
+        
+        # only perform swap if first precedes second
+        if after_i <= before_i:
+            self.order_swap(rule_id_before, rule_id_after)
+        
+        return self.order
     
     def order_absolute(self, rule_id, order_i=0):
         """Set the index of a rule within the relative rule order sequence"""
-        if self.has(rule_id):
-            # place the id at new position in list
-            original_i = self.order.index(rule_id)
-            self.order = self.order[:order_i] + [rule_id] + self.order[order_i:]
-            # remove original id accounting for list growth if moved before
-            if order_i > original_i:
-                self.order.pop(original_i)
-            else:
-                self.order.pop(original_i + 1)
-            return True
-        return False
+        if not self.has(rule_id):
+            print(f"Failed to reorder invalid rule {rule_id}")
+            return
+        # calculate new position in cut list
+        new_i = order_i - 1 if self.order.index(rule_id) > order_i else order_i
+        # remove rule id from list
+        filtered_order = list(filter(
+            lambda x: x != rule_id,
+            self.order[:]
+        ))
+        # add rule id at new position
+        self.order = filtered_order[:new_i] + [rule_id] + filtered_order[new_i:]
+        return self.order

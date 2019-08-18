@@ -543,9 +543,6 @@ class PhonologyMorae(PhonologyFixture):
             "failed to count sample morae while considering vowels and discounting consonants"
         )
 
-    # TODO: test "broken" moraic features e.g. just morae where Vowel has 1 beat,
-    # as many beats counted as vowels present
-
     # TODO: fix wordbuild fails <10% of the time (e.g. 'kifuka' != 'kipuka').
     # Example error message:
     ## ======================================================================
