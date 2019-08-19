@@ -317,6 +317,7 @@ class PhonologySuprasegmentals(PhonologyFixture):
         this_class.phonology.phonemes.add("ts", ["c"])
         this_class.phonology.phonemes.add("o", ["o"])
         this_class.phonology.syllables.add("CV")
+        this_class.phonology.syllables.add("V")
         #this_class.phonology.suprasegmentals.add("`", stress="primary", pitch=None)
 
     def test_add_remove_default_contour(self):
@@ -346,18 +347,18 @@ class PhonologySuprasegmentals(PhonologyFixture):
         )
 
     def test_syllabify(self):
-        word = ["ts", "o", "ts", "o", "ts", "o"]
+        word = ["ts", "o", "o", "ts", "o", "ts", "o"]
         self.assertEqual(
             self.phonology.suprasegmentals.syllabify(word),
-            [['ts', 'o'], ['ts', 'o'], ['ts', 'o']],
+            [["ts", "o"], ["o"], ["ts", "o"], ["ts", "o"]],
             "failed to split a word into syllables"
         )
 
     def test_count_syllables(self):
-        word = ["ts", "o", "ts", "o", "ts", "o"]
+        word = ["ts", "o", "o", "ts", "o", "ts", "o"]
         self.assertEqual(
             self.phonology.suprasegmentals.count_syllables(word),
-            3,
+            4,
             "failed to count the number of syllables in a word"
         )
     
