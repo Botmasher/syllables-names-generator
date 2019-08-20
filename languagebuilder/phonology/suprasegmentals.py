@@ -1,4 +1,3 @@
-from ..tools import flat_list, redacc
 from uuid import uuid4
 import collections
 
@@ -256,7 +255,7 @@ class Suprasegmentals:
         #
         # TODO: create a default contour
         # default_contour = []
-        syllabified_word = self.syllabify(word_id[0]) if do_syllabify else syllabified_word
+        syllabified_word = self.phonology.syllables.syllabify(word_id[0]) if do_syllabify else syllabified_word
         # check contour
         if len(contour) > len(syllabified_word):
             return
@@ -405,72 +404,4 @@ class Suprasegmentals:
         """Move the targeted mark to a new syllable"""
         return
 
-    def is_syllable(self, syllable_fragment):
-        """Verify that the fragment is a subset of least one syllable in the phonology"""
-        # vet features in syllable fragment
-        features = [
-            set(self.phonology.phonetics.get_features(sound))
-            for sound in syllable_fragment
-        ]
-        #if not features:
-        #    raise ValueError(f"Suprasegmentals is_syllable given invalid featureset list {syllable_fragment}")
-
-        # traverse possible syllables looking for featureset matches
-        for syllable in self.phonology.syllables.get().values():
-            if len(syllable) != len(features):
-                continue
-            # syllable applies to all featureset in features
-            matches = [
-                set(features[i]).issuperset(syllable[i])
-                for i in range(len(features))
-            ]
-            if all(matches):
-                return True
-        return False
-
-    def count_syllables(self, sounds):
-        if isinstance(sounds, str):
-            sounds = str.split()
-        syllabification = self.syllabify(sounds)
-        if syllabification:
-            return len(syllabification)
-
-    # TODO: smarter resyllabify method (currently: add syllable when one is possible)
-    #   - look ahead/behind to determine syllable boundary
-    #   - use maximum possible syllable first before suggesting minimum
-    #   - best fit across whole words
-
-    def syllabify(self, sounds):
-        """Separate sounds into a list of syllables using a very basic approach. Sounds
-        are grouped using linear syllable build and first (smallest) possible syllable
-        features match."""
-        # verify sounds list input
-        if not isinstance(sounds, list):
-            raise TypeError(f"Suprasegmentals resyllabify expected list of strings not {sounds}")
-        
-        # create list of known sounds
-        vetted_sounds = [
-            sound for sound in sounds
-            if self.phonology.phonetics.has_ipa(sound)
-        ]
-
-        # build word with syllables list of lists
-        syllabification = redacc.redacc(            # reduce to a list of syllable lists
-            vetted_sounds,
-            lambda sound, word: (
-                word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
-                word + [[sound]],                   # add sound to new syllable list
-            )[self.is_syllable(word[-1])],          # if last list is a full syllable
-            [[]]                                    # empty word with one empty syllable
-        )
-
-        # check final syllable sounds were not leftovers (they are also a valid syllable)
-        if not self.is_syllable(syllabification[-1]):
-            raise ValueError(f"Syllabify failed to split all sounds - final list is not a syllable: {syllabification[-1]}")
-
-        # ensure all input sounds were syllabified
-        if len(flat_list.flatten(syllabification)) != len(sounds):
-            raise ValueError(f"Suprasegmentals failed to resyllabify {syllabification} - not all sounds placeable within compared phonology syllables")
-        
-        return syllabification
     

@@ -128,6 +128,28 @@ class PhonologySyllables(PhonologyFixture):
             "failed to remove an existing syllable from the phonology"
         )
 
+    def test_syllabify(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("V")
+        word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
+        self.assertEqual(
+            self.phonology.syllables.syllabify(word),
+            [["kʰ", "a"], ["a"], ["gʰ", "a"], ["gʰ", "a"]],
+            "failed to split a word into syllables"
+        )
+
+    def test_count_syllables(self):
+        self.phonology.syllables.clear
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("CVV")
+        word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
+        self.assertEqual(
+            self.phonology.syllables.count(word),
+            4,
+            "failed to count the number of syllables in a word"
+        )
+
 # TODO: test varied built words for determining if inventory, syllables and rules work
 # rather than testing substructure individually to probe how they work
 class PhonologyWords(PhonologyFixture):
@@ -344,22 +366,6 @@ class PhonologySuprasegmentals(PhonologyFixture):
             "".join(flatten(accented_word)),
             "rpabapáp",
             "failed to apply a suprasegmentals default contour"
-        )
-
-    def test_syllabify(self):
-        word = ["ts", "o", "o", "ts", "o", "ts", "o"]
-        self.assertEqual(
-            self.phonology.suprasegmentals.syllabify(word),
-            [["ts", "o"], ["o"], ["ts", "o"], ["ts", "o"]],
-            "failed to split a word into syllables"
-        )
-
-    def test_count_syllables(self):
-        word = ["ts", "o", "o", "ts", "o", "ts", "o"]
-        self.assertEqual(
-            self.phonology.suprasegmentals.count_syllables(word),
-            4,
-            "failed to count the number of syllables in a word"
         )
     
     # # TODO: rewrite suprasegmentals tests below considering:

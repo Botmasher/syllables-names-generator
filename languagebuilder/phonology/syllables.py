@@ -1,4 +1,5 @@
 from uuid import uuid4
+from ..tools import redacc, flat_list
 
 class Syllables():
     def __init__(self, phonology):
@@ -145,3 +146,64 @@ class Syllables():
             return syllables_cache
         self.syllables.clear()
         return read_cache
+
+    def is_syllable(self, syllable_fragment):
+        """Verify that the fragment matches one syllable in the phonology"""
+        # vet features in syllable fragment
+        features = [
+            set(self.phonology.phonetics.get_features(sound))
+            for sound in syllable_fragment
+        ]
+        # traverse possible syllables looking for featureset matches
+        for syllable in self.get().values():
+            if len(syllable) != len(features):
+                continue
+            # syllable applies to all featureset in features
+            matches = [
+                set(features[i]).issuperset(syllable[i])
+                for i in range(len(features))
+            ]
+            if all(matches):
+                return True
+        return False
+
+    def count(self, sounds, do_syllabify=False):
+        syllables = self.syllabify(sounds) if do_syllabify else sounds
+        if not syllables:
+            raise ValueError(f"Could not count syllables - invalid syllables list {syllables}")
+        return len(syllables)
+
+    # TODO: smarter resyllabify method (currently: add syllable when one is possible)
+    #   - look ahead/behind to determine syllable boundary
+    #   - use maximum possible syllable first before suggesting minimum
+    #   - best fit across whole words
+    def syllabify(self, sounds):
+        """Separate sounds into a list of syllables using a very basic approach. Sounds
+        are grouped using linear syllable build and first (smallest) possible syllable
+        features match."""
+        # verify sounds list input
+        if not isinstance(sounds, list):
+            raise TypeError(f"Syllables resyllabify expected list of strings not {sounds}")
+        
+        # create list of known sounds
+        vetted_sounds = [
+            sound for sound in sounds
+            if self.phonology.phonetics.has_ipa(sound)
+        ]
+
+        # build word with syllables list of lists
+        syllabification = redacc.redacc(            # reduce to a list of syllable lists
+            vetted_sounds,
+            lambda sound, word: (
+                word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
+                word + [[sound]],                   # add sound to new syllable list
+            )[self.is_syllable(word[-1])],          # if last list is a full syllable
+            [[]]                                    # empty word with one empty syllable
+        )
+
+        # check final syllable sounds were not leftovers (they are also a valid syllable)
+        # TODO: include as semantic tests - may not be value errors for this method
+        if not self.is_syllable(syllabification[-1]) or len(flat_list.flatten(syllabification)) != len(sounds):
+            raise ValueError(f"Syllables failed to syllabify all sounds: {syllabification}")
+        
+        return syllabification
