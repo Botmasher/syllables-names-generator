@@ -167,8 +167,8 @@ class Syllables():
                 return True
         return False
 
-    def count(self, sounds, do_syllabify=False):
-        syllables = self.syllabify(sounds) if do_syllabify else sounds
+    def count(self, sounds):
+        syllables = self.syllabify(sounds)
         if not syllables:
             raise ValueError(f"Could not count syllables - invalid syllables list {syllables}")
         return len(syllables)
@@ -177,7 +177,7 @@ class Syllables():
     #   - look ahead/behind to determine syllable boundary
     #   - use maximum possible syllable first before suggesting minimum
     #   - best fit across whole words
-    def syllabify(self, sounds):
+    def syllabify(self, sounds, minimally=False):
         """Separate sounds into a list of syllables using a very basic approach. Sounds
         are grouped using linear syllable build and first (smallest) possible syllable
         features match."""
@@ -191,15 +191,32 @@ class Syllables():
             if self.phonology.phonetics.has_ipa(sound)
         ]
 
-        # build word with syllables list of lists
-        syllabification = redacc.redacc(            # reduce to a list of syllable lists
-            vetted_sounds,
-            lambda sound, word: (
-                word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
-                word + [[sound]],                   # add sound to new syllable list
-            )[self.is_syllable(word[-1])],          # if last list is a full syllable
-            [[]]                                    # empty word with one empty syllable
-        )
+        # Build word with syllables list of lists
+
+        # look for the smallest valid syllables
+        if minimally:
+            syllabification = redacc.redacc(            # reduce to a list of syllable lists
+                vetted_sounds,
+                lambda sound, word: (
+                    word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
+                    word + [[sound]],                   # add sound to new syllable list
+                )[self.is_syllable(word[-1])],          # if last list is a full syllable
+                [[]]                                    # empty word with one empty syllable
+            )
+        # look for maximal valid syllables
+        else:
+            current_syllable = []
+            syllabification = []
+            for i, sound in enumerate(vetted_sounds):
+                current_syllable.append(sound)
+                if i+1 < len(vetted_sounds) and self.is_syllable(current_syllable + [vetted_sounds[i+1]]):
+                    continue
+                elif self.is_syllable(current_syllable):
+                    syllabification.append(current_syllable[:])
+                    current_syllable.clear()
+                else:
+                    # not yet a syllable - keep building
+                    continue
 
         # check final syllable sounds were not leftovers (they are also a valid syllable)
         # TODO: include as semantic tests - may not be value errors for this method
@@ -207,3 +224,10 @@ class Syllables():
             raise ValueError(f"Syllables failed to syllabify all sounds: {syllabification}")
         
         return syllabification
+
+    # TODO: divide and find largest syllable from start
+    def recurse_syllabify(self, sounds, cut_i=-1):
+        syllabification_a = self.recurse_syllabify(sounds[:cut_i-1])
+        syllabification_b = self.recurse_syllabify(sounds[cut_i-1:])
+        if syllabification_a and syllabification_b and len(syllabification_a + syllabification_b) == len(sounds):
+            return syllabification_a + syllabification_b
