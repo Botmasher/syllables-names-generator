@@ -226,8 +226,31 @@ class Syllables():
         return syllabification
 
     # TODO: divide and find largest syllable from start
-    def recurse_syllabify(self, sounds, cut_i=-1):
-        syllabification_a = self.recurse_syllabify(sounds[:cut_i-1])
-        syllabification_b = self.recurse_syllabify(sounds[cut_i-1:])
-        if syllabification_a and syllabification_b and len(syllabification_a + syllabification_b) == len(sounds):
-            return syllabification_a + syllabification_b
+    def recurse_syllabify(self, sounds):
+        syllabification = []
+        to_syllabify = []
+        for i in reversed(range(len(sounds))):
+            sound = sounds[i]
+            if self.is_syllable(sounds[0:i]):
+                syllabification.append(sounds[0:i])
+                break
+            else:
+                to_syllabify.append(sound)
+        
+        while len(to_syllabify) > 0:
+            more_syllabifiables = []
+            for i in range(len(to_syllabify)):
+                if self.is_syllable(reversed(to_syllabify[i:])):
+                    syllabification.append(reversed(to_syllabify[i:]))
+                more_syllabifiables.append(to_syllabify[i])
+            to_syllabify = more_syllabifiables
+        
+        return syllabification
+    
+    def recurse_syll_B(self, sounds, cut_i=0):
+        if self.is_syllable(sounds):
+            return [[sounds]]
+        syll_a = [sounds[:cut_i-1]] if self.is_syllable(sounds[:cut_i-1]) else self.recurse_syll_B(sounds[:cut_i-1])
+        syll_b = [sounds[cut_i-1:]] if self.is_syllable(sounds[cut_i-1:]) else self.recurse_syll_B(sounds[cut_i-1:])
+        return syll_a + syll_b
+    
