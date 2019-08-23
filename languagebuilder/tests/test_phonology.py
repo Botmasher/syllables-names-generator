@@ -128,15 +128,28 @@ class PhonologySyllables(PhonologyFixture):
             "failed to remove an existing syllable from the phonology"
         )
 
-    def test_syllabify(self):
+    def test_syllabify_max(self):
         self.phonology.syllables.clear()
         self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("CVV")
         self.phonology.syllables.add("V")
         word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
         self.assertEqual(
-            self.phonology.syllables.syllabify(word),
+            self.phonology.syllables.syllabify_max(word),
+            [["kʰ", "a", "a"], ["gʰ", "a"], ["gʰ", "a"]],
+            "failed to split a word into maximal syllables"
+        )
+
+    def test_syllabify_min(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("CVV")
+        self.phonology.syllables.add("V")
+        word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
+        self.assertEqual(
+            self.phonology.syllables.syllabify_max(word),
             [["kʰ", "a"], ["a"], ["gʰ", "a"], ["gʰ", "a"]],
-            "failed to split a word into syllables"
+            "failed to split a word into minimal syllables"
         )
 
     def test_count_syllables(self):
