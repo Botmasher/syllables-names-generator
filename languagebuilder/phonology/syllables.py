@@ -164,12 +164,13 @@ class Syllables():
                 for i in range(len(features))
             ]
             if all(matches):
+                print(f"{''.join(syllable_fragment)} matches syllable {syllable}!")
                 return True
         return False
 
-    def count(self, sounds):
-        syllables = self.syllabify(sounds)
-        if not syllables:
+    def count(self, sounds, minimally=False):
+        syllables = self.syllabify(sounds, minimally=minimally)
+        if not isinstance(syllables, list):
             raise ValueError(f"Could not count syllables - invalid syllables list {syllables}")
         return len(syllables)
 
@@ -177,6 +178,10 @@ class Syllables():
     #   - (currently: add max or min syllable when one is possible)
     #   - look ahead/behind to determine syllable boundary
     #   - best fit across whole words
+    # NOTE: ideas
+    #   - build out every letter right to however many syllables it can be a part of
+    #   - compare potential non-overlapping syllables
+    #   - return one possible non-overlapping split for the whole sample
     def syllabify(self, sounds, minimally=False):
         """Separate sounds into a list of syllables using one of two very basic
         approaches, linearly searching for either the shortest or the longest possible
@@ -213,21 +218,31 @@ class Syllables():
             raise ValueError(f"Syllables failed to syllabify all sounds: {syllabification}")
         
         return syllabification
-    
-    def _syllabify_max_core_loop(self, sounds, end_i):
+
+    def _syllabify_max_core_loop(self, sounds, start_i=0, end_i=None):
         """Inner recursive end-to-start search for longest possible syllable"""
-        if not sounds or end_i < 1:
-            return (None, 0)
-        if self.is_syllable(sounds):
-            return (sounds, end_i)
-        return self._syllabify_max_core_loop(sounds[:-1], end_i-1)
+        end_i = len(sounds) if end_i is None else end_i
+        if start_i == end_i or end_i < 1:
+            return []
+        elif self.is_syllable(sounds[start_i:end_i]):
+            return [sounds[start_i:end_i]] + self._syllabify_max_core_loop(
+                sounds,
+                start_i = end_i,
+                end_i = len(sounds)
+            )
+        else:
+            return self._syllabify_max_core_loop(
+                sounds[start_i:-1],
+                start_i = start_i,
+                end_i = end_i-1
+            )
 
     def syllabify_max(self, sounds):
         """Break a sound sample into a list of longest possible syllables lists"""
         syllabification = []
         end_i = len(sounds)
         start_i = 0
-        while start_i < end_i:
+        while start_i is not None and start_i < end_i:
             syllable, start_i = self._syllabify_max_core_loop(sounds[start_i:], end_i)
             syllable and syllabification.append(syllable)
         if len(flat_list.flatten(syllabification)) != len(sounds):

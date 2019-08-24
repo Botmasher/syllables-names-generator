@@ -135,7 +135,7 @@ class PhonologySyllables(PhonologyFixture):
         self.phonology.syllables.add("V")
         word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
         self.assertEqual(
-            self.phonology.syllables.syllabify_max(word),
+            self.phonology.syllables.syllabify(word, minimally=False),
             [["kʰ", "a", "a"], ["gʰ", "a"], ["gʰ", "a"]],
             "failed to split a word into maximal syllables"
         )
@@ -147,20 +147,33 @@ class PhonologySyllables(PhonologyFixture):
         self.phonology.syllables.add("V")
         word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
         self.assertEqual(
-            self.phonology.syllables.syllabify_max(word),
+            self.phonology.syllables.syllabify(word, minimally=True),
             [["kʰ", "a"], ["a"], ["gʰ", "a"], ["gʰ", "a"]],
             "failed to split a word into minimal syllables"
         )
 
-    def test_count_syllables(self):
+    def test_count_syllables_simple(self):
         self.phonology.syllables.clear
         self.phonology.syllables.add("CV")
+        word = ["kʰ", "a", "gʰ", "a", "gʰ", "a"]
+        self.assertEqual(
+            self.phonology.syllables.count(word),
+            3,
+            "failed to count the number of syllables in a word with simple syllable structure"
+        )
+    
+    def test_count_syllables_complex(self):
+        self.phonology.syllables.clear
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("CCV")
+        self.phonology.syllables.add("CCVV")
         self.phonology.syllables.add("CVV")
-        word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
+        self.phonology.syllables.add("CVC")
+        word = ["k", "kʰ", "a", "a", "gʰ", "a", "g", "gʰ", "a", "g", "a"]
         self.assertEqual(
             self.phonology.syllables.count(word),
             4,
-            "failed to count the number of syllables in a word"
+            "failed to count the number of syllables in a word with more complex syllable structure"
         )
 
 # TODO: test varied built words for determining if inventory, syllables and rules work
