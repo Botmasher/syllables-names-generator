@@ -17,7 +17,7 @@ def untuplify(t):
 def flatten(l, depth=None):
     """"Take a nested sequence and return a flattened list with no subcollections"""
     # reached individual list item or recursion depth
-    if not isinstance(l, (list, set, tuple, deque)):
+    if is_primitive(l):
         return [l]
 
     # optionally break at specific recursion depth
@@ -33,3 +33,26 @@ def flatten(l, depth=None):
         flat_l += flatten(l_sub, depth)
 
     return flat_l
+
+def is_primitive(l):
+    """Check if the value is considered a flatlist primitive"""
+    return not isinstance(l, (list, set, tuple, deque))
+
+def flat_map(expression, l):
+    """Flatten and run expression on all elements in all sublists"""
+    if is_primitive(l):
+        return expression(l)
+    return [
+        flat_map(expression, l)
+        for l_sub in l
+    ]
+
+def flat_filter(expression, l):
+    """Flatten and filter all elements in all sublists"""
+    if is_primitive(l):
+        return [l] if expression(l) else None
+    return [
+        flat_map(expression, sub_l)
+        for sub_l in l
+        if expression
+    ]
