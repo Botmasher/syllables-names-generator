@@ -1,4 +1,3 @@
-from ..tools.flat_list import tuplify, untuplify
 from uuid import uuid4
 
 # NOTE: idiosyncratic usage, as with other terms in this program.

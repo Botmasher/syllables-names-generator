@@ -46,6 +46,36 @@ class FlatList(unittest.TestCase):
             "Failed to flatten up to inner string, index tuples"
         )
 
+    # NOTE: Tuplify/Tuplify removed
+    #
+    # def test_tuplify(self):
+    #     a = [[[1], [2], [3]], [[4], [5], [6]], 7]
+    #     self.assertEqual(
+    #         flat_list.tuplify(a),
+    #         (((1), (2), (3)), ((4), (5), (6)), 7)
+    #     )
+    #
+    # def test_untuplify(self):
+    #     a =  (((1), (2), (3)), ((4), (5), (6)), 7)
+    #     self.assertEqual(
+    #         flat_list.untuplify(a),
+    #          [[[1], [2], [3]], [[4], [5], [6]], 7]
+    #     )
+
+    def test_flat_map(self):
+        a =  [[[1], [2], [3]], [[4], [5], [6]], 7, [8]]
+        self.assertEqual(
+            flat_list.flat_map(lambda n: n * 2, a),
+             [2, 4, 6, 8, 10, 12, 14, 16]
+        )
+
+    def test_flat_filter(self):
+        a =  [[[1], [2], [3]], [[4], [5], [6]], 7, [8]]
+        self.assertEqual(
+            flat_list.flat_filter(lambda n: n % 2, a),
+            [1, 3, 5, 7]
+        )
+
 class StringList(unittest.TestCase):
     def test_string_listify_string(self):
         s = "string"

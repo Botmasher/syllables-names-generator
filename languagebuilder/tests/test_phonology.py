@@ -368,32 +368,6 @@ class PhonologySuprasegmentals(PhonologyFixture):
         this_class.phonology.syllables.add("V")
         #this_class.phonology.suprasegmentals.add("`", stress="primary", pitch=None)
 
-    def test_add_remove_default_contour(self):
-        contour_name = self.phonology.suprasegmentals.add_default_contour(
-            "primary",
-            mark="`",
-            conditioning_mark=None,
-            offset=1,
-            chain=None
-        )
-        contour = self.phonology.suprasegmentals.get_default_contour(contour_name)
-        self.phonology.suprasegmentals.remove_default_contour(contour_name)
-        self.assertEqual(
-            contour.get('offset'),
-            1,
-            f"failed to create, store and remove a suprasegmentals default contour"
-        )
-
-    def test_apply_default_contour(self):
-        self.phonology.suprasegmentals.add_default_contour("default_accent", "acute", offset=-1)
-        accented_word = self.phonology.suprasegmentals.apply_default_contour([["r", "p", "a"], ["b", "a"], ["p", "a", "p"]], "default_accent")
-        # TODO: add mark -> letter mapping
-        self.assertEqual(
-            "".join(flatten(accented_word)),
-            "rpabapáp",
-            "failed to apply a suprasegmentals default contour"
-        )
-    
     # # TODO: rewrite suprasegmentals tests below considering:
     # #   - custom contours
     # #   - default contours
@@ -403,6 +377,32 @@ class PhonologySuprasegmentals(PhonologyFixture):
     # #       - accent last if long [C,V,C,(C)] otherwise penult
     # #       - high tone on second mora no matter which syllable
 
+    # def test_add_remove_default_contour(self):
+    #     contour_name = self.phonology.suprasegmentals.add_default_contour(
+    #         "primary",
+    #         mark="`",
+    #         conditioning_mark=None,
+    #         offset=1,
+    #         chain=None
+    #     )
+    #     contour = self.phonology.suprasegmentals.get_default_contour(contour_name)
+    #     self.phonology.suprasegmentals.remove_default_contour(contour_name)
+    #     self.assertEqual(
+    #         contour.get('offset'),
+    #         1,
+    #         f"failed to create, store and remove a suprasegmentals default contour"
+    #     )
+
+    # def test_apply_default_contour(self):
+    #     self.phonology.suprasegmentals.add_default_contour("default_accent", "acute", offset=-1)
+    #     accented_word = self.phonology.suprasegmentals.apply_default_contour([["r", "p", "a"], ["b", "a"], ["p", "a", "p"]], "default_accent")
+    #     # TODO: add mark -> letter mapping
+    #     self.assertEqual(
+    #         "".join(flatten(accented_word)),
+    #         "rpabapáp",
+    #         "failed to apply a suprasegmentals default contour"
+    #     )
+    
     # def test_mark_accent(self):
     #     word = self.phonology.build_word(
     #         length=3,
