@@ -219,6 +219,44 @@ class Syllables():
         
         return syllabification
 
+    # TODO: less expensive look-ahead finalizing left syllable when right one is
+    #   - worry about orphaned stuff
+    #   - checking current syll, ensure remaining letters can form at least one more chunk
+    #   - if you get to one possible syllable, and you have one behind it,
+    #       is that previous one guaranteed to be good?
+    #   - "kaan" in lang c CV, CVVn: you will close out CV, V before getting to CVVn
+    #   - also recall dealing with: CV, CVC "tatata", "tat"
+
+    def _build_out_syllables(self, syllable, tracking_index, syllable_tracker, sound_count):
+        """Go through a tracked list of possible syllables starting at specific indexes
+        in a sound sample and determine a syllable concatenation path that includes all
+        sounds in the sample and each sound is only represented once."""
+        return []
+
+    def syllabify_optimally(self, sounds):
+        """Syllabify sound sample into a list of syllable lists ensuring all sounds
+        in the sample are included in final syllabification."""
+        # list of possible syllable sounds per starting index
+        tracking = {}
+        # collect all possible sound sequences
+        for i, s in enumerate(sounds):
+            tracking.setdefault(i, []).append([])
+            for t in tracking[i]:
+                t.append(s)
+        # filter down to valid syllables only
+        tracking = {
+            i: [seq for seq in t if self.is_syllable(seq)]
+            for i, t in tracking.items()
+        }
+        # compare possible syllables for concatenated syllables covering all sounds
+        total_count = len(sounds)
+        for i in tracking:
+            for syllable in t:
+                syllables = self._build_out_syllables(syllable, i, tracking, total_count)
+                if syllables:
+                    return syllables
+        return None
+
     def _syllabify_max_core_loop(self, sounds, start_i=0, end_i=None):
         """Inner recursive end-to-start search for longest possible syllable"""
         end_i = len(sounds) if end_i is None else end_i
