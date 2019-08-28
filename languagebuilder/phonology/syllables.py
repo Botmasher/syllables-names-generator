@@ -226,6 +226,33 @@ class Syllables():
     #       is that previous one guaranteed to be good?
     #   - "kaan" in lang c CV, CVVn: you will close out CV, V before getting to CVVn
     #   - also recall dealing with: CV, CVC "tatata", "tat"
+    def syllabify_suboptimally(self, sounds):
+        """Split a sound sample into a list of syllable lists, closing out syllables
+        as the sample sequence is being evaluated."""
+        vetted_sample = [
+            s for s in sounds
+            if self.phonology.phonetics.has_ipa(s)
+        ]
+        if len(sounds) != vetted_sample:
+            return
+        syllabification = []
+        #last_syllable = []
+        #current_syllable = []
+        for i in reversed(range(len(vetted_sample))):
+            sample_cut = sounds[:i]
+            if self.is_syllable(sample_cut):
+                if i == len(sounds):
+                    return sample_cut
+                can_syllabify_here = False
+                for j in reversed(range(len(vetted_sample[i:]))):
+                    if self.is_syllable(vetted_sample[i:j]):
+                        can_syllabify_here = True
+                        break
+                if can_syllabify_here:
+                    syllabification.append(sample_cut)
+            else:
+                continue
+        return syllabification
 
     def _build_out_syllables(self, syllable, tracking_index, syllable_tracker, sound_count):
         """Go through a tracked list of possible syllables starting at specific indexes
