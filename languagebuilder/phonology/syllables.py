@@ -226,6 +226,22 @@ class Syllables():
     #       is that previous one guaranteed to be good?
     #   - "kaan" in lang c CV, CVVn: you will close out CV, V before getting to CVVn
     #   - also recall dealing with: CV, CVC "tatata", "tat"
+    def _suboptimal_loop(self, sample):
+        # send back all sounds if they are a single syllable
+        if self.is_syllable(sample):
+            return sample
+        # check sample for a single syllable shrinking window from right
+        for i in reversed(range(len(sample))):
+            sample_focus = sample[:i]
+            sample_leftover = sample[i:]
+            # check leftover right-side sounds for another syllable to ensure
+            # that this syllable is valid without jeopardizing rightmore ones
+            if self.is_syllable(sample_focus):
+                for j in reversed(range(len(sample_leftover))):
+                    if self.is_syllable(sample_leftover[:j]):
+                        return sample_focus
+        return
+    #
     def syllabify_suboptimally(self, sounds):
         """Split a sound sample into a list of syllable lists, closing out syllables
         as the sample sequence is being evaluated."""
@@ -236,22 +252,15 @@ class Syllables():
         if len(sounds) != vetted_sample:
             return
         syllabification = []
-        #last_syllable = []
-        #current_syllable = []
-        for i in reversed(range(len(vetted_sample))):
-            sample_cut = sounds[:i]
-            if self.is_syllable(sample_cut):
-                if i == len(sounds):
-                    return sample_cut
-                can_syllabify_here = False
-                for j in reversed(range(len(vetted_sample[i:]))):
-                    if self.is_syllable(vetted_sample[i:j]):
-                        can_syllabify_here = True
-                        break
-                if can_syllabify_here:
-                    syllabification.append(sample_cut)
+        start_i = 0
+        while start_i < len(vetted_sample):
+            syllable = self._suboptimal_loop(vetted_sample[start_i:])
+            if syllable:
+                start_i += len(syllable)
+                syllabification.append(syllable)
             else:
-                continue
+                # TODO: handle uncut or imperfectly cut samples
+                return
         return syllabification
 
     def _build_out_syllables(self, syllable, tracking_index, syllable_tracker, sound_count):
