@@ -151,6 +151,29 @@ class PhonologySyllables(PhonologyFixture):
             [["kʰ", "a"], ["a"], ["gʰ", "a"], ["gʰ", "a"]],
             "failed to split a word into minimal syllables"
         )
+    
+    def test_syllabify_leaving_no_leftovers(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("CVC")
+        sounds = ["g", "a", "gʰ", "a", "gʰ", "a"]
+        self.assertEqual(
+            self.phonology.syllables.syllabify_suboptimally(sounds),
+            [["g", "a"], ["gʰ", "a"], ["gʰ", "a"]],
+            "failed to split a word into syllables without leaving unsyllabified sounds"
+        )
+    
+    def test_syllabify_choosing_larger_syllable(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("V")
+        self.phonology.syllables.add("CVVC")
+        sounds = ["g", "a", "a", "gʰ"]
+        self.assertEqual(
+            self.phonology.syllables.syllabify_suboptimally(sounds),
+            [["g", "a", "a", "gʰ"]],
+            "failed to syllabify a word skipping smaller cuts and opting for one long syllable"
+        )   
 
     def test_count_syllables_simple(self):
         self.phonology.syllables.clear

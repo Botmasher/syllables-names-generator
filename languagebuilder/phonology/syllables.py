@@ -228,8 +228,8 @@ class Syllables():
     #   - also recall dealing with: CV, CVC "tatata", "tat"
     def _suboptimal_loop(self, sample):
         # send back all sounds if they are a single syllable
-        if self.is_syllable(sample):
-            return sample
+        #if self.is_syllable(sample):
+        #    return sample
         # check sample for a single syllable shrinking window from right
         for i in reversed(range(len(sample))):
             sample_focus = sample[:i]
@@ -240,27 +240,33 @@ class Syllables():
                 for j in reversed(range(len(sample_leftover))):
                     if self.is_syllable(sample_leftover[:j]):
                         return sample_focus
+        #raise Exception(f"Failed to find a syllable in {sample}")
         return
     #
     def syllabify_suboptimally(self, sounds):
         """Split a sound sample into a list of syllable lists, closing out syllables
         as the sample sequence is being evaluated."""
+        unknown_sounds = []
         vetted_sample = [
-            s for s in sounds
+            s
             if self.phonology.phonetics.has_ipa(s)
+            else unknown_sounds.append(s)
+            for s in sounds
         ]
-        if len(sounds) != vetted_sample:
-            return
+        if unknown_sounds:
+            raise ValueError(f"Invalid unsyllabifiable sounds in sample: {unknown_sounds}")
+
         syllabification = []
         start_i = 0
         while start_i < len(vetted_sample):
-            syllable = self._suboptimal_loop(vetted_sample[start_i:])
+            sample_cut = vetted_sample[start_i:]
+            syllable = self._suboptimal_loop(sample_cut)
             if syllable:
                 start_i += len(syllable)
                 syllabification.append(syllable)
             else:
                 # TODO: handle uncut or imperfectly cut samples
-                return
+                raise ValueError(f"Could not find a valid syllable in {sample_cut}")
         return syllabification
 
     def _build_out_syllables(self, syllable, tracking_index, syllable_tracker, sound_count):
