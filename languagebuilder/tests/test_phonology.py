@@ -158,7 +158,7 @@ class PhonologySyllables(PhonologyFixture):
         self.phonology.syllables.add("CVC")
         sounds = ["g", "a", "gʰ", "a", "gʰ", "a"]
         self.assertEqual(
-            self.phonology.syllables.syllabify_suboptimally(sounds),
+            self.phonology.syllables.syllabify(sounds),
             [["g", "a"], ["gʰ", "a"], ["gʰ", "a"]],
             "failed to split a word into syllables without leaving unsyllabified sounds"
         )
@@ -170,10 +170,10 @@ class PhonologySyllables(PhonologyFixture):
         self.phonology.syllables.add("CVVC")
         sounds = ["g", "a", "a", "gʰ"]
         self.assertEqual(
-            self.phonology.syllables.syllabify_suboptimally(sounds),
+            self.phonology.syllables.syllabify(sounds),
             [["g", "a", "a", "gʰ"]],
             "failed to syllabify a word skipping smaller cuts and opting for one long syllable"
-        )   
+        )
 
     def test_count_syllables_simple(self):
         self.phonology.syllables.clear

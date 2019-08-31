@@ -164,7 +164,7 @@ class Syllables():
                 for i in range(len(features))
             ]
             if all(matches):
-                print(f"{''.join(syllable_fragment)} matches syllable {syllable}!")
+                #print(f"{''.join(syllable_fragment)} matches syllable {syllable}!")
                 return True
         return False
 
@@ -197,55 +197,50 @@ class Syllables():
         ]
 
         # Build word with syllables list of lists
-
-        # look for the smallest valid syllables
-        if minimally:
-            syllabification = redacc.redacc(            # reduce to a list of syllable lists
-                vetted_sounds,
-                lambda sound, word: (
-                    word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
-                    word + [[sound]],                   # add sound to new syllable list
-                )[self.is_syllable(word[-1])],          # if last list is a full syllable
-                [[]]                                    # empty word with one empty syllable
-            )
-        # look for maximal valid syllables
-        else:
-            syllabification = self.syllabify_max(sounds)
-
+        # look for the smallest or largest valid syllables
+        syllabification = self.syllabify_min(vetted_sounds) if minimally else self.syllabify_max(vetted_sounds)
+        
         # check final syllable sounds were not leftovers (they are also a valid syllable)
         # TODO: include as semantic tests - may not be value errors for this method
-        if not self.is_syllable(syllabification[-1]) or len(flat_list.flatten(syllabification)) != len(sounds):
+        if not self.is_syllable(syllabification[-1]) or len(flat_list.flatten(syllabification)) != len(vetted_sounds):
             raise ValueError(f"Syllables failed to syllabify all sounds: {syllabification}")
         
         return syllabification
 
-    # TODO: less expensive look-ahead finalizing left syllable when right one is
-    #   - worry about orphaned stuff
-    #   - checking current syll, ensure remaining letters can form at least one more chunk
-    #   - if you get to one possible syllable, and you have one behind it,
-    #       is that previous one guaranteed to be good?
-    #   - "kaan" in lang c CV, CVVn: you will close out CV, V before getting to CVVn
-    #   - also recall dealing with: CV, CVC "tatata", "tat"
-    def _suboptimal_loop(self, sample):
-        # send back all sounds if they are a single syllable
-        #if self.is_syllable(sample):
-        #    return sample
+    def syllabify_min(self, sample):
+        """Break sound sample into smallest possible syllables sequentially from
+        left to right. This may leave stranded or leftover syllables"""
+        return redacc.redacc(            # reduce to a list of syllable lists
+            sample,
+            lambda sound, word: (
+                word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
+                word + [[sound]],                   # add sound to new syllable list
+            )[self.is_syllable(word[-1])],          # if last list is a full syllable
+            [[]]                                    # empty word with one empty syllable
+        )
+
+    # Finalize left syllable when right leftover material also starts a syllable
+    def _syllabify_max_loop(self, sample):
+        """Split off the largest valid syllable from the left where the remaining
+        right material also starts a single syllable"""
         # check sample for a single syllable shrinking window from right
-        for i in reversed(range(len(sample))):
+        for i in reversed(range(len(sample) + 1)):
             sample_focus = sample[:i]
             sample_leftover = sample[i:]
             # check leftover right-side sounds for another syllable to ensure
             # that this syllable is valid without jeopardizing rightmore ones
             if self.is_syllable(sample_focus):
-                for j in reversed(range(len(sample_leftover))):
+                #raise Exception(f"HERE! syll: {sample_focus}, left: {sample_leftover}")
+                if not sample_leftover:
+                    return sample_focus
+                for j in reversed(range(len(sample_leftover) + 1)):
                     if self.is_syllable(sample_leftover[:j]):
                         return sample_focus
-        #raise Exception(f"Failed to find a syllable in {sample}")
         return
     #
-    def syllabify_suboptimally(self, sounds):
-        """Split a sound sample into a list of syllable lists, closing out syllables
-        as the sample sequence is being evaluated."""
+    def syllabify_max(self, sounds):
+        """Split a sound sample into a list of syllable lists, closing out longest 
+        identified syllables as the sample sequence is being evaluated."""
         unknown_sounds = []
         vetted_sample = [
             s
@@ -260,72 +255,12 @@ class Syllables():
         start_i = 0
         while start_i < len(vetted_sample):
             sample_cut = vetted_sample[start_i:]
-            syllable = self._suboptimal_loop(sample_cut)
+            syllable = self._syllabify_max_loop(sample_cut)
             if syllable:
                 start_i += len(syllable)
                 syllabification.append(syllable)
             else:
                 # TODO: handle uncut or imperfectly cut samples
                 raise ValueError(f"Could not find a valid syllable in {sample_cut}")
-        return syllabification
-
-    def _build_out_syllables(self, syllable, tracking_index, syllable_tracker, sound_count):
-        """Go through a tracked list of possible syllables starting at specific indexes
-        in a sound sample and determine a syllable concatenation path that includes all
-        sounds in the sample and each sound is only represented once."""
-        return []
-
-    def syllabify_optimally(self, sounds):
-        """Syllabify sound sample into a list of syllable lists ensuring all sounds
-        in the sample are included in final syllabification."""
-        # list of possible syllable sounds per starting index
-        tracking = {}
-        # collect all possible sound sequences
-        for i, s in enumerate(sounds):
-            tracking.setdefault(i, []).append([])
-            for t in tracking[i]:
-                t.append(s)
-        # filter down to valid syllables only
-        tracking = {
-            i: [seq for seq in t if self.is_syllable(seq)]
-            for i, t in tracking.items()
-        }
-        # compare possible syllables for concatenated syllables covering all sounds
-        total_count = len(sounds)
-        for i in tracking:
-            for syllable in t:
-                syllables = self._build_out_syllables(syllable, i, tracking, total_count)
-                if syllables:
-                    return syllables
-        return None
-
-    def _syllabify_max_core_loop(self, sounds, start_i=0, end_i=None):
-        """Inner recursive end-to-start search for longest possible syllable"""
-        end_i = len(sounds) if end_i is None else end_i
-        if start_i == end_i or end_i < 1:
-            return []
-        elif self.is_syllable(sounds[start_i:end_i]):
-            return [sounds[start_i:end_i]] + self._syllabify_max_core_loop(
-                sounds,
-                start_i = end_i,
-                end_i = len(sounds)
-            )
-        else:
-            return self._syllabify_max_core_loop(
-                sounds[start_i:-1],
-                start_i = start_i,
-                end_i = end_i-1
-            )
-
-    def syllabify_max(self, sounds):
-        """Break a sound sample into a list of longest possible syllables lists"""
-        syllabification = []
-        end_i = len(sounds)
-        start_i = 0
-        while start_i is not None and start_i < end_i:
-            syllable, start_i = self._syllabify_max_core_loop(sounds[start_i:], end_i)
-            syllable and syllabification.append(syllable)
-        if len(flat_list.flatten(syllabification)) != len(sounds):
-            raise ValueError(f"Failed to syllabify all sounds in {''.join(sounds)}: {syllabification}")
         return syllabification
 
