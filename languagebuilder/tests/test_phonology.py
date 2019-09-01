@@ -135,7 +135,7 @@ class PhonologySyllables(PhonologyFixture):
         self.phonology.syllables.add("V")
         word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
         self.assertEqual(
-            self.phonology.syllables.syllabify(word, minimally=False),
+            self.phonology.syllables.syllabify(word),
             [["kʰ", "a", "a"], ["gʰ", "a"], ["gʰ", "a"]],
             "failed to split a word into maximal syllables"
         )
@@ -147,9 +147,19 @@ class PhonologySyllables(PhonologyFixture):
         self.phonology.syllables.add("V")
         word = ["kʰ", "a", "a", "gʰ", "a", "gʰ", "a"]
         self.assertEqual(
-            self.phonology.syllables.syllabify(word, minimally=True),
+            self.phonology.syllables.syllabify_min(word),
             [["kʰ", "a"], ["a"], ["gʰ", "a"], ["gʰ", "a"]],
             "failed to split a word into minimal syllables"
+        )
+
+    def test_syllabify_fail(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("CVV")
+        word = ["gʰ", "a", "a", "gʰ", "a", "g"]
+        self.assertIsNone(
+            self.phonology.syllables.syllabify(word),
+            "failed to avoid splitting an invalid word into syllables"
         )
     
     def test_syllabify_leaving_no_leftovers(self):
@@ -197,6 +207,43 @@ class PhonologySyllables(PhonologyFixture):
             self.phonology.syllables.count(word),
             4,
             "failed to count the number of syllables in a word with more complex syllable structure"
+        )
+
+    def test_syllable_clusters(self):
+        self.phonology.syllables.clear
+        self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
+        word = ["k", "kʰ", "a", "g", "gʰ", "a", "g", "a"]
+        self.assertEqual(
+            self.phonology.syllables.count(word),
+            4,
+            "failed to implement handling of complex consonant clusters"
+        )
+
+    # TODO: store syllabification in vocabulary  word entry?
+
+    # TODO: syllable diphthongs
+    def test_syllable_diphthongs(self):
+        self.phonology.syllables.clear
+        self.phonology.syllables.add("CV")
+        self.phonology.syllables.add("V")
+        word = ["k", "a", "i"]
+        self.assertEqual(
+            self.phonology.syllables.count(word),
+            1,
+            "failed to implement handling diphthongs in syllables"
+        )
+    # TODO: syllable sonority
+    def test_syllable_sonority(self):
+        self.phonology.syllables.clear
+        self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
+        word_a = ["s", "kʰ", "a"]
+        word_b = ["kʰ", "s" "a"]
+        res_a = self.phonology.syllables.syllabify(word_a)
+        res_b = self.phonology.syllables.syllabify(word_a)
+        self.assertEqual(
+            [res_a, res_b],
+            [[["s", "kʰ", "a"]], None],
+            "failed to implement handling of syllable sonority"
         )
 
 # TODO: test varied built words for determining if inventory, syllables and rules work

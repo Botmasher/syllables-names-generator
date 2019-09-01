@@ -169,58 +169,60 @@ class Syllables():
         return False
 
     def count(self, sounds, minimally=False):
-        syllables = self.syllabify(sounds, minimally=minimally)
+        """Count the number of syllables in a sound sample"""
+        syllables = self.syllabify_min(sounds) if minimally else self.syllabify(sounds)
         if not isinstance(syllables, list):
             raise ValueError(f"Could not count syllables - invalid syllables list {syllables}")
         return len(syllables)
 
-    # TODO: smart/adaptive syllabify method
-    #   - (currently: add max or min syllable when one is possible)
-    #   - look ahead/behind to determine syllable boundary
-    #   - best fit across whole words
-    # NOTE: ideas
+    def _vet_sounds(self, sample):
+        """Filter a list of known sounds from a sound sample list"""
+        vetted_sounds = [
+            sound for sound in sample
+            if self.phonology.phonetics.has_ipa(sound)
+        ]
+        return vetted_sounds
+
+    # Semioptimal syllabify method
     #   - build out every letter right to however many syllables it can be a part of
     #   - compare potential non-overlapping syllables
     #   - return one possible non-overlapping split for the whole sample
-    def syllabify(self, sounds, minimally=False):
-        """Separate sounds into a list of syllables using one of two very basic
-        approaches, linearly searching for either the shortest or the longest possible
-        syllable matches depending on the value of the minimally flag."""
-        # verify sounds list input
+    def syllabify(self, sounds):
+        """Separate sounds into a list of syllables, linearly closing out one syllable
+        when another possible syllable follows."""
+        
+        # Verify sounds list input
         if not isinstance(sounds, list):
             raise TypeError(f"Syllables resyllabify expected list of strings not {sounds}")
-        
-        # create list of known sounds
-        vetted_sounds = [
-            sound for sound in sounds
-            if self.phonology.phonetics.has_ipa(sound)
-        ]
 
-        # Build word with syllables list of lists
-        # look for the smallest or largest valid syllables
-        syllabification = self.syllabify_min(vetted_sounds) if minimally else self.syllabify_max(vetted_sounds)
+        # Build word with syllables list of lists looking for syllables
+        unknown_sounds = []
+        vetted_sample = self._vet_sounds(sounds)
+        if unknown_sounds:
+            raise ValueError(f"Invalid unsyllabifiable sounds in sample: {unknown_sounds}")
+
+        # Loop through building maximally valid syllables from the left
+        syllabification = []
+        start_i = 0
+        while start_i < len(vetted_sample):
+            sample_cut = vetted_sample[start_i:]
+            syllable = self._syllabify_loop(sample_cut)
+            if syllable:
+                start_i += len(syllable)
+                syllabification.append(syllable)
+            else:
+                # TODO: handle uncut or imperfectly cut samples
+                raise ValueError(f"Could not find a valid syllable in {sample_cut}")
         
-        # check final syllable sounds were not leftovers (they are also a valid syllable)
+        # Check final syllable sounds were not leftovers (they are also a valid syllable)
         # TODO: include as semantic tests - may not be value errors for this method
-        if not self.is_syllable(syllabification[-1]) or len(flat_list.flatten(syllabification)) != len(vetted_sounds):
+        if not self.is_syllable(syllabification[-1]) or len(flat_list.flatten(syllabification)) != len(vetted_sample):
             raise ValueError(f"Syllables failed to syllabify all sounds: {syllabification}")
         
         return syllabification
 
-    def syllabify_min(self, sample):
-        """Break sound sample into smallest possible syllables sequentially from
-        left to right. This may leave stranded or leftover syllables"""
-        return redacc.redacc(            # reduce to a list of syllable lists
-            sample,
-            lambda sound, word: (
-                word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
-                word + [[sound]],                   # add sound to new syllable list
-            )[self.is_syllable(word[-1])],          # if last list is a full syllable
-            [[]]                                    # empty word with one empty syllable
-        )
-
     # Finalize left syllable when right leftover material also starts a syllable
-    def _syllabify_max_loop(self, sample):
+    def _syllabify_loop(self, sample):
         """Split off the largest valid syllable from the left where the remaining
         right material also starts a single syllable"""
         # check sample for a single syllable shrinking window from right
@@ -237,30 +239,16 @@ class Syllables():
                     if self.is_syllable(sample_leftover[:j]):
                         return sample_focus
         return
-    #
-    def syllabify_max(self, sounds):
-        """Split a sound sample into a list of syllable lists, closing out longest 
-        identified syllables as the sample sequence is being evaluated."""
-        unknown_sounds = []
-        vetted_sample = [
-            s
-            if self.phonology.phonetics.has_ipa(s)
-            else unknown_sounds.append(s)
-            for s in sounds
-        ]
-        if unknown_sounds:
-            raise ValueError(f"Invalid unsyllabifiable sounds in sample: {unknown_sounds}")
-
-        syllabification = []
-        start_i = 0
-        while start_i < len(vetted_sample):
-            sample_cut = vetted_sample[start_i:]
-            syllable = self._syllabify_max_loop(sample_cut)
-            if syllable:
-                start_i += len(syllable)
-                syllabification.append(syllable)
-            else:
-                # TODO: handle uncut or imperfectly cut samples
-                raise ValueError(f"Could not find a valid syllable in {sample_cut}")
-        return syllabification
-
+    
+    def syllabify_min(self, sample):
+        """Break sound sample into smallest possible syllables sequentially from
+        left to right. This may leave stranded or leftover syllables"""
+        vetted_sample = self._vet_sounds(sample)
+        return redacc.redacc(            # reduce to a list of syllable lists
+            vetted_sample,
+            lambda sound, word: (
+                word[:-1] + [word[-1] + [sound]],   # add sound to last syllable list
+                word + [[sound]],                   # add sound to new syllable list
+            )[self.is_syllable(word[-1])],          # if last list is a full syllable
+            [[]]                                    # empty word with one empty syllable
+        )
