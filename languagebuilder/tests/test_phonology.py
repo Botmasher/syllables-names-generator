@@ -219,17 +219,16 @@ class PhonologySyllables(PhonologyFixture):
             "failed to implement handling of complex consonant clusters"
         )
 
-    # TODO: store syllabification in vocabulary  word entry?
+    # TODO: store syllabification in vocabulary word entry?
 
     # TODO: syllable diphthongs
     def test_syllable_diphthongs(self):
         self.phonology.syllables.clear
         self.phonology.syllables.add("CV")
-        self.phonology.syllables.add("V")
         word = ["k", "a", "i"]
         self.assertEqual(
-            self.phonology.syllables.count(word),
-            1,
+            self.phonology.syllables.syllabify(word),
+            [["k", "a", "i"]],
             "failed to implement handling diphthongs in syllables"
         )
     # TODO: syllable sonority
@@ -239,7 +238,7 @@ class PhonologySyllables(PhonologyFixture):
         word_a = ["s", "kʰ", "a"]
         word_b = ["kʰ", "s" "a"]
         res_a = self.phonology.syllables.syllabify(word_a)
-        res_b = self.phonology.syllables.syllabify(word_a)
+        res_b = self.phonology.syllables.syllabify(word_b)
         self.assertEqual(
             [res_a, res_b],
             [[["s", "kʰ", "a"]], None],
