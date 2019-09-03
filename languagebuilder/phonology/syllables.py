@@ -221,23 +221,23 @@ class Syllables():
         
         return syllabification
 
-    def starts_with_syllable(self, sample):
-        """Check if the sample sounds begin with a valid syllable on the left"""
-        for i in range(len(sample)):
-            if self.is_syllable(sample[:i]):
-                return True
-        return False
-
     # Finalize left syllable when right leftover material also starts a syllable
-    def _syllabify_loop(self, sample, leftover=None):
+    def _syllabify_loop(self, sample):
         """Split off the largest valid syllable from the left where the remaining
         right material also starts a single syllable"""
-        leftover = [] if leftover is None else leftover
-        if self.is_syllable(sample) and (self.starts_with_syllable(leftover) or not leftover):
-            return sample
-        if not sample or len(sample) <= 1:
-            return
-        return self._syllabify_loop(sample[:-1], [sample[-1]] + leftover)
+        # check sample for a single syllable shrinking window from right
+        for i in reversed(range(len(sample) + 1)):
+            sample_focus = sample[:i]
+            sample_leftover = sample[i:]
+            # check leftover right-side sounds for another syllable to ensure
+            # that this syllable is valid without jeopardizing rightmore ones
+            if self.is_syllable(sample_focus):
+                if not sample_leftover:
+                    return sample_focus
+                for j in reversed(range(len(sample_leftover) + 1)):
+                    if self.is_syllable(sample_leftover[:j]):
+                        return sample_focus
+        return
 
     def syllabify_min(self, sample):
         """Break sound sample into smallest possible syllables sequentially from

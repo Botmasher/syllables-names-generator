@@ -157,6 +157,7 @@ class Language:
             sound=word['sound'],
             change=word['change'],
             spelling=word['spelling'],
+            syllables=self.phonology.syllables.syllabify(word['sound']),
             definition=definition.strip(),
             midpoint=word['midpoint'],
             pos=word_class
