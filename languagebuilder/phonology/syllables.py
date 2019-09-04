@@ -15,6 +15,10 @@ class Syllables():
         }
         # reference phonology into which injected
         self.phonology = phonology
+        
+        # ordered sonority scale
+        # applied in given order for onset and reverse for coda
+        self.sonority = []
 
     def has(self, syllable_id):
         """Check if an id exists in the syllables map"""
@@ -168,6 +172,8 @@ class Syllables():
                 return True
         return False
 
+    # Syllabification
+
     def count(self, sounds, minimally=False):
         """Count the number of syllables in a sound sample"""
         syllables = self.syllabify_min(sounds) if minimally else self.syllabify(sounds)
@@ -251,3 +257,51 @@ class Syllables():
             )[self.is_syllable(word[-1])],          # if last list is a full syllable
             [[]]                                    # empty word with one empty syllable
         )
+
+    # Sonority
+
+    # TODO: apply sonority when building syllables
+
+    # TODO: optional or dependent
+    # - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
+
+    def get_sonority(self):
+        """Read the sonority scale"""
+        return self.sonority
+
+    def set_sonority_scale(self, sonority_scale):
+        """Replace the entire sonority scale with a new sequence of features"""
+        # validate list of features
+        if not isinstance(sonority_scale, list):
+            raise ValueError(f"Failed to set sonority scale - expected list of features not {sonority_scale}")
+        for feature in sonority_scale:
+            if not self.phonology.phonetics.has_feature(feature):
+                raise ValueError(f"Failed to set sonority scale - unknown feature {feature}")
+        # update the scale
+        self.sonority = sonority_scale
+        return self.sonority        
+
+    def add_sonority(self, feature, position):
+        """Order one feature within the sonority scale"""
+        if not self.phonology.phonetics.has_feature(feature):
+            return
+        if feature in self.sonority:
+            return self.update_sonority(feature, position)
+        self.sonority = self.sonority[:position] + [feature] + self.sonority[position:]
+        return self.sonority
+
+    def update_sonority(self, feature, position):
+        """Reorder one existing feature within the sonority scale"""
+        current_position = self.sonority.index(feature)
+        if not current_position:
+            return
+        new_position = position - 1 if position > current_position else position
+        self.sonority.pop(current_position)
+        self.sonority = self.sonority[:new_position] + [feature] + self.sonority[new_position:]
+        return self.sonority
+
+    def remove_sonority(self, feature):
+        """Remove one feature from the sonority scale"""
+        position = self.sonority.index(feature)
+        self.sonority.pop(position)
+        return self.sonority
