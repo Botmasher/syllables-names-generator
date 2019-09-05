@@ -1,5 +1,6 @@
 from uuid import uuid4
 from ..tools import redacc, flat_list
+import random
 
 class Syllables():
     def __init__(self, phonology):
@@ -260,7 +261,69 @@ class Syllables():
 
     # Sonority
 
-    # TODO: apply sonority when building syllables
+    # Apply sonority when building syllables
+    def build(self, restrictions=None, use_sonority=True, sonority_edge=False):
+        """Use defined syllables, sonority and features and ipa from phonology to 
+        generate the phonemes of one valid syllable.
+        
+        params:
+            restrictions (list):    restrict options to specific syllable ids
+            use_sonority (bool):    filter syllable sounds to fit sonority scale
+            sonority_edge (bool):   maintain sonority when codas/onsets are longer than
+                defined sonority scale, otherwise step back up and down the scale
+        """
+        
+        # filter possible syllable options
+        possible_syllables = [
+            s for i, s in self.syllables.items()
+            if not restrictions or i in restrictions
+        ]
+
+        # Syllable Shape: choose one syllable shape
+        syllable_shape = random.choice(possible_syllables)
+
+        # Sonority Shape: fill out the shape with sonority scale
+        shape = {
+            'onset': [],
+            'nucleus': [],
+            'coda': [],
+            'unknown': []
+        }
+        # scaled features - anything past edge of extremes maintains vs rescales
+        for featureset in syllable_shape:
+            building_onset = True
+            building_nucleus = False
+            building_coda = False
+            if building_onset:
+                if 'vowel' in featureset:
+                    building_onset = False
+                    building_nucleus = True
+                    shape['nucleus'].append(featureset)
+                else:
+                    shape['onset'].append(featureset)
+            elif building_nucleus:
+                if 'consonant' in featureset:
+                    building_nucleus = False
+                    building_coda = True
+                    shape['coda'].append(featureset)
+                else:
+                    shape['nucleus'].append(featureset)
+            elif building_coda:
+                shape['coda'].append(featureset)
+            else:
+                shape['unknown'].append(featureset)
+        if shape['unknown']:
+            raise ValueError(f"Failed to build syllable - could not place features {shape['unknown']}")
+
+        # Sound Shape: select sounds following each element in the shape so far
+        syllable_sounds = [
+            random.choice(self.phonology.phonetics.get_ipa(
+                f,
+                filter_phonemes=self.phonology.inventory()
+            )) for f in shape['onset'] + shape['nucleus'] + shape['coda']
+        ]
+
+        return syllable_sounds
 
     # TODO: optional or dependent
     # - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
