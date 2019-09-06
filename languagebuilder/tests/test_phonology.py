@@ -231,18 +231,68 @@ class PhonologySyllables(PhonologyFixture):
             [["k", "a", "i"]],
             "failed to implement handling diphthongs in syllables"
         )
+    
     # TODO: syllable sonority
     def test_syllable_sonority(self):
         self.phonology.syllables.clear
         self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
         word_a = ["s", "kʰ", "a"]
         word_b = ["kʰ", "s" "a"]
+        self.phonology.syllables.add_sonority("fricative")
+        self.phonology.syllables.add_sonority("stop")
         res_a = self.phonology.syllables.syllabify(word_a)
         res_b = self.phonology.syllables.syllabify(word_b)
         self.assertEqual(
             [res_a, res_b],
             [[["s", "kʰ", "a"]], None],
             "failed to implement handling of syllable sonority"
+        )
+
+    def test_syllable_sonority_relative_dependencies(self):
+        self.phonology.syllables.clear
+        self.phonology.syllables.add("CCCV")
+        self.phonology.syllables.add_sonority("approximant")
+        self.phonology.syllables.add_sonority("fricative")
+        self.phonology.syllables.add_sonority("stop")
+        self.phonology.syllables.add_sonority("sibilant")
+        self.phonology.syllables.add_sonority_dependency("s", 0, "voiceless stop")
+        self.phonology.syllables.add_sonority_dependency("z", 0, "voiced stop")
+        syllable = self.phonology.syllables.build()
+        self.assertEqual(
+            syllable,
+            ["s", "k", "l", "a"],
+            "failed to implement handling of relative syllable sonority dependencies"
+        )
+
+    def test_syllable_build_simple_with_sonority(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add([
+            ["consonant", "velar", "voiceless", "stop"],
+            ["consonant", "velar", "voiceless", "frivative"],
+            ["vowel"]
+        ])
+        self.phonology.syllables.add_sonority("fricative")
+        self.phonology.syllables.add_sonority("stop")
+        syllable = self.phonology.syllables.build()
+        self.assertEqual(
+            syllable,
+            ["k", "x", "a"],
+            "failed to build simple syllable with sonority"
+        )
+    
+    def test_syllable_build_complex_with_sonority(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CCCCCV")
+        self.phonology.syllables.add_sonority("approximant")
+        self.phonology.syllables.add_sonority("nasal")
+        self.phonology.syllables.add_sonority("fricative")
+        self.phonology.syllables.add_sonority("affricate")
+        self.phonology.syllables.add_sonority("stop")
+        syllable = self.phonology.syllables.build()
+        self.assertEqual(
+            syllable,
+            ["k", "f", "n", "j", "a"],
+            "failed to build syllable with complex cluster following sonority"
         )
 
 # TODO: test varied built words for determining if inventory, syllables and rules work

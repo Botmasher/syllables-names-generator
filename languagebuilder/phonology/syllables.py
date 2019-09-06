@@ -309,7 +309,7 @@ class Syllables():
                 else:
                     shape['nucleus'].append(featureset)
             elif building_coda:
-                shape['coda'].append(featureset)
+                shape['coda'] = [featureset] + shape['coda']
             else:
                 shape['unknown'].append(featureset)
         if shape['unknown']:
@@ -344,7 +344,7 @@ class Syllables():
         self.sonority = sonority_scale
         return self.sonority        
 
-    def add_sonority(self, feature, position):
+    def add_sonority(self, feature, position=0):
         """Order one feature within the sonority scale"""
         if not self.phonology.phonetics.has_feature(feature):
             return
