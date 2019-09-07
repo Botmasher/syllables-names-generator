@@ -266,11 +266,8 @@ class PhonologySyllables(PhonologyFixture):
 
     def test_syllable_build_simple_with_sonority(self):
         self.phonology.syllables.clear()
-        self.phonology.syllables.add([
-            ["consonant", "velar", "voiceless", "stop"],
-            ["consonant", "velar", "voiceless", "frivative"],
-            ["vowel"]
-        ])
+        self.phonology.syllables.add("CCV")
+        self.phonology.syllables.add_sonority("vowel")
         self.phonology.syllables.add_sonority("fricative")
         self.phonology.syllables.add_sonority("stop")
         syllable = self.phonology.syllables.build()
@@ -283,6 +280,7 @@ class PhonologySyllables(PhonologyFixture):
     def test_syllable_build_complex_with_sonority(self):
         self.phonology.syllables.clear()
         self.phonology.syllables.add("CCCCCV")
+        self.phonology.syllables.add_sonority("vowel")
         self.phonology.syllables.add_sonority("approximant")
         self.phonology.syllables.add_sonority("nasal")
         self.phonology.syllables.add_sonority("fricative")

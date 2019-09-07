@@ -279,48 +279,45 @@ class Syllables():
             if not restrictions or i in restrictions
         ]
 
-        # Syllable Shape: choose one syllable shape
-        syllable_shape = random.choice(possible_syllables)
-
-        # Sonority Shape: fill out the shape with sonority scale
-        shape = {
+        # Syllable Shape: choose one syllable and break into components
+        syllable_features = random.choice(possible_syllables)
+        syllable_shape = {
             'onset': [],
             'nucleus': [],
-            'coda': [],
-            'unknown': []
+            'coda': []
         }
-        # scaled features - anything past edge of extremes maintains vs rescales
-        for featureset in syllable_shape:
-            building_onset = True
-            building_nucleus = False
-            building_coda = False
-            if building_onset:
-                if 'vowel' in featureset:
-                    building_onset = False
-                    building_nucleus = True
-                    shape['nucleus'].append(featureset)
-                else:
-                    shape['onset'].append(featureset)
-            elif building_nucleus:
-                if 'consonant' in featureset:
-                    building_nucleus = False
-                    building_coda = True
-                    shape['coda'].append(featureset)
-                else:
-                    shape['nucleus'].append(featureset)
-            elif building_coda:
-                shape['coda'] = [featureset] + shape['coda']
+        for f in syllable_features:
+            reached_nucleus = False
+            if self.sonority[0] in f:
+                reached_nucleus = True
+                syllable_shape['nucleus'].append(f)
+            elif reached_nucleus:
+                syllable_shape['coda'].append(f)
             else:
-                shape['unknown'].append(featureset)
-        if shape['unknown']:
-            raise ValueError(f"Failed to build syllable - could not place features {shape['unknown']}")
+                syllable_shape['onset'].append(f)
+            
+        # Sonority Shape: fill out the shape with sonority scale
+        # scaled features - anything past edge of extremes maintains vs rescales
+        sonority_shape = {}
+        sonority_nonnucleic = self.sonority[1:]
+        sonority_shape['onset'] = [
+            sonority_nonnucleic[i] for i in len(range(syllable_shape['onset']))
+            if i < len(sonority_nonnucleic) else sonority_nonnucleic[0]
+        ]
+        sonority_shape['nucleus'] = [
+            self.sonority[0] for f in syllable_shape['nucleus']
+        ]
+        sonority_shape['coda'] = sonority_shape['onset'] = [
+            reversed(sonority_nonnucleic)[i] for i in len(range(syllable_shape['coda']))
+            if i < len(sonority_nonnucleic) else sonority_nonnucleic[0]
+        ]
 
         # Sound Shape: select sounds following each element in the shape so far
         syllable_sounds = [
             random.choice(self.phonology.phonetics.get_ipa(
                 f,
                 filter_phonemes=self.phonology.inventory()
-            )) for f in shape['onset'] + shape['nucleus'] + shape['coda']
+            )) for f in sonority_shape['onset'] + sonority_shape['nucleus'] + sonority_shape['coda']
         ]
 
         return syllable_sounds
@@ -344,13 +341,19 @@ class Syllables():
         self.sonority = sonority_scale
         return self.sonority        
 
-    def add_sonority(self, feature, position=0):
-        """Order one feature within the sonority scale"""
+    def add_sonority(self, feature, position=None):
+        """Order one feature within the sonority scale, appending it to the hierarchy
+        or (optionally) assigning it a specific position within the hierarchy. Positions
+        scale from most to least sonorous. Zero position is treated as syllable nucleus."""
         if not self.phonology.phonetics.has_feature(feature):
             return
-        if feature in self.sonority:
-            return self.update_sonority(feature, position)
-        self.sonority = self.sonority[:position] + [feature] + self.sonority[position:]
+        if position:
+            if feature in self.sonority:
+                return self.update_sonority(feature, position)
+            else:
+                self.sonority = self.sonority[:position] + [feature] + self.sonority[position:]
+       else:
+           self.sonority.append(feature)
         return self.sonority
 
     def update_sonority(self, feature, position):
