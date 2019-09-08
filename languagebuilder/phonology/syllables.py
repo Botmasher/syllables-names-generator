@@ -286,38 +286,54 @@ class Syllables():
             'nucleus': [],
             'coda': []
         }
-        for f in syllable_features:
+        
+        nonnucleic_sonority = self.sonority[1:]
+        nucleic_sonority = self.sonority[0]
+        sonority_count = 0
+
+        # Build Syllable and Sonority Shape
+        # Syllable Shape: split syllable into onset, nucleus, coda
+        # Sonority Shape: fill out syllable shape following sonority scale
+        #
+        # TODO: scaled features past edges: maintain vs rescale
+        for features in syllable_features:
+            featureset = set(features)
             reached_nucleus = False
-            if self.sonority[0] in f:
+            # nucleus features for this position
+            if self.sonority[0] in featureset:
+                syllable_shape['nucleus'].append(set())
                 reached_nucleus = True
-                syllable_shape['nucleus'].append(f)
+                syllable_shape['nucleus'][-1] |= featureset
+                if use_sonority:
+                    syllable_shape['nucleus'][-1].add(nucleic_sonority)
+            # coda features for this position
             elif reached_nucleus:
-                syllable_shape['coda'].append(f)
+                syllable_shape['coda'].append(set())
+                syllable_shape['coda'][-1] |= featureset
+                if use_sonority:
+                    sonority_count = sonority_count if sonority_count < len(nonnucleic_sonority) else 0
+                    coda_sonority = nonnucleic_sonority[sonority_count]
+                    syllable_shape['coda'][-1].add(coda_sonority)
+                    sonority_count += 1
+            # onset features for this position
             else:
-                syllable_shape['onset'].append(f)
-            
-        # Sonority Shape: fill out the shape with sonority scale
-        # scaled features - anything past edge of extremes maintains vs rescales
-        sonority_shape = {}
-        sonority_nonnucleic = self.sonority[1:]
-        sonority_shape['onset'] = [
-            sonority_nonnucleic[i] for i in len(range(syllable_shape['onset']))
-            if i < len(sonority_nonnucleic) else sonority_nonnucleic[0]
-        ]
-        sonority_shape['nucleus'] = [
-            self.sonority[0] for f in syllable_shape['nucleus']
-        ]
-        sonority_shape['coda'] = sonority_shape['onset'] = [
-            reversed(sonority_nonnucleic)[i] for i in len(range(syllable_shape['coda']))
-            if i < len(sonority_nonnucleic) else sonority_nonnucleic[0]
-        ]
+                syllable_shape['onset'].append(set())
+                syllable_shape['onset'][-1] |= featureset
+                if use_sonority:
+                    sonority_count = sonority_count if sonority_count < len(nonnucleic_sonority) else -1
+                    onset_sonority = list(reversed(nonnucleic_sonority))[sonority_count]
+                    syllable_shape['onset'][-1].add(onset_sonority)
+                    sonority_count += 1
+
+        #final_features = sonority_shape['onset'] + sonority_shape['nucleus'] + sonority_shape['coda']
+        final_features = syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']
 
         # Sound Shape: select sounds following each element in the shape so far
         syllable_sounds = [
             random.choice(self.phonology.phonetics.get_ipa(
                 f,
                 filter_phonemes=self.phonology.inventory()
-            )) for f in sonority_shape['onset'] + sonority_shape['nucleus'] + sonority_shape['coda']
+            )) for f in final_features
         ]
 
         return syllable_sounds
@@ -352,7 +368,7 @@ class Syllables():
                 return self.update_sonority(feature, position)
             else:
                 self.sonority = self.sonority[:position] + [feature] + self.sonority[position:]
-       else:
+        else:
            self.sonority.append(feature)
         return self.sonority
 
