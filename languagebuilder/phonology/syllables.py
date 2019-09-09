@@ -194,6 +194,17 @@ class Syllables():
     #   - build out every letter right to however many syllables it can be a part of
     #   - compare potential non-overlapping syllables
     #   - return one possible non-overlapping split for the whole sample
+    def _find_left_syllable(self, sounds):
+        if not sounds:
+            return []
+        found_i = None
+        for i in reversed(range(len(sounds))):
+            if self.is_syllable(sounds[:i]):
+                found_i = i
+        if found_i is None:
+            return None
+        return [sounds[:found_i]] + self._find_left_syllable(sounds[found_i:])
+
     def syllabify(self, sounds):
         """Separate sounds into a list of syllables, linearly closing out one syllable
         when another possible syllable follows."""
@@ -203,23 +214,23 @@ class Syllables():
             raise TypeError(f"Syllables resyllabify expected list of strings not {sounds}")
 
         # Build word with syllables list of lists looking for syllables
-        unknown_sounds = []
         vetted_sample = self._vet_sounds(sounds)
-        if unknown_sounds:
-            raise ValueError(f"Invalid unsyllabifiable sounds in sample: {unknown_sounds}")
+        if not vetted_sample:
+            raise ValueError(f"Invalid sounds in sample {sounds}")
 
         # Loop through building maximally valid syllables from the left
         syllabification = []
-        start_i = 0
-        while start_i < len(vetted_sample):
-            sample_cut = vetted_sample[start_i:]
-            syllable = self._syllabify_loop(sample_cut)
-            if syllable:
-                start_i += len(syllable)
-                syllabification.append(syllable)
+        for i in reversed(range(len(vetted_sample))):
+            syllabification = self._find_left_syllable(vetted_sample[:i])
+            if syllabification is not None:
+                raise ValueError(f"BROKE on finding {syllabification}")
+                break
             else:
-                # TODO: handle uncut or imperfectly cut samples
-                raise ValueError(f"Could not find a valid syllable in {sample_cut}")
+                syllabification = []
+
+        # TODO: handle uncut or imperfectly cut samples
+        if not syllabification:
+            raise ValueError(f"Could not find a valid syllable in {syllabification}")
         
         # Check final syllable sounds were not leftovers (they are also a valid syllable)
         # TODO: include as semantic tests - may not be value errors for this method
