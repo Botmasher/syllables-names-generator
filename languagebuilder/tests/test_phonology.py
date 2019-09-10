@@ -184,6 +184,39 @@ class PhonologySyllables(PhonologyFixture):
             [["g", "a", "a", "gʰ"]],
             "failed to syllabify a word skipping smaller cuts and opting for one long syllable"
         )
+    
+    def test_syllabify_maintain_length(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CV")
+        word = []
+        for _ in range(3):
+            word += self.phonology.syllables.build()
+        syllabification = self.phonology.syllables.syllabify(word)
+        flattened_syllabification = [
+            sound
+            for syllable in syllabification
+            for sound in syllable
+        ]
+        self.assertEqual(
+            len(word),
+            len(flattened_syllabification),
+            "Syllabified sample does not contain same number of sounds as original input"
+        )
+
+# TODO: fix failing build units
+# ======================================================================
+# FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+# ----------------------------------------------------------------------
+# Traceback (most recent call last):
+#   File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 306, in test_build_unit
+#     "failed to generate a new root + grammatical unit in the language"
+# AssertionError: 'θaθaka' != 'θataka'
+# - θaθaka
+# ?   ^
+# + θataka
+# ?   ^
+#  : failed to generate a new root + grammatical unit in the language
+#
 
     def test_count_syllables_simple(self):
         self.phonology.syllables.clear
@@ -209,14 +242,17 @@ class PhonologySyllables(PhonologyFixture):
             "failed to count the number of syllables in a word with more complex syllable structure"
         )
 
+    # TODO: optional syllable values like (C)CV(C)
     def test_syllable_clusters(self):
         self.phonology.syllables.clear
-        self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
+        self.phonology.syllables.add("CCVC")
+        self.phonology.syllables.add("CVC")
+        self.phonology.syllables.add("CV")
         word = ["k", "kʰ", "a", "g", "gʰ", "a", "g", "a"]
         self.assertEqual(
             self.phonology.syllables.count(word),
-            4,
-            "failed to implement handling of complex consonant clusters"
+            3,
+            "failed to handle complex consonant clusters"
         )
 
     # TODO: store syllabification in vocabulary word entry?
@@ -236,15 +272,15 @@ class PhonologySyllables(PhonologyFixture):
     def test_syllable_sonority(self):
         self.phonology.syllables.clear
         self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
-        word_a = ["s", "kʰ", "a"]
-        word_b = ["kʰ", "s" "a"]
+        word_a = ["x", "kʰ", "a"]
+        word_b = ["kʰ", "x" "a"]
         self.phonology.syllables.add_sonority("fricative")
         self.phonology.syllables.add_sonority("stop")
         res_a = self.phonology.syllables.syllabify(word_a)
         res_b = self.phonology.syllables.syllabify(word_b)
         self.assertEqual(
             [res_a, res_b],
-            [[["s", "kʰ", "a"]], None],
+            [[["x", "kʰ", "a"]], None],
             "failed to implement handling of syllable sonority"
         )
 

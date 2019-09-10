@@ -21,6 +21,10 @@ class Syllables():
         # applied in given order for onset and reverse for coda
         self.sonority = []
 
+        # store features that identify the syllable nucleus
+        # NOTE: defaults to vowel if present in phonetics
+        self.nucleus = {'vowel'} if self.phonology.phonetics.has_feature("vowel") else set()
+
     def has(self, syllable_id):
         """Check if an id exists in the syllables map"""
         return syllable_id in self.syllables
@@ -154,6 +158,9 @@ class Syllables():
 
     def is_syllable(self, syllable_fragment):
         """Verify that the fragment matches one syllable in the phonology"""
+        if not syllable_fragment:
+            return
+
         # vet features in syllable fragment
         features = [
             set(self.phonology.phonetics.get_features(sound))
@@ -222,33 +229,11 @@ class Syllables():
         syllabification = self._find_left_syllable(vetted_sample)
 
         # TODO: handle uncut or imperfectly cut samples
-        if not syllabification:
-            raise ValueError(f"Could not find a valid syllable in {syllabification}")
-        
-        # Check final syllable sounds were not leftovers (they are also a valid syllable)
-        # TODO: include as semantic tests - may not be value errors for this method
-        if not self.is_syllable(syllabification[-1]) or len(flat_list.flatten(syllabification)) != len(vetted_sample):
-            raise ValueError(f"Syllables failed to syllabify all sounds: {syllabification}")
-        
-        return syllabification
+        if not syllabification or None in syllabification:
+            print(f"Could not find valid syllable in {vetted_sample}")
+            return
 
-    # Finalize left syllable when right leftover material also starts a syllable
-    def _syllabify_loop(self, sample):
-        """Split off the largest valid syllable from the left where the remaining
-        right material also starts a single syllable"""
-        # check sample for a single syllable shrinking window from right
-        for i in reversed(range(len(sample) + 1)):
-            sample_focus = sample[:i]
-            sample_leftover = sample[i:]
-            # check leftover right-side sounds for another syllable to ensure
-            # that this syllable is valid without jeopardizing rightmore ones
-            if self.is_syllable(sample_focus):
-                if not sample_leftover:
-                    return sample_focus
-                for j in reversed(range(len(sample_leftover) + 1)):
-                    if self.is_syllable(sample_leftover[:j]):
-                        return sample_focus
-        return
+        return syllabification
 
     def syllabify_min(self, sample):
         """Break sound sample into smallest possible syllables sequentially from
@@ -262,6 +247,16 @@ class Syllables():
             )[self.is_syllable(word[-1])],          # if last list is a full syllable
             [[]]                                    # empty word with one empty syllable
         )
+
+    # Shape
+
+    def add_nucleus(self, feature):
+        if not self.phonology.phonetics.has_feature(feature):
+            return
+        self.nucleus.add(feature)
+
+    def reset_nucleus(self):
+        self.nucleus = set()
 
     # Sonority
 
@@ -291,9 +286,10 @@ class Syllables():
             'coda': []
         }
         
-        nonnucleic_sonority = self.sonority[1:]
-        nucleic_sonority = self.sonority[0]
-        sonority_count = 0
+        if use_sonority and self.sonority:
+            nonnucleic_sonority = self.sonority[1:]
+            nucleic_sonority = self.sonority[0]
+            sonority_count = 0
 
         # Build Syllable and Sonority Shape
         # Syllable Shape: split syllable into onset, nucleus, coda
@@ -304,17 +300,17 @@ class Syllables():
             featureset = set(features)
             reached_nucleus = False
             # nucleus features for this position
-            if self.sonority[0] in featureset:
+            if self.nucleus & featureset:
                 syllable_shape['nucleus'].append(set())
                 reached_nucleus = True
                 syllable_shape['nucleus'][-1] |= featureset
-                if use_sonority:
+                if use_sonority and self.sonority:
                     syllable_shape['nucleus'][-1].add(nucleic_sonority)
             # coda features for this position
             elif reached_nucleus:
                 syllable_shape['coda'].append(set())
                 syllable_shape['coda'][-1] |= featureset
-                if use_sonority:
+                if use_sonority and self.sonority:
                     sonority_count = sonority_count if sonority_count < len(nonnucleic_sonority) else 0
                     coda_sonority = nonnucleic_sonority[sonority_count]
                     syllable_shape['coda'][-1].add(coda_sonority)
@@ -323,7 +319,7 @@ class Syllables():
             else:
                 syllable_shape['onset'].append(set())
                 syllable_shape['onset'][-1] |= featureset
-                if use_sonority:
+                if use_sonority and self.sonority:
                     sonority_count = sonority_count if sonority_count < len(nonnucleic_sonority) else -1
                     onset_sonority = list(reversed(nonnucleic_sonority))[sonority_count]
                     syllable_shape['onset'][-1].add(onset_sonority)
