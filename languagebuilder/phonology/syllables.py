@@ -197,13 +197,13 @@ class Syllables():
     def _find_left_syllable(self, sounds):
         if not sounds:
             return []
-        found_i = None
-        for i in reversed(range(len(sounds))):
+        for i in reversed(range(len(sounds) + 1)):
             if self.is_syllable(sounds[:i]):
-                found_i = i
-        if found_i is None:
-            return None
-        return [sounds[:found_i]] + self._find_left_syllable(sounds[found_i:])
+                syllabified_sounds = [sounds[:i]] + self._find_left_syllable(sounds[i:])
+                if None in syllabified_sounds:
+                    continue
+                return syllabified_sounds
+        return [None]
 
     def syllabify(self, sounds):
         """Separate sounds into a list of syllables, linearly closing out one syllable
@@ -219,14 +219,7 @@ class Syllables():
             raise ValueError(f"Invalid sounds in sample {sounds}")
 
         # Loop through building maximally valid syllables from the left
-        syllabification = []
-        for i in reversed(range(len(vetted_sample))):
-            syllabification = self._find_left_syllable(vetted_sample[:i])
-            if syllabification is not None:
-                raise ValueError(f"BROKE on finding {syllabification}")
-                break
-            else:
-                syllabification = []
+        syllabification = self._find_left_syllable(vetted_sample)
 
         # TODO: handle uncut or imperfectly cut samples
         if not syllabification:
