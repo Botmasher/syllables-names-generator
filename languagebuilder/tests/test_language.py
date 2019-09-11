@@ -306,8 +306,52 @@ class LanguageWords(LanguageFixture):
             "failed to generate a new root + grammatical unit in the language"
         )
 
+    # TODO: fix failing build units
+    #   - see Note from earlier attempt at fixing below
+    #   - got it once after 25 runs, once after 30, once around 50
+    #
+    # ======================================================================
+    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    # ----------------------------------------------------------------------
+    # Traceback (most recent call last):
+    #   File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 306, in test_build_unit
+    #     "failed to generate a new root + grammatical unit in the language"
+    # AssertionError: 'θaθaka' != 'θataka'
+    # - θaθaka
+    # ?   ^
+    # + θataka
+    # ?   ^
+    #  : failed to generate a new root + grammatical unit in the language
+    #
+    # ======================================================================
+    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    # ----------------------------------------------------------------------
+    # Traceback (most recent call last):
+    #   File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 306, in test_build_unit
+    #     "failed to generate a new root + grammatical unit in the language"
+    # AssertionError: 'θikuka' != 'θixuka'
+    # - θikuka
+    # ?   ^
+    # + θixuka
+    # ?   ^
+    #  : failed to generate a new root + grammatical unit in the language
+    #
+    # ======================================================================
+    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    # ----------------------------------------------------------------------
+    # Traceback (most recent call last):
+    # File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 306, in test_build_unit
+    #     "failed to generate a new root + grammatical unit in the language"
+    # AssertionError: 'putika' != 'puθika'
+    # - putika
+    # ?   ^
+    # + puθika
+    # ?   ^
+    # : failed to generate a new root + grammatical unit in the language
+
     # One out of every ~40 runs:
     # NOTE: possibly now fixed with explicit rule ordering (no similar error in >100 runs)
+    # NOTE: NO - still an issue! See recent results above
     # ======================================================================
     # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
     # ----------------------------------------------------------------------

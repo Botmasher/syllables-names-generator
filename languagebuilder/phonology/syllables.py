@@ -2,6 +2,10 @@ from uuid import uuid4
 from ..tools import redacc, flat_list
 import random
 
+# TODO: optional/dependent sonority (see sonority scale list and associated methods below)
+# - add_sonority_dependency()
+# - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
+
 class Syllables():
     def __init__(self, phonology):
         # map of syllable structures
@@ -159,7 +163,7 @@ class Syllables():
     def is_syllable(self, syllable_fragment):
         """Verify that the fragment matches one syllable in the phonology"""
         if not syllable_fragment:
-            return
+            return False
 
         # vet features in syllable fragment
         features = [
@@ -337,10 +341,7 @@ class Syllables():
         ]
 
         return syllable_sounds
-
-    # TODO: optional or dependent
-    # - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
-
+    
     def get_sonority(self):
         """Read the sonority scale"""
         return self.sonority
