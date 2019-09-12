@@ -293,17 +293,38 @@ class LanguageWords(LanguageFixture):
         )
 
     def test_build_unit(self):
-        base = self.language.generate(2)
-        base_entry = self.language.vocabulary.lookup(*base)
-        unit = self.language.attach(
-            *base,
+        did_match_builds = []
+        for _ in range(999):
+            base = self.language.generate(2)
+            base_entry = self.language.vocabulary.lookup(*base)
+            unit = self.language.attach(
+                *base,
+                properties="imperfective future",
+                word_classes="verb"
+            )
+            did_match_builds.append(unit['sound'] == base_entry['sound'] + ["k", "a"])
+        self.assertNotIn(
+            False,
+            did_match_builds,
+            #"".join(unit['sound']),
+            #"".join(base_entry['sound']) + "ka",
+            "failed to generate a new root + grammatical unit in the language"
+        )
+
+    def test_keep_same_base_sounds(self):
+        compared_unit = {
+            'sound': ["k", "i", "t", "a", "k", "a"],
+            'change': ["k", "i", "θ", "a", "k", "a"]
+        }
+        generated_unit = self.language.attach(
+            ["k", "i", "t", "a"],
             properties="imperfective future",
             word_classes="verb"
         )
         self.assertEqual(
-            "".join(unit['sound']),
-            "".join(base_entry['sound']) + "ka",
-            "failed to generate a new root + grammatical unit in the language"
+            compared_unit['sound'],
+            generated_unit['sound'],
+            "failed to maintain base phonemes when attaching affixes"
         )
 
     # TODO: fix failing build units
@@ -346,6 +367,19 @@ class LanguageWords(LanguageFixture):
     # - putika
     # ?   ^
     # + puθika
+    # ?   ^
+    # : failed to generate a new root + grammatical unit in the language
+    #
+    # ======================================================================
+    # FAIL: test_build_unit (languagebuilder.tests.test_language.LanguageWords)
+    # ----------------------------------------------------------------------
+    # Traceback (most recent call last):
+    # File "/Users/josh/Life/code/language-builder/languagebuilder/tests/test_language.py", line 306, in test_build_unit
+    #     "failed to generate a new root + grammatical unit in the language"
+    # AssertionError: 'fixuka' != 'fikuka'
+    # - fixuka
+    # ?   ^
+    # + fikuka
     # ?   ^
     # : failed to generate a new root + grammatical unit in the language
 

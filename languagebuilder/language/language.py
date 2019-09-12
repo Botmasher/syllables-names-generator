@@ -338,18 +338,19 @@ class Language:
             word_classes=word_class
         )
 
-    def attach(self, base="", definition="", entry_index=0, properties=None, word_classes=None, lookup=True, spell_after_change=True, blocked_by_spacing=True):
+    def attach(self, base="", entry_index=None, definition="", properties=None, word_classes=None, lookup=True, spell_after_change=True, blocked_by_spacing=True):
         """Attach grammatical pieces around a base headword. Look up the base in the
         language's dictionary and use added exponents from the language's grammar."""
         # - iterate through grammar for that part of speech
         # - produce a unit
         # - or produce a table of all possible forms
         # - store the unit in the corpus
-        if lookup and not self.vocabulary.is_word(base):
-            raise KeyError(f"Language attach failed - vocabulary does not have base word {base}")
-
+        
         # locate headword entry for base
-        if lookup:
+        if lookup and entry_index is not None:
+            # check - base word is a valid headword and headword exists in vocabulary
+            if not self.vocabulary.is_word(base):
+                raise KeyError(f"Language attach failed - vocabulary does not have base word {base}")
             base_entry = self.vocabulary.lookup(headword=base, entry_index=entry_index)
             base_sounds = base_entry['sound']
             base_definition = base_entry['definition']
@@ -366,7 +367,8 @@ class Language:
         vetted_word_classes = self.grammar.vet_build_word_classes(word_classes)
         
         # build grammatical unit with underlying sounds
-        unit_sounds = self.grammar.build_unit(
+        unit = {}
+        unit['sound'] = self.grammar.build_unit(
             base_sounds,
             properties=vetted_properties,
             word_classes=vetted_word_classes,
@@ -374,17 +376,21 @@ class Language:
             midpoint=midpoint
         )
         # compute changed sounds
-        unit_change = self.change_sounds(unit_sounds, blocked_by_spacing=blocked_by_spacing, spacing=self.spacing_symbol)
+        unit['change'] = self.change_sounds(
+            unit['sound'],
+            blocked_by_spacing=blocked_by_spacing,
+            spacing=self.spacing_symbol
+        )
 
         # obtain and store spelling
         if spell_after_change:
-            unit_spelling = self.phonology.spell(unit_change, unit_sounds)
+            unit['spelling'] = self.phonology.spell(unit['change'], unit['sound'])
         else:
-            unit_spelling = self.phonology.spell(unit_sounds)
+            unit['spelling'] = self.phonology.spell(unit['sound'])
         
         # unable to spell unit
-        if not unit_spelling:
-            raise ValueError(f"Language attach failed to spell unit - missing letters for built sounds {unit_sounds}")
+        if not unit['spelling']:
+            raise ValueError(f"Language attach failed to spell unit - missing letters for built sounds {unit['sounds']}")
 
         # determine the exponents that provided these properties for these pos
         exponents = self.grammar.provide(vetted_properties, word_classes=word_classes)
@@ -397,16 +403,16 @@ class Language:
                     properties_string += f" {grammeme},"
                 properties_string = properties_string[:-1]
                 properties_string += f"{category}"
-            unit_definition = f"{base_definition} ({properties_string})"
+            unit['definition'] = f"{base_definition} ({properties_string})"
         else:
-            unit_definition = definition
+            unit['definition'] = definition
 
         # format and store entry for built grammatical unit
         corpus_id = self.corpus.add(
-            sound=unit_sounds,
-            change=unit_change,
-            spelling=unit_spelling,
-            definition=unit_definition,
+            sound=unit['sound'],
+            change=unit['change'],
+            spelling=unit['spelling'],
+            definition=unit['definition'],
             exponents=exponents,
             properties=vetted_properties,
             pos=vetted_word_classes

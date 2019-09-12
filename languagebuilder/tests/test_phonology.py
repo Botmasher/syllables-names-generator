@@ -253,20 +253,20 @@ class PhonologySyllables(PhonologyFixture):
             "failed to implement handling diphthongs in syllables"
         )
     
-    # TODO: syllable sonority
+    # TODO: syllable sonority that allows for violations
     def test_syllable_sonority(self):
         self.phonology.syllables.clear
         self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
-        word_a = ["x", "kʰ", "a"]
-        word_b = ["kʰ", "x" "a"]
+        word_a = ["x", "k", "a"]   # matches sonority
+        word_b = ["k", "x" "a"]    # violates sonority
         self.phonology.syllables.add_sonority("fricative")
         self.phonology.syllables.add_sonority("stop")
         res_a = self.phonology.syllables.syllabify(word_a)
         res_b = self.phonology.syllables.syllabify(word_b)
         self.assertEqual(
             [res_a, res_b],
-            [[["x", "kʰ", "a"]], None],
-            "failed to implement handling of syllable sonority"
+            [[["x","k","a"]], None],
+            "failed to pass and violate basic syllable sonority"
         )
 
     # TODO: support optional and dependent values in sonority scale (see Syllables class)

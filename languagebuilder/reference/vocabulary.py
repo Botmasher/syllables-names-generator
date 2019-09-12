@@ -21,6 +21,8 @@ class Vocabulary():
 
     def is_word(self, word):
         """Check if entries exist for a spelled word"""
+        if not isinstance(word, str):
+            return False
         return word in self.vocabulary
 
     def is_entry(self, word, index=0):
