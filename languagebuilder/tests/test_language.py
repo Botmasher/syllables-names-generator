@@ -293,8 +293,22 @@ class LanguageWords(LanguageFixture):
         )
 
     def test_build_unit(self):
+        base_id = self.language.generate(2)
+        base_entry = self.language.vocabulary.lookup(*base_id)
+        unit = self.language.attach(
+            *base_id,
+            properties="imperfective future",
+            word_classes="verb"
+        )
+        self.assertEqual(
+            "".join(unit['sound']),
+            "".join(base_entry['sound']) + "ka",
+            "failed to generate a grammatical unit from base sounds in the language"
+        )
+
+    def test_build_units(self):
         did_match_builds = []
-        for _ in range(999):
+        for _ in range(9):
             base = self.language.generate(2)
             base_entry = self.language.vocabulary.lookup(*base)
             unit = self.language.attach(
@@ -302,13 +316,11 @@ class LanguageWords(LanguageFixture):
                 properties="imperfective future",
                 word_classes="verb"
             )
-            did_match_builds.append(unit['sound'] == base_entry['sound'] + ["k", "a"])
+            did_match_builds.append(unit['sound'] == [*base_entry['sound'], "k", "a"])
         self.assertNotIn(
             False,
             did_match_builds,
-            #"".join(unit['sound']),
-            #"".join(base_entry['sound']) + "ka",
-            "failed to generate a new root + grammatical unit in the language"
+            "failed to generate multiple new grammatical units in the language"
         )
 
     def test_keep_same_base_sounds(self):

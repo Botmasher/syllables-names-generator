@@ -253,10 +253,28 @@ class PhonologySyllables(PhonologyFixture):
             "failed to implement handling diphthongs in syllables"
         )
     
+    def test_syllable_optional_consonants(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("(C)CV(C)")
+        syllables = [
+            ["k", "x", "a", "x"],
+            ["k", "x", "a"],
+            ["x", "a"]
+        ]
+        true_syllables = [
+            syllable for syllable in syllables
+            if self.phonology.syllables.is_syllable(syllable)
+        ]
+        self.assertEqual(
+            syllables,
+            true_syllables,
+            f"Failed to allow optional consonants in one or more (C)CV(C) words"
+        )
+
     # TODO: syllable sonority that allows for violations
     def test_syllable_sonority(self):
         self.phonology.syllables.clear
-        self.phonology.syllables.add("(C)(C)CV(C)(C)(C)")
+        self.phonology.syllables.add("CCV")
         word_a = ["x", "k", "a"]   # matches sonority
         word_b = ["k", "x" "a"]    # violates sonority
         self.phonology.syllables.add_sonority("fricative")
@@ -314,7 +332,7 @@ class PhonologySyllables(PhonologyFixture):
         self.phonetics.add("j", ["consonant", "voiced", "palatal", "approximant"])
         # set up complex syllables
         self.phonology.syllables.clear()
-        self.phonology.syllables.add("CCCCCV")
+        self.phonology.syllables.add("CCCCV")
         self.phonology.syllables.add_sonority("vowel")
         self.phonology.syllables.add_sonority("approximant")
         self.phonology.syllables.add_sonority("nasal")
@@ -328,8 +346,9 @@ class PhonologySyllables(PhonologyFixture):
         ]
         sonority = [{"stop"}, {"fricative"}, {"nasal"}, {"approximant"}, {"vowel"}]
         feature_overlaps = [
-            syllable_features[i] & sonority_feature
-            for i, sonority_feature in enumerate(syllable_features)
+            syllable_features[i] & sonority[i]
+            if i < len(sonority) else set()
+            for i in range(len(syllable_features))
         ]
         # tear down extra phonetics
         self.phonetics.remove_symbol("n")
@@ -339,6 +358,30 @@ class PhonologySyllables(PhonologyFixture):
             feature_overlaps,
             sonority,
             f"failed to build syllable with complex cluster following sonority: {syllable}"
+        )
+
+    def test_syllable_overflowing_and_missing_sonority(self):
+        self.phonology.syllables.clear()
+        self.phonology.syllables.add("CCCVCCC")
+        self.phonology.syllables.add_sonority("vowel")
+        self.phonology.syllables.add_sonority("fricative")
+        self.phonology.syllables.add_sonority("affricate")
+        self.phonology.syllables.add_sonority("stop")
+        syllable = self.phonology.syllables.build(use_sonority=True)
+        syllable_features = [
+            set(self.phonology.phonetics.get_features(sound))
+            for sound in syllable
+        ]
+        sonority = [{"stop"}, {"stop"}, {"fricative"}, {"vowel"}, {"fricative"}, {"stop"}, {"stop"}]
+        feature_overlaps = [
+            syllable_features[i] & sonority[i]
+            if i < len(sonority) else set()
+            for i in range(len(syllable_features))
+        ]
+        self.assertEqual(
+            feature_overlaps,
+            sonority,
+            f"failed to build syllable with skipped sonority value and overflow edge: {syllable}"
         )
 
 # TODO: test varied built words for determining if inventory, syllables and rules work
