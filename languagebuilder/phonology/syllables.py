@@ -21,9 +21,9 @@ class Syllables():
         # reference phonology into which injected
         self.phonology = phonology
         
-        # ordered sonority scale
+        # sonority scale dependency map
         # applied in given order for onset and reverse for coda
-        self.sonority = []
+        self.sonority = {}
 
         # store features that identify the syllable nucleus
         # NOTE: defaults to vowel if present in phonetics
@@ -264,7 +264,7 @@ class Syllables():
 
     # Sonority
 
-    # Apply sonority when building syllables
+    # TODO: apply sonority when building syllables
     def build(self, restrictions=None, use_sonority=True, sonority_edge=False):
         """Use defined syllables, sonority and features and ipa from phonology to 
         generate the phonemes of one valid syllable.
@@ -316,48 +316,12 @@ class Syllables():
             else:
                 syllable_core_features.append(self.sonority[1])
 
-        #if use_sonority and self.sonority:
-        #    nonnucleic_sonority = self.sonority[1:]
-        #    nucleic_sonority = self.sonority[0]
-        #    sonority_count = 0
-
         # Build sonority out from nucleus
 
         # Build Syllable and Sonority Shape
         # Syllable Shape: split syllable into onset, nucleus, coda
         # Sonority Shape: fill out syllable shape following sonority scale
-        #
-        # TODO: scaled features past edges: maintain vs rescale
-        # for features in syllable_features:
-        #     featureset = set(features)
-        #     reached_nucleus = False
-        #     # nucleus features for this position
-        #     if self.nucleus & featureset:
-        #         syllable_shape['nucleus'].append(set())
-        #         reached_nucleus = True
-        #         syllable_shape['nucleus'][-1] |= featureset
-        #         if use_sonority and self.sonority:
-        #             syllable_shape['nucleus'][-1].add(nucleic_sonority)
-        #     # coda features for this position
-        #     elif reached_nucleus:
-        #         syllable_shape['coda'].append(set())
-        #         syllable_shape['coda'][-1] |= featureset
-        #         if use_sonority and self.sonority:
-        #             sonority_count = sonority_count if sonority_count < len(nonnucleic_sonority) else 0
-        #             coda_sonority = nonnucleic_sonority[sonority_count]
-        #             syllable_shape['coda'][-1].add(coda_sonority)
-        #             sonority_count += 1
-        #     # onset features for this position
-        #     else:
-        #         syllable_shape['onset'].append(set())
-        #         syllable_shape['onset'][-1] |= featureset
-        #         if use_sonority and self.sonority:
-        #             sonority_count = sonority_count if sonority_count < len(nonnucleic_sonority) else -1
-        #             onset_sonority = list(reversed(nonnucleic_sonority))[sonority_count]
-        #             syllable_shape['onset'][-1].add(onset_sonority)
-        #             sonority_count += 1
-
-        #final_features = sonority_shape['onset'] + sonority_shape['nucleus'] + sonority_shape['coda']
+        
         final_features = syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']
 
         # Sound Shape: select a sound for each features element in the syllable shape
@@ -373,47 +337,42 @@ class Syllables():
     
     def get_sonority(self):
         """Read the sonority scale"""
-        return self.sonority
+        return self.sonority       
 
-    def set_sonority_scale(self, sonority_scale):
-        """Replace the entire sonority scale with a new sequence of features"""
-        # validate list of features
-        if not isinstance(sonority_scale, list):
-            raise ValueError(f"Failed to set sonority scale - expected list of features not {sonority_scale}")
-        for feature in sonority_scale:
-            if not self.phonology.phonetics.has_feature(feature):
-                raise ValueError(f"Failed to set sonority scale - unknown feature {feature}")
-        # update the scale
-        self.sonority = sonority_scale
-        return self.sonority        
-
-    def add_sonority(self, feature, position=None):
-        """Order one feature within the sonority scale, appending it to the hierarchy
-        or (optionally) assigning it a specific position within the hierarchy. Positions
-        scale from most to least sonorous. Zero position is treated as syllable nucleus."""
+    def add_sonority(self, feature, dependent_feature):
+        """Order one feature below another in the sonority map. Features will be
+        applied hierarchically in a dependency chain until a sound with no dependency
+        is found, then any new sound will be chosen (see Syllables.build)."""
         if not self.phonology.phonetics.has_feature(feature):
             return
-        if position:
-            if feature in self.sonority:
-                return self.update_sonority(feature, position)
-            else:
-                self.sonority = self.sonority[:position] + [feature] + self.sonority[position:]
+        if feature in self.sonority:
+            self.sonority[feature].add(dependent_feature)
         else:
-           self.sonority.append(feature)
+            self.sonority[feature] = {dependent_feature}
         return self.sonority
 
-    def update_sonority(self, feature, position):
-        """Reorder one existing feature within the sonority scale"""
-        current_position = self.sonority.index(feature)
-        if not current_position:
-            return
-        new_position = position - 1 if position > current_position else position
-        self.sonority.pop(current_position)
-        self.sonority = self.sonority[:new_position] + [feature] + self.sonority[new_position:]
+    def remove_sonority(self, feature, dependent_feature=None):
+        """Remove existing feature dependency or entire parent feature within the
+        sonority map"""
+        if not self.sonority.get(feature):
+            raise KeyError(f"No syllable sonority scale mapping exists for feature {feature}")
+
+        if dependent_feature:
+            self.sonority[feature].remove(dependent_feature)
+
+        if not self.sonority[feature] or dependent_feature is None:
+            self.sonority.pop(feature)
+
         return self.sonority
 
-    def remove_sonority(self, feature):
-        """Remove one feature from the sonority scale"""
-        position = self.sonority.index(feature)
-        self.sonority.pop(position)
-        return self.sonority
+    def chain_sonority(self):
+        """Return a list of hierarchy feature chains formable from the sonority scale"""
+        practical_sonority_scales = []
+        for feature in self.sonority:
+            for dependent_feature in self.sonority[feature]:
+                current_scale = [feature, dependent_feature]
+                practical_sonority_scales.append(current_scale)
+                # TODO: recursively chain sonority
+                #   - should dependency be 1:1 mapping instead of 1:collection?
+        return practical_sonority_scales
+
