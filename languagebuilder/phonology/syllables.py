@@ -336,43 +336,47 @@ class Syllables():
         return syllable_sounds
     
     def get_sonority(self):
-        """Read the sonority scale"""
+        """Read all dependencies along the sonority scale"""
         return self.sonority       
 
     def add_sonority(self, feature, dependent_feature):
         """Order one feature below another in the sonority map. Features will be
         applied hierarchically in a dependency chain until a sound with no dependency
         is found, then any new sound will be chosen (see Syllables.build)."""
+        if self.phonology.phonetics.has_feature(feature):
+            raise KeyError(f"Cannot overwrite sonority for already existing feature {feature}")
+        self.sonority[feature] = dependent_feature
+        return self.sonority
+
+    def update_sonority(self, feature, dependent_feature):
+        """Update one feature's dependent feature in the sonority map"""
         if not self.phonology.phonetics.has_feature(feature):
-            return
-        if feature in self.sonority:
-            self.sonority[feature].add(dependent_feature)
-        else:
-            self.sonority[feature] = {dependent_feature}
+            raise KeyError(f"Cannot update sonority for nonexisting feature {feature}")
+        self.sonority[feature] = dependent_feature
         return self.sonority
 
-    def remove_sonority(self, feature, dependent_feature=None):
-        """Remove existing feature dependency or entire parent feature within the
-        sonority map"""
-        if not self.sonority.get(feature):
-            raise KeyError(f"No syllable sonority scale mapping exists for feature {feature}")
-
-        if dependent_feature:
-            self.sonority[feature].remove(dependent_feature)
-
-        if not self.sonority[feature] or dependent_feature is None:
-            self.sonority.pop(feature)
-
+    def remove_sonority(self, feature, err_if_absent=True):
+        """Remove existing feature dependency from the sonority map"""
+        self.sonority.pop(feature) if err_if_absent else self.sonority.pop(feature, None)
         return self.sonority
 
-    def chain_sonority(self):
+    # TODO: TEST! & consider scale + exclusivity + inclusivity
+    def chain_sonority(self, sonority_scales=None):
         """Return a list of hierarchy feature chains formable from the sonority scale"""
-        practical_sonority_scales = []
-        for feature in self.sonority:
-            for dependent_feature in self.sonority[feature]:
-                current_scale = [feature, dependent_feature]
-                practical_sonority_scales.append(current_scale)
-                # TODO: recursively chain sonority
-                #   - should dependency be 1:1 mapping instead of 1:collection?
-        return practical_sonority_scales
+        # make starter sonority features scales on first call
+        sonority_scales = [
+            [feature, dependent_feature]
+            for feature, dependent_feature in self.sonority.items()
+        ] if sonority_scales is None else sonority_scales
+        # traverse features adding sonority dependencies
+        did_reach_dependency = False
+        for scale in sonority_scales:
+            if self.sonority.get(scale[-1]):
+                did_reach_dependency = True
+                scale.append(self.sonority[scale[-1]])
+        # stop recursing if reached terminal dependencies
+        if not did_reach_dependency:
+            return sonority_scales
+        # keep branching through dependencies' dependencies
+        return self.chain_sonority(sonority_scales)
 
