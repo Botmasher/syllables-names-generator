@@ -384,6 +384,70 @@ class PhonologySyllables(PhonologyFixture):
             f"failed to build syllable with skipped sonority value and overflow edge: {syllable}"
         )
 
+class PhonologySyllableShape(PhonologyFixture):
+    @classmethod
+    def setUpClass(this_class):
+        super(PhonologySyllableShape, this_class).setUpClass()
+        this_class.phonetics.add("s", ["consonant", "voiceless", "alveolar", "sibilant"])
+        this_class.phonetics.add("l", ["consonant", "voiced", "alveolar", "lateral"])
+        this_class.phonetics.add("j", ["consonant", "voiced", "palatal", "approximant"])
+        this_class.phonetics.add("n", ["consonant", "voiced", "alveolar", "nasal"])
+        this_class.phonology.phonemes.add("s", ["s"])
+        this_class.phonology.phonemes.add("l", ["l"])
+        this_class.phonology.phonemes.add("j", ["j"])
+        this_class.phonology.phonemes.add("n", ["n"])
+        this_class.phonology.syllables.add("CCCCVCCC")
+
+    # TODO: role to ensure believability in distribution of number of consonants CCCCVCCC
+
+    def test_add_syllable_shape_onset(self):
+        self.phonology.syllables.shapes_clear()
+        self.phonology.syllables.shape_dependent("sibilant", "voiceless fricative")
+        self.phonology.syllables.shape_dependent("voiceless fricative", "palatal")
+        syllable = self.phonology.syllables.build(restrictions="CCCV")
+        self.assertEqual(
+            "".join(syllable),
+            "sxja"
+        )
+
+    def test_add_syllable_shape_onset_options(self):
+        self.phonology.syllables.shapes_clear()
+        self.phonology.syllables.shape_dependent("sibilant", ["voiceless stop", "voiceless fricative"])
+        self.phonology.syllables.shape_dependent("stop", "approximant")
+        syllable = self.phonology.syllables.build(restrictions=["CCCV",])
+        self.assertIn(
+            syllable,
+            ["skja", "skʰja", "skla", "skʰla"]
+        )
+
+    def test_get_syllable_chain(self):
+        self.phonology.syllables.shapes_clear()
+        self.phonology.syllables.shape_dependent("sibilant", ["stop", "nasal"])
+        self.phonology.syllables.shape_dependent("stop", "fricative")
+        self.phonology.syllables.shape_dependent("fricative", "approximant")
+        chains = self.phonology.syllables.shapes_get()
+        self.assertEqual(
+            chain,
+            [
+                [["sibilant"], ["stop"], ["fricative"], ["approximant"]],
+                [["sibilant"], ["nasal"]]
+            ]
+        )
+
+    def test_add_syllable_chain(self):
+        self.phonology.syllables.shapes_clear()
+        self.phonology.syllables.shape_chain([
+            "sibilant", "stop", "fricative", "nasal", "approximant"
+        ])
+        # TODO: fetch each dependency to show each gets added to map
+        chains = self.phonology.syllables.shapes_get()
+        self.assertEqual(
+            chains,
+            [
+                [["sibilant"], ["stop"], ["fricative"], ["nasal"], ["approximant"]],
+            ]
+        )
+
 # TODO: test varied built words for determining if inventory, syllables and rules work
 # rather than testing substructure individually to probe how they work
 class PhonologyWords(PhonologyFixture):
