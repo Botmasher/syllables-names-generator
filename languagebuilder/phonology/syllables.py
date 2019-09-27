@@ -1,6 +1,7 @@
 from .phonotactics import Phonotactics
 from uuid import uuid4
 from ..tools import redacc
+import random
 
 class Syllables():
     def __init__(self, phonology):
@@ -241,3 +242,37 @@ class Syllables():
             )[self.is_syllable(word[-1])],          # if last list is a full syllable
             [[]]                                    # empty word with one empty syllable
         )
+
+    # NOTE: sound out a full syllable using Syllables and Phonotactics
+    def build(self, filter_syllables=None, use_sonority=True):
+        """Use defined syllables, phonotactics and features from phonology to 
+        generate the phonemes of one valid syllable.
+        
+        params:
+            filter_syllables (list):    restrict choices to specific syllable ids
+            use_sonority (bool):        ensure chosen sounds fit sonority scale
+        """
+        
+        # filter possible syllable options
+        possible_syllables = [
+            s for i, s in self.syllables.items()
+            if not filter_syllables or i in filter_syllables
+        ]
+
+        # Syllable Type: choose one syllable
+        syllable = random.choice(possible_syllables)
+
+        # Syllable Shape: fill out features for each element in the syllable
+        syllable_features = self.phonotactics.shape(syllable, use_sonority=use_sonority)
+
+        # Sound Shape: select a sound for each set of features
+        syllable_sounds = [
+            random.choice(self.phonology.phonetics.get_ipa(
+                features,
+                filter_phonemes = self.phonology.inventory()
+            ))
+            for features in syllable_features
+        ]
+        
+        return syllable_sounds
+    
