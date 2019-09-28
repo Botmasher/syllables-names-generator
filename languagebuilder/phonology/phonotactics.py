@@ -24,21 +24,27 @@ class Phonotactics:
         }
 
         # configure syllable nucleus
-        self.reset_nucleus()
+        # TODO: consider defaulting to ['vowel'] if present
+        self.nuclei = {}
 
-    # Shape
+    def is_features(self, features):
+        if not isinstance(features, (list, tuple)):
+            return False
+        elif False in [self.phonology.phonetics.has_feature(feature) for feature in features]:
+            return False
+        else:
+            return True
+
     def add_nucleus(self, features):
-        if not isinstance(features, (list, tuple)) or False in [self.phonology.phonetics.has_feature(feature) for feature in features]:
+        if not self.is_features(features):
             return
-        self.nucleus.add(features)
+        self.nuclei.add(features)
 
-    # store features that identify the syllable nucleus
-    # NOTE: default to vowel if present in phonetics
-    def reset_nucleus(self):
-        self.nucleus = {['vowel']} if self.phonology.phonetics.has_feature('vowel') else set()
+    def clear_nuclei(self):
+        self.nuclei.clear()
+        return self.nuclei
 
     # Sonority
-    
     def get_sonority(self):
         """Read all dependencies along the sonority scale"""
         return self.sonority       
@@ -84,47 +90,54 @@ class Phonotactics:
         # keep branching through dependencies' dependencies
         return self.chain_sonority(sonority_scales)
 
-    def shape(self, syllable_type, use_sonority=True):
-        """Fill out a syllable with all of the defined phonotactics, including
-        any dependencies and (default) sonority"""
 
-        if not isinstance(syllable_type, list):
+    # Split and shape syllable parts phonotactically
+
+    def is_featureslist_overlap(self, featureslist_a, featureslist_b, all_a_in_b=True):
+        """Compare two lists of featuresets to determine if they are same-length
+        overlapping features collections."""
+        if len(featureslist_a) != len(featureslist_b):
+            return False
+        for i in range(len(featureslist_a)):
+            feature_overlap = set(featureslist_a[i]) & set(featureslist_b[i])
+            if not feature_overlap or (all_a_in_b and len(feature_overlap) != len(featureslist_a)):
+                return False
+        return True
+
+    def partition_syllable(self, syllable_features):
+        """Split syllable list of featureslists into onset, nucleus, coda"""
+        nucleus_indexes = []
+        for i, features in enumerate(syllable_features):
+            for nucleus in self.nuclei:
+                if self.is_featureslist_overlap(features[i:i+len(nucleus)], nucleus):
+                    nucleus_indexes += [i, i+len(nucleus)]
+                    break
+        
+        if not nucleus_indexes:
             return
 
-        # TODO: use and sonority to 
-        syllable_shape = {
-            'onset': [],
-            'nucleus': [],
-            'coda': []
+        syllable_parts = {
+            'onset': syllable_features[:nucleus_indexes[0]],
+            'coda': syllable_features[nucleus_indexes[0]:nucleus_indexes[1]],
+            'nucleus': nucleus_indexes[1]
         }
+
+        return syllable_parts
+
+    def shape(self, syllable_features):
+        """Fill out a syllable with all defined phonotactics including
+        dependencies and sonority"""
+
+        # break up and check syllables
+        syllable_pieces = self.partition_syllable(syllable_features)
+
+        if not syllable_pieces:
+            return
    
-        # TODO: consider if sonority scale too rigid for generating 
+        # TODO: use sonority and dependencies to fill out
         #   ? - go with dependency map instead
         #   ? - interject
-
-        # Determine nucleus start and end
-        nucleic_indexes = []
-        syllable_core_features = []
-        for i, features in enumerate(syllable_type):
-            if set(features) & self.nucleus:
-                nucleic_indexes.append(i)
-        # Build onset features up to the nucleus
-        for i in range(len(syllable_type[:nucleic_indexes[0]])):
-            if i < len(self.sonority):
-                syllable_core_features.append(self.sonority[i])
-            else:
-                syllable_core_features.append(self.sonority[-1])
-        # Build nucleus
-        for i in nucleic_indexes:
-            syllable_core_features.append(set(syllable_type[i]) | self.nucleus)
-        # Build coda features after the nucleus
-        for i in range(len(syllable_type[nucleic_indexes[-1]+1:])):
-            if i < len(self.sonority):
-                syllable_core_features.append(list(reversed(self.sonority))[i])
-            else:
-                syllable_core_features.append(self.sonority[1])
-
-        # Build sonority out from nucleus
+        #   ? - build sonority out from nucleus
 
         # Build Syllable and Sonority Shape
         # Syllable Shape: split syllable into onset, nucleus, coda

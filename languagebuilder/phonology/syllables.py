@@ -244,13 +244,12 @@ class Syllables():
         )
 
     # NOTE: sound out a full syllable using Syllables and Phonotactics
-    def build(self, filter_syllables=None, use_sonority=True):
+    def build(self, filter_syllables=None):
         """Use defined syllables, phonotactics and features from phonology to 
         generate the phonemes of one valid syllable.
         
         params:
             filter_syllables (list):    restrict choices to specific syllable ids
-            use_sonority (bool):        ensure chosen sounds fit sonority scale
         """
         
         # filter possible syllable options
@@ -263,7 +262,7 @@ class Syllables():
         syllable = random.choice(possible_syllables)
 
         # Syllable Shape: fill out features for each element in the syllable
-        syllable_features = self.phonotactics.shape(syllable, use_sonority=use_sonority)
+        syllable_features = self.phonotactics.shape(syllable)
 
         # Sound Shape: select a sound for each set of features
         syllable_sounds = [
