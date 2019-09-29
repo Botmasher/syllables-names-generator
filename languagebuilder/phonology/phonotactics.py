@@ -6,13 +6,10 @@ class Phonotactics:
         # 
         self.phonology = phonology
         self.syllables = syllables
-
-        # syllable edges sonority scale
-        # TODO: apply in given order for onset and reverse for coda
-        self.sonority = []
         
         # feature dependencies - if outer feature is X, inner should be Y
-        self.dependencies = {}
+        # NOTE: syllable sonority scale merged into this concept
+        self.chain_map = {}     # selected features key: dependency featuresets list
 
         # first draw likelihoods
         # TODO: how likely each is to be chosen
@@ -25,7 +22,9 @@ class Phonotactics:
 
         # configure syllable nucleus
         # TODO: consider defaulting to ['vowel'] if present
-        self.nuclei = {}
+        self.nuclei = set()
+
+    # Syllable parts - nucleus
 
     def is_features(self, features):
         if not isinstance(features, (list, tuple)):
@@ -39,57 +38,72 @@ class Phonotactics:
         if not self.is_features(features):
             return
         self.nuclei.add(features)
+        return self.nuclei
+
+    def get_nuclei(self):
+        return self.nuclei
+
+    def remove_nucleus(self, features):
+        if features in self.nuclei:
+            self.nuclei.remove(features)
+            return True
+        return False
 
     def clear_nuclei(self):
         self.nuclei.clear()
         return self.nuclei
 
-    # Sonority
-    def get_sonority(self):
-        """Read all dependencies along the sonority scale"""
-        return self.sonority       
+    # Syllable parts - onset and coda
 
-    def add_sonority(self, feature, dependent_feature):
-        """Order one feature below another in the sonority map. Features will be
+    # TODO: when building C sound slots from dependency chains
+    #   - get all dependency chains that are at least as long as cluster
+    #   - apply for onset, reverse for coda
+    # 
+    # TODO: add and read as chains (allows adding sonority scale!)
+    #   - each key is a single string feature or ipa, with ipa checked first
+    def get_chain(self):
+        """Read all of the features dependencies (if feature key selected for left sound
+        slot, next right sound slot must be among the feature values list)"""
+        return self.chain_map
+    
+    def chain(self, *features):
+        """Order one feature below another in the features chain map. Features will be
         applied hierarchically in a dependency chain until a sound with no dependency
-        is found, then any new sound will be chosen (see Syllables.build)."""
-        if self.phonology.phonetics.has_feature(feature):
-            raise KeyError(f"Cannot overwrite sonority for already existing feature {feature}")
-        self.sonority[feature] = dependent_feature
-        return self.sonority
+        is found, then any new sound will be chosen."""
+        if not self.is_features(features):
+            raise ValueError(f"Cannot create chain using nonexisting feature")
+        
+        # traverse adding each left feature to keys and right to values
+        for i in enumerate(features):
+            # stop looping when run out of right (next) features
+            if i >= len(features) - 1:
+                break
+            left_feature = features[i]
+            right_feature = features[i + 1]
+            self.chain_map.setdefault(left_feature, set()).add(right_feature)
+        
+        return self.chain
 
-    def update_sonority(self, feature, dependent_feature):
-        """Update one feature's dependent feature in the sonority map"""
-        if not self.phonology.phonetics.has_feature(feature):
-            raise KeyError(f"Cannot update sonority for nonexisting feature {feature}")
-        self.sonority[feature] = dependent_feature
-        return self.sonority
+    def unchain(self, left_feature, right_feature):
+        """Remove existing feature dependency from the chain map"""
+        self.chain_map.get(left_feature, set()).discard(right_feature)
+        if not self.chain_map.get(left_feature):
+            self.chain_map.pop(left_feature)
+        return self.chain_map
 
-    def remove_sonority(self, feature, err_if_absent=True):
-        """Remove existing feature dependency from the sonority map"""
-        self.sonority.pop(feature) if err_if_absent else self.sonority.pop(feature, None)
-        return self.sonority
-
-    # TODO: TEST! & consider scale + exclusivity + inclusivity
-    def chain_sonority(self, sonority_scales=None):
-        """Return a list of hierarchy feature chains formable from the sonority scale"""
+    # TODO: chain correctly including values
+    def read_chains(self):
+        """Return a list of all feature scales formable from walking all options in
+        the chains map"""
         # make starter sonority features scales on first call
-        sonority_scales = [
-            [feature, dependent_feature]
-            for feature, dependent_feature in self.sonority.items()
-        ] if sonority_scales is None else sonority_scales
-        # traverse features adding sonority dependencies
-        did_reach_dependency = False
-        for scale in sonority_scales:
-            if self.sonority.get(scale[-1]):
-                did_reach_dependency = True
-                scale.append(self.sonority[scale[-1]])
-        # stop recursing if reached terminal dependencies
-        if not did_reach_dependency:
-            return sonority_scales
-        # keep branching through dependencies' dependencies
-        return self.chain_sonority(sonority_scales)
-
+        chains = []
+        for feature in self.chain_map:
+            for i, chain in enumerate(chains):
+                if chain[-1] == feature:
+                    chains[i].append(feature)
+                else:
+                    chains.append([feature])
+        return chains
 
     # Split and shape syllable parts phonotactically
 
