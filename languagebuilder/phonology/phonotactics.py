@@ -1,3 +1,5 @@
+from ..tools import redacc
+
 # TODO: optional/dependent sonority (see sonority scale list and associated methods below)
 # - add_sonority_dependency()
 # - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
@@ -61,11 +63,67 @@ class Phonotactics:
     # 
     # TODO: add and read as chains (allows adding sonority scale!)
     #   - each key is a single string feature or ipa, with ipa checked first
-    def get_chain(self):
+    def get_chain_map(self):
         """Read all of the features dependencies (if feature key selected for left sound
         slot, next right sound slot must be among the feature values list)"""
         return self.chain_map
     
+    def follow_chain_branch(self, chain_branch):
+        """Keep chaining the next feature based on the rightmost feature in the list
+        until the chain ends"""
+        # no latest feature to check
+        if not chain_branch:
+            return chain_branch
+        # continue branch or end branch based on latest feature
+        left_feature = chain_branch[-1]
+        right_feature = self.chain_map.get(left_feature)
+        if right_feature:
+            return self.follow_chain_branch(chain_branch + [right_feature])
+        return chain_branch
+
+    def get_chains(self, subchain=True):
+        """Format dependencies into a list of all feature scales formable from
+        walking all options in the chains map. Chains include subchains starting
+        with the same feature key if it was added to at least one other chain being
+        formed. Switching subchaining off performs a more expensive traversal."""
+        # recursively build out all branches in dependency chains from chain map keys
+        chains = [
+            self.follow_chain_branch(feature) for feature in self.chain_map
+        ]
+        # vet for overlapping subchains
+        if not subchain:
+            no_subchain_chains = []
+            for chain in chains:
+                is_subchain = False
+                for chain_check in chains:
+                    if set(chain).issubset(set(chain_check)):
+                        is_subchain = True
+                if not is_subchain:
+                    no_subchain_chains.append(chain)
+            chains = no_subchain_chains
+
+        # NOTE: previous attempt - may miss branch starts traversed later
+        # chains = []
+        # for left_feature, right_feature in self.chain_map.items():
+        #     did_chain = False
+        #     for i, chain in enumerate(chains):
+        #         if chain[-1] == left_feature:
+        #             chains[i].append(right_feature)
+        #             did_chain = True
+        #     if subchain or not did_chain:
+        #         chains.append([left_feature, right_feature])
+
+        return chains
+
+    def count_chains(self, chains):
+        """Return a map of lists of chains keyed by chain length"""
+        chains_count_map = redacc.redacc(
+            chains,
+            lambda chain, chains_map_acc: chains_map_acc.setdefault(len(chain), []).append(chain),
+            {}
+        )
+        return chains_count_map
+
     def chain(self, *features):
         """Order one feature below another in the features chain map. Features will be
         applied hierarchically in a dependency chain until a sound with no dependency
@@ -90,20 +148,6 @@ class Phonotactics:
         if not self.chain_map.get(left_feature):
             self.chain_map.pop(left_feature)
         return self.chain_map
-
-    # TODO: chain correctly including values
-    def read_chains(self):
-        """Return a list of all feature scales formable from walking all options in
-        the chains map"""
-        # make starter sonority features scales on first call
-        chains = []
-        for feature in self.chain_map:
-            for i, chain in enumerate(chains):
-                if chain[-1] == feature:
-                    chains[i].append(feature)
-                else:
-                    chains.append([feature])
-        return chains
 
     # Split and shape syllable parts phonotactically
 
