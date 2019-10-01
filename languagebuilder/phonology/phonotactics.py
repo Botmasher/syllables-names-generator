@@ -81,38 +81,28 @@ class Phonotactics:
             return self.follow_chain_branch(chain_branch + [right_feature])
         return chain_branch
 
+    def _remove_overlaps(self, chains):
+        """Filter chains list for elements whose features do not recur in another chain"""
+        no_subchain_chains = []
+        for chain in chains:
+            is_subchain = False
+            for chain_check in chains:
+                if set(chain).issubset(set(chain_check)):
+                    is_subchain = True
+                    break
+            if not is_subchain:
+                no_subchain_chains.append(chain)
+        return no_subchain_chains
+
     def get_chains(self, subchain=True):
         """Format dependencies into a list of all feature scales formable from
         walking all options in the chains map. Chains include subchains starting
         with the same feature key if it was added to at least one other chain being
         formed. Switching subchaining off performs a more expensive traversal."""
         # recursively build out all branches in dependency chains from chain map keys
-        chains = [
-            self.follow_chain_branch(feature) for feature in self.chain_map
-        ]
+        chains = [self.follow_chain_branch(feature) for feature in self.chain_map]
         # vet for overlapping subchains
-        if not subchain:
-            no_subchain_chains = []
-            for chain in chains:
-                is_subchain = False
-                for chain_check in chains:
-                    if set(chain).issubset(set(chain_check)):
-                        is_subchain = True
-                if not is_subchain:
-                    no_subchain_chains.append(chain)
-            chains = no_subchain_chains
-
-        # NOTE: previous attempt - may miss branch starts traversed later
-        # chains = []
-        # for left_feature, right_feature in self.chain_map.items():
-        #     did_chain = False
-        #     for i, chain in enumerate(chains):
-        #         if chain[-1] == left_feature:
-        #             chains[i].append(right_feature)
-        #             did_chain = True
-        #     if subchain or not did_chain:
-        #         chains.append([left_feature, right_feature])
-
+        chains = self._remove_overlaps(chains) if not subchain else chains
         return chains
 
     def count_chains(self, chains):
@@ -191,16 +181,24 @@ class Phonotactics:
 
         if not syllable_pieces:
             return
-   
-        # TODO: use sonority and dependencies to fill out
-        #   ? - go with dependency map instead
-        #   ? - interject
-        #   ? - build sonority out from nucleus
+
+        # build syllable features options from dependencies
+        # TODO: test, and what if no same-length member in chains? go higher? random?
+        chains_count_map = self.count_chains(self.get_chains())
+        coda_features = chains_count_map[len(syllable_pieces['coda'])]
+        onset_features = chains_count_map[len(syllable_pieces['onset'])]
+        nucleus_features = syllable_pieces['nucleus']
+
+        # add initial seed features back into chains
+        for i in len(range(onset_features)):
+            onset_features[i] += syllable_pieces['onset'][i]
+        onset_features = list(set(onset_features))
+        for i in len(range(coda_features)):
+            coda_features[i] += syllable_pieces['coda'][i]
+        coda_features = list(set(coda_features))
 
         # Build Syllable and Sonority Shape
         # Syllable Shape: split syllable into onset, nucleus, coda
         # Sonority Shape: fill out syllable shape following sonority scale
         
-        final_features = syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']
-
-        return final_features
+        return onset_features + nucleus_features + coda_features
