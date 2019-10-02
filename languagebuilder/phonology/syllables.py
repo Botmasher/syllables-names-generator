@@ -18,7 +18,7 @@ class Syllables():
         # reference phonology into which injected
         self.phonology = phonology
         # set up phonotactics subclass
-        self.phonotactics = Phonotactics(phonology, self)
+        self.phonotactics = Phonotactics(phonology)
         
     def has(self, syllable_id):
         """Check if an id exists in the syllables map"""

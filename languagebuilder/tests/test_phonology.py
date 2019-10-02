@@ -384,6 +384,103 @@ class PhonologySyllables(PhonologyFixture):
             f"failed to build syllable with skipped sonority value and overflow edge: {syllable}"
         )
 
+class SyllablePhonotactics(unittest.TestCase):
+    @classmethod
+    def setUpClass(this_class):
+        #super(SyllablePhonotactics, this_class).setUpClass()
+        this_class.phonetics = Phonetics()
+        this_class.phonetics.add("a", ["vowel", "front", "open", "unrounded"])
+        this_class.phonetics.add("k", ["consonant", "voiceless", "velar", "stop"])
+        this_class.phonetics.add("x", ["consonant", "voiceless", "velar", "fricative"])
+        this_class.phonetics.add("s", ["consonant", "voiceless", "alveolar", "sibilant"])
+        this_class.phonetics.add("l", ["consonant", "voiced", "alveolar", "lateral"])
+        this_class.phonetics.add("j", ["consonant", "voiced", "palatal", "approximant", "glide"])
+        this_class.phonetics.add("n", ["consonant", "voiced", "alveolar", "nasal"])
+        this_class.phonology = Phonology(this_class.phonetics)
+        this_class.phonology.phonemes.add("s", ["s"])
+        this_class.phonology.phonemes.add("l", ["l"])
+        this_class.phonology.phonemes.add("j", ["j"])
+        this_class.phonology.phonemes.add("n", ["n"])
+    
+    # TODO: vet features for add
+    def test_add_nucleus(self):
+        nucleus = [['vowel'], ['glide']]
+        self.phonology.syllables.phonotactics.add_nucleus(nucleus)
+        nuclei = set(self.phonology.syllables.phonotactics.nuclei)
+        self.phonology.syllables.phonotactics.remove_nucleus(nucleus)
+        self.assertIn(
+            nucleus,
+            nuclei
+        )
+    
+    def test_remove_nucleus(self):
+        nucleus = [['vowel']]
+        self.phonology.syllables.phonotactics.add_nucleus(nucleus)
+        self.phonology.syllables.phonotactics.remove_nucleus(nucleus)
+        self.assertEqual(
+            set(),
+            self.phonology.syllables.phonotactics.nuclei
+        )
+    
+    # TODO: consider don't always want every sound in seq
+    #   - just want sounds that do occur to fall in seq, even if just stop,approx
+    #   - do largest possible chain (or one?) and then choose random seq?
+    #   - go back to storing sonority vs dependency to allow custom implicatures?
+    def test_chain_consonants(self):
+        chain = ['stop', 'fricative', 'nasal', 'approximant']
+        self.phonology.syllables.phonotactics.chain(chain)
+        chain_map = dict(self.phonology.syllables.phonotactics.get_chain_map())
+        expected_dependencies = {
+            'stop': 'fricative',
+            'fricative': 'nasal',
+            'nasal': 'approximant'
+        }
+        # TODO: compound unchains
+        #self.phonology.syllables.phonotactics.unchain(chain)
+        self.assertEqual(
+            expected_dependencies,
+            chain_map
+        )
+
+    def test_unchain_consonants(self):
+        self.phonology.syllables.phonotactics.chain(['stop', 'fricative', 'nasal'])
+        self.phonology.syllables.phonotactics.unchain('stop', 'fricative')
+        self.phonology.syllables.phonotactics.unchain('fricative', 'nasal')
+        self.assertEqual(
+            {},
+            self.phonology.syllables.phonotactics.get_chain_map()
+        )
+
+    def test_partition_syllable(self):
+        self.phonology.syllables.phonotactics.add_nucleus([['vowel'], ['glide']])
+        self.phonology.syllables.phonotactics.chain(['stop', 'nasal', 'glide'])
+        syllable_type = [['consonant'], ['nasal'], ['vowel'], ['glide'], ['stop', 'consonant']]
+        syllable_shape = self.phonology.syllables.phonotactics.partition_syllable(syllable_type)
+        expected_shape = {
+            'onset': [['consonant'], ['nasal'], ['glide']],
+            'nucleus': [['vowel'], ['glide']],
+            'coda': [['stop', 'consonant']]
+        }
+        self.assertEqual(
+            expected_shape,
+            syllable_shape
+        )
+
+    def test_shape_syllable_simple(self):
+        return
+
+    def test_shape_syllable_complex(self):
+        return
+
+    def test_shape_nucleus_options(self):
+        return
+
+    def test_shape_onset_options(self):
+        return
+
+    def test_shape_coda_options(self):
+        return
+
 class PhonologySyllableShape(PhonologyFixture):
     @classmethod
     def setUpClass(this_class):

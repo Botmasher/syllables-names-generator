@@ -4,10 +4,9 @@ from ..tools import redacc
 # - add_sonority_dependency()
 # - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
 class Phonotactics:
-    def __init__(self, phonology, syllables):
-        # 
+    def __init__(self, phonology):
+        # check that features exist
         self.phonology = phonology
-        self.syllables = syllables
         
         # feature dependencies - if outer feature is X, inner should be Y
         # NOTE: syllable sonority scale merged into this concept
