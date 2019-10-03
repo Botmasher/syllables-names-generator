@@ -384,6 +384,8 @@ class PhonologySyllables(PhonologyFixture):
             f"failed to build syllable with skipped sonority value and overflow edge: {syllable}"
         )
 
+# TODO: test 
+#   - epenthesis, anaptyxis: fl > ifl- vs fil-, or .spjV. > es.pjV
 class SyllablePhonotactics(unittest.TestCase):
     @classmethod
     def setUpClass(this_class):
