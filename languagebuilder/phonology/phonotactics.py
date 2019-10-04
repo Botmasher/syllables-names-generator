@@ -11,7 +11,7 @@ class Phonotactics:
         # feature dependencies - if outer feature is X, inner should be Y
         self.dependencies = {
             # each left feature defines its right followers and non-followers
-            # feature: {'included': [features], 'excluded':True}
+            # feature: {'include': [features], 'exclude': [features]}
         }
 
         # TODO: allow doubles (like nmV or nnV)
@@ -111,8 +111,7 @@ class Phonotactics:
         must not be among the feature values excluded list."""
         return self.dependencies
 
-    # TODO: update to use sonority plus custom dependencies to build out possible chains
-    def follow_dependencies(self, chain_branch):
+    def follow_dependency_chain(self, chain_branch=None, clusion='include'):
         """Keep chaining the next feature based on the rightmost feature in the list
         until the chain ends"""
         # no latest feature to check
@@ -120,12 +119,12 @@ class Phonotactics:
             return chain_branch
         # continue branch or end branch based on latest feature
         left_feature = chain_branch[-1]
-        right_feature = self.dependencies.get(left_feature)
+        right_feature = self.dependencies.get(left_feature)[clusion]
         if right_feature:
-            return self.follow_dependencies(chain_branch + [right_feature])
+            return self.follow_dependency_chain(chain_branch + [right_feature])
         return chain_branch
-    #
-    def _remove_overlaps(self, chains):
+    
+    def _remove_dependency_chain_overlaps(self, chains):
         """Filter chains list for elements whose features do not recur in another chain"""
         no_subchain_chains = []
         for chain in chains:
@@ -138,18 +137,20 @@ class Phonotactics:
                 no_subchain_chains.append(chain)
         return no_subchain_chains
     #
-    def get_chains(self, subchain=True):
+    def get_dependency_chains(self, chains=None, subchain=True):
         """Format dependencies into a list of all feature scales formable from
         walking all options in the chains map. Chains include subchains starting
         with the same feature key if it was added to at least one other chain being
         formed. Switching subchaining off performs a more expensive traversal."""
         # recursively build out all branches in dependency chains from chain map keys
-        chains = [self.follow_chain_branch(feature) for feature in self.chain_map]
+        chains = {self.follow_dependency_chain(feature) for feature in self.dependencies}
+        # TODO: instead of accessing all, just look up while building!
+        
         # vet for overlapping subchains
-        chains = self._remove_overlaps(chains) if not subchain else chains
+        chains = self._remove_dependency_chain_overlaps(chains) if not subchain else chains
         return chains
     # 
-    def count_chains(self, chains):
+    def count_dependency_chains(self, chains):
         """Return a map of lists of chains keyed by chain length"""
         chains_count_map = redacc.redacc(
             chains,
@@ -158,30 +159,48 @@ class Phonotactics:
         )
         return chains_count_map
 
-    def chain(self, *features):
-        """Order one feature below another in the features chain map. Features will be
-        applied hierarchically in a dependency chain until a sound with no dependency
-        is found, then any new sound will be chosen."""
+    def add_dependencies(self, *features, exclusive=False):
+        """Order features below each other in the dependency map from left to right.
+        
+        Params:
+           *features (list): sequence of features to add as dependency key-values
+           exclusive (bool): set each right value as avoided by its left key instead 
+        """
         if not self.is_features_list(features):
             raise ValueError(f"Cannot create chain using nonexisting feature")
         
+        clusions = ['include', 'exclude']
+        clusion = clusions[exclusive]
+
         # traverse adding each left feature to keys and right to values
-        for i in enumerate(features):
+        for i in range(len(features)):
             # stop looping when run out of right (next) features
             if i >= len(features) - 1:
                 break
             left_feature = features[i]
             right_feature = features[i + 1]
-            self.chain_map.setdefault(left_feature, set()).add(right_feature)
+            self.dependencies.setdefault(left_feature, {
+                clude: set() for clude in clusions
+            })[clusion].add(right_feature)
         
-        return self.chain
+        return self.dependencies
 
-    def unchain(self, left_feature, right_feature):
-        """Remove existing feature dependency from the chain map"""
-        self.chain_map.get(left_feature, set()).discard(right_feature)
-        if not self.chain_map.get(left_feature):
-            self.chain_map.pop(left_feature)
-        return self.chain_map
+    def remove_dependencies(self, *features):
+        """Remove existing feature dependencies from the map in a left-right chain."""
+        # Delete dependencies in right-to-left chain
+        for i, right_feature in enumerate(reversed(features)):
+            if i >= len(features):
+                break
+            left_feature = features[i+1]
+            feature_clusions = self.dependencies.get(left_feature, {})
+            is_empty = True
+            for clusion_set in feature_clusions.values():
+                clusion_set.discard(right_feature)
+                if clusion_set:
+                    is_empty = False
+            is_empty and self.dependencies.pop(left_feature)
+        
+        return self.dependencies
 
     # Split and shape syllable parts phonotactically
 
@@ -216,9 +235,19 @@ class Phonotactics:
 
         return syllable_parts
 
-    def shape(self, syllable_features):
-        """Fill out a syllable with all defined phonotactics including
-        dependencies and sonority"""
+    
+    # TODO: update to use sonority plus custom dependencies to build out possible chains
+    
+    # TODO: how to ensure gemination not just found down here in phonotactics?
+    #   - also syllable interfaces, since san-nas yields gem
+    #   - this brings up another q about restrictions along syllable bounds
+    def shape(self, syllable_features, gaps=True, doubles=True, triples=False):
+        """Fill out a syllable with all defined phonotactics including dependencies
+        and sonority. Features walk hierarchically down the sonority scale (with gaps)
+        until a dependency chain inclusion/exclusion is found, then the dependency
+        chain is followed until a sound with no dependency is found, at which point
+        vetting switches back to the sonority scale.      
+        """
 
         # break up and check syllables
         syllable_pieces = self.partition_syllable(syllable_features)
