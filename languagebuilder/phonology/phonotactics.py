@@ -1,4 +1,5 @@
 from ..tools import redacc
+import random
 
 # TODO: optional/dependent sonority (see sonority scale list and associated methods below)
 # - add_sonority_dependency()
@@ -10,8 +11,8 @@ class Phonotactics:
         
         # feature dependencies - if outer feature is X, inner should be Y
         self.dependencies = {
-            # each left feature defines its right followers and non-followers
-            # feature: {'include': [features], 'exclude': [features]}
+            # each left feature defines its right followers
+            # feature: {features}
         }
 
         # TODO: allow doubles (like nmV or nnV)
@@ -111,66 +112,13 @@ class Phonotactics:
         must not be among the feature values excluded list."""
         return self.dependencies
 
-    def follow_dependency_chain(self, chain_branch=None, clusion='include'):
-        """Keep chaining the next feature based on the rightmost feature in the list
-        until the chain ends"""
-        # no latest feature to check
-        if not chain_branch:
-            return chain_branch
-        # continue branch or end branch based on latest feature
-        left_feature = chain_branch[-1]
-        right_feature = self.dependencies.get(left_feature)[clusion]
-        if right_feature:
-            return self.follow_dependency_chain(chain_branch + [right_feature])
-        return chain_branch
-    
-    def _remove_dependency_chain_overlaps(self, chains):
-        """Filter chains list for elements whose features do not recur in another chain"""
-        no_subchain_chains = []
-        for chain in chains:
-            is_subchain = False
-            for chain_check in chains:
-                if set(chain).issubset(set(chain_check)):
-                    is_subchain = True
-                    break
-            if not is_subchain:
-                no_subchain_chains.append(chain)
-        return no_subchain_chains
-    #
-    def get_dependency_chains(self, chains=None, subchain=True):
-        """Format dependencies into a list of all feature scales formable from
-        walking all options in the chains map. Chains include subchains starting
-        with the same feature key if it was added to at least one other chain being
-        formed. Switching subchaining off performs a more expensive traversal."""
-        # recursively build out all branches in dependency chains from chain map keys
-        chains = {self.follow_dependency_chain(feature) for feature in self.dependencies}
-        # TODO: instead of accessing all, just look up while building!
-        
-        # vet for overlapping subchains
-        chains = self._remove_dependency_chain_overlaps(chains) if not subchain else chains
-        return chains
-    # 
-    def count_dependency_chains(self, chains):
-        """Return a map of lists of chains keyed by chain length"""
-        chains_count_map = redacc.redacc(
-            chains,
-            lambda chain, chains_map_acc: chains_map_acc.setdefault(len(chain), []).append(chain),
-            {}
-        )
-        return chains_count_map
-
-    def add_dependencies(self, *features, exclusive=False):
+    def add_dependencies(self, *features):
         """Order features below each other in the dependency map from left to right.
-        
         Params:
            *features (list): sequence of features to add as dependency key-values
-           exclusive (bool): set each right value as avoided by its left key instead 
         """
         if not self.is_features_list(features):
             raise ValueError(f"Cannot create chain using nonexisting feature")
-        
-        clusions = ['include', 'exclude']
-        clusion = clusions[exclusive]
 
         # traverse adding each left feature to keys and right to values
         for i in range(len(features)):
@@ -179,26 +127,27 @@ class Phonotactics:
                 break
             left_feature = features[i]
             right_feature = features[i + 1]
-            self.dependencies.setdefault(left_feature, {
-                clude: set() for clude in clusions
-            })[clusion].add(right_feature)
+            self.dependencies.setdefault(left_feature, set()).add(right_feature)
         
         return self.dependencies
 
     def remove_dependencies(self, *features):
         """Remove existing feature dependencies from the map in a left-right chain."""
-        # Delete dependencies in right-to-left chain
-        for i, right_feature in enumerate(reversed(features)):
-            if i >= len(features):
-                break
-            left_feature = features[i+1]
-            feature_clusions = self.dependencies.get(left_feature, {})
-            is_empty = True
-            for clusion_set in feature_clusions.values():
-                clusion_set.discard(right_feature)
-                if clusion_set:
-                    is_empty = False
-            is_empty and self.dependencies.pop(left_feature)
+        # delete values from dependencies
+        removable_keys = []
+        for left_feature, right_features in self.dependencies.items():
+            for feature in features:
+                right_features.discard(feature)
+            if not self.dependencies.get(left_feature):
+                removable_keys.append(left_feature)
+        
+        # delete keys with empty values
+        for k in removable_keys:
+            self.dependencies.pop(k)
+        
+        # delete keys from dependencies
+        for feature in features:
+            self.dependencies.pop(feature, None)
         
         return self.dependencies
 
@@ -255,23 +204,46 @@ class Phonotactics:
         if not syllable_pieces:
             return
 
-        # build syllable features options from dependencies
         # TODO: test, and what if no same-length member in chains? go higher? random?
-        chains_count_map = self.count_chains(self.get_chains())
-        coda_features = chains_count_map[len(syllable_pieces['coda'])]
-        onset_features = chains_count_map[len(syllable_pieces['onset'])]
-        nucleus_features = syllable_pieces['nucleus']
+        
+        # build syllable features shape from sonority and dependencies
+        
+        syllable_shape = []
 
-        # add initial seed features back into chains
-        for i in len(range(onset_features)):
-            onset_features[i] += syllable_pieces['onset'][i]
-        onset_features = list(set(onset_features))
-        for i in len(range(coda_features)):
-            coda_features[i] += syllable_pieces['coda'][i]
-        coda_features = list(set(coda_features))
+        # shape base featureset for each onset sound
+        onset_shape = []
+        for onset in syllable_pieces['onset']:
+            # TODO: choose each onset shape
+            # - if last feature has dependencies, follow one
+            # - if not, follow sonority
+            #   - skips
+            #   - plateaux?
+            #   - combine each onset seed and shape
+            #   - track where in sonority and how much left to go (count at outset?)
+            onset_shape.append()
+            left_features = list(filter(
+                lambda feature: feature in self.dependencies,
+                onset_shape[-1]
+            )) if onset_shape else []
+            if left_features:
+                onset_shape.append(random.choice(self.dependencies[left_features[0]]))
+            else:
+                pass
+        syllable_shape.append(onset_shape)
+
+        # shape nucleus
+        nucleus_shape = [random.choice(self.nuclei)] + syllable_pieces['nucleus']
+        syllable_shape.append(nucleus_shape)
+
+        # shape coda
+        coda_shape = []
+        for coda in syllable_pieces['coda']:
+            # TODO: choose in line with onset
+            pass
+        syllable_shape.append(coda_shape)
 
         # Build Syllable and Sonority Shape
         # Syllable Shape: split syllable into onset, nucleus, coda
         # Sonority Shape: fill out syllable shape following sonority scale
         
-        return onset_features + nucleus_features + coda_features
+        return #onset_features + nucleus_features + coda_features
