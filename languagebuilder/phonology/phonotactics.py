@@ -1,3 +1,4 @@
+from ..hierarchy import Hierarchy
 from ..tools import redacc
 import random
 
@@ -9,15 +10,18 @@ class Phonotactics:
         # check that features exist
         self.phonology = phonology
         
-        # feature dependencies - if outer feature is X, inner should be Y
-        self.dependencies = {
-            # each left feature defines its right followers
-            # feature: {features}
-        }
+        # feature scale and dependencies
+        self.hierarchy = Hierarchy()
 
-        # TODO: allow doubles (like nmV or nnV)
-        # - beyond just adding say "nasal", "nasal" to sonority
-        self.sonority = []
+        # # feature dependencies - if outer feature is X, inner should be Y
+        # self.dependencies = {
+        #     # each left feature defines its right followers
+        #     # feature: {features}
+        # }
+
+        # # TODO: allow doubles (like nmV or nnV)
+        # # - beyond just adding say "nasal", "nasal" to sonority
+        # self.sonority = []
 
        # configure syllable nucleus
         # TODO: consider defaulting to ['vowel'] if present
@@ -69,42 +73,6 @@ class Phonotactics:
     # 
     # TODO: add and read as chains (allows adding sonority scale!)
     #   - each key is a single string feature or ipa, with ipa checked first
-    def get_sonority(self):
-        """Read the left-to-right sonority sequence scale"""
-        return self.sonority
-    
-    def set_sonority(self, sonority):
-        """Overwrite the existing sonority scale with a new sequence"""
-        self.sonority = list(sonority)
-
-    def add_sonority(self, feature, position=0):
-        """Add a single feature to a specific (-1 for innermost, 0 for outermost
-        (default)) slot in the existing sonority scale. Scale applies left to right
-        for onsets and right to left for codas."""
-        # check for valid feature
-        if not self.is_features_list([feature]):
-            raise ValueError(f"Expected sonority value to be a feature - instead found {feature}")
-        # add to end of scale
-        if position < 0:
-            self.sonority.append(feature)
-        # add to front or within scale
-        else:
-            self.sonority = self.sonority[:position] + [feature] + self.sonority[position:]
-        return self.sonority
-
-    def remove_sonority(self, position=None, feature=None):
-        """Remove a single feature from the sonority. If a feature occurs multiple times,
-        all instances are deleted. If an index position is given, it is used instead."""
-        # remove at given index
-        if position is not None:
-            self.sonority = self.sonority[:position] + self.sonority[position+1:]
-            return self.sonority
-        # find and remove occurrences of feature
-        self.sonority = list(filter(
-            lambda sonority_value: sonority_value != feature,
-            self.sonority
-        ))
-        return self.sonority
 
     def get_dependencies(self):
         """Read all of the features dependencies (if feature key selected for left sound
