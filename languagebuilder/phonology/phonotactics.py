@@ -1,4 +1,4 @@
-from ..hierarchy import Hierarchy
+from .hierarchy import Hierarchy
 from ..tools import redacc
 import random
 
@@ -37,7 +37,6 @@ class Phonotactics:
         # }
 
     # Syllable parts - nucleus
-
     def is_features_list(self, features):
         if not isinstance(features, (list, tuple)):
             return False
@@ -74,51 +73,6 @@ class Phonotactics:
     # TODO: add and read as chains (allows adding sonority scale!)
     #   - each key is a single string feature or ipa, with ipa checked first
 
-    def get_dependencies(self):
-        """Read all of the features dependencies (if feature key selected for left sound
-        slot, next right sound slot must be among the feature values included list and
-        must not be among the feature values excluded list."""
-        return self.dependencies
-
-    def add_dependencies(self, *features):
-        """Order features below each other in the dependency map from left to right.
-        Params:
-           *features (list): sequence of features to add as dependency key-values
-        """
-        if not self.is_features_list(features):
-            raise ValueError(f"Cannot create chain using nonexisting feature")
-
-        # traverse adding each left feature to keys and right to values
-        for i in range(len(features)):
-            # stop looping when run out of right (next) features
-            if i >= len(features) - 1:
-                break
-            left_feature = features[i]
-            right_feature = features[i + 1]
-            self.dependencies.setdefault(left_feature, set()).add(right_feature)
-        
-        return self.dependencies
-
-    def remove_dependencies(self, *features):
-        """Remove existing feature dependencies from the map in a left-right chain."""
-        # delete values from dependencies
-        removable_keys = []
-        for left_feature, right_features in self.dependencies.items():
-            for feature in features:
-                right_features.discard(feature)
-            if not self.dependencies.get(left_feature):
-                removable_keys.append(left_feature)
-        
-        # delete keys with empty values
-        for k in removable_keys:
-            self.dependencies.pop(k)
-        
-        # delete keys from dependencies
-        for feature in features:
-            self.dependencies.pop(feature, None)
-        
-        return self.dependencies
-
     # Split and shape syllable parts phonotactically
 
     def is_features_list_overlap(self, featureslist_a, featureslist_b, all_a_in_b=True):
@@ -151,13 +105,16 @@ class Phonotactics:
         }
 
         return syllable_parts
-
-    
-    # TODO: update to use sonority plus custom dependencies to build out possible chains
     
     # TODO: how to ensure gemination not just found down here in phonotactics?
     #   - also syllable interfaces, since san-nas yields gem
     #   - this brings up another q about restrictions along syllable bounds
+    
+    # TODO: for each slot use hierarchy to choose a sound
+    #   - no hierarchy -> open choice
+    #   - restrictions on the next slot are based on actual sounds chosen
+    #   - example: voiced, sibilant then next select sibilant > stop, voiced > voiced
+    #   - example: voicing only on certain left-selects (like (voiced, stop) > voiced)
     def shape(self, syllable_features, gaps=True, doubles=True, triples=False):
         """Fill out a syllable with all defined phonotactics including dependencies
         and sonority. Features walk hierarchically down the sonority scale (with gaps)

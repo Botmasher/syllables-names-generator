@@ -232,22 +232,22 @@ for word_params in definitions:
     )
 my_language.grammar.properties.add("case", "instrumental")
 my_language.grammar.properties.add("case", "comitative")
-search_results = my_language.dictionary.search(keywords="instrumental")
-entry = my_language.dictionary.lookup(*search_results[0])
+search_results = my_language.vocabulary.search(keywords="instrumental")
+entry = my_language.vocabulary.lookup(*search_results[0])
 print(entry)
 
-my_language.add_grammar(
-    *search_results[0],
-    post=entry['sound'],
-    properties="instrumental comitative",
-    word_classes="noun",
-    bound=True
-)
+# my_language.add_grammar(
+#     *search_results[0],
+#     post=entry['sound'],
+#     properties="instrumental comitative",
+#     word_classes="noun",
+#     bound=True
+# )
 
 my_language.syllables_min_max(1, 3)
 
-search_results = my_language.dictionary.search(keywords="instrumental")
-entry = my_language.dictionary.lookup(*search_results[0])
+search_results = my_language.vocabulary.search(keywords="instrumental")
+entry = my_language.vocabulary.lookup(*search_results[0])
 print(entry)
 
 
@@ -298,9 +298,9 @@ generated_object = my_language.generate(
     definition = "sheep",
     word_class = "noun"
 )
-v = my_language.dictionary.lookup(*generated_verb)
-s = my_language.dictionary.lookup(*generated_subject)
-o = my_language.dictionary.lookup(*generated_object)
+v = my_language.vocabulary.lookup(*generated_verb)
+s = my_language.vocabulary.lookup(*generated_subject)
+o = my_language.vocabulary.lookup(*generated_object)
 
 # create and apply sentence
 my_language.grammar.sentences.add(
