@@ -1,10 +1,16 @@
 # Hierarchy scale and dependencies for Phonotactics
-# based around concept of sonority scale
+# Based around sonority hierarchy (scale) plus variant state paths (dependencies).
+# See Phonotactics.shape for use in practice.
 
 class Hierarchy:
-    def __init__(self):
-        self.scale = []         # sequential featuresets options
-        self.dependencies = {}  # featureset left-right dependencies
+    def __init__(self, phonology):
+        self.phonology = phonology  # feature existence checks only
+        self.scale = []             # sequential featuresets options
+        self.dependencies = {       # featureset left-right dependencies
+            # each left strings a feature/ipa key
+            # each right maps {'include': {features/ipas}, 'exclude': {features/ipas}}
+            # as usual, guess it's a sound first before going to more spec feature
+        }
 
     def get_scale(self):
         """Read the left-to-right sequence scale"""
@@ -22,55 +28,64 @@ class Hierarchy:
 
     def rewrite(self, scale):
         """Overwrite the scale with a new sequence"""
+        # expect a string collection
+        if isinstance(scale, str) or not all([isinstance(f, str) for f in scale]):
+           raise TypeError(f"Hierarchy rewrite scale expected a string list not {scale}")
         self.scale = list(scale)
 
     def add(self, *features, position=0):
-        """Add a featureset to a specific slot (-1 for innermost, 0 for outermost
-        (default)) in the existing scale. Scale applies left to right for onsets
-        and right to left for codas."""
+        """Add one or more features to a specific slot (including -1 for left/outermost,
+        0 for right/innermost (default)) in the existing scale. Position counts up from
+        the right. Scale applies left to right for onsets and right to left for codas.
+        Params:
+            features (str): strings matching existing phonological features
+            position (int): insertion index from end of scale (1 <= n <= scale length; 0: append, -1: prepend)
+        """
         # check for valid feature
-        #if not self.is_features_list([feature]):
-        #    raise ValueError(f"Expected scale value to be a feature - instead found {feature}")
+        for feature in features:
+            if not self.phonology.phonetics.has_feature(feature):
+                raise ValueError(f"Hierarchy scale cannot add unidentified feature {feature}")
         
-        # create set including all given features
-        featureset = {feature for feature in features}
+        # reindex scale position to flip front instead of end
+        clamped_position = min(max(-1, position), len(self.scale))
+        scale_i = len(self.scale) - clamped_position
 
-        # add to end of scale
-        if position < 0:
-            self.scale.append(featureset)
-        # add to front or within scale
-        else:
-            self.scale = self.scale[:position] + [featureset] + self.scale[position:]
+        # add features to scale
+        self.scale = self.scale[:scale_i] + list(features) + self.scale[scale_i:]
         
         return self.scale
 
-    def remove(self, *features, position=None):
-        """Remove features from the scale. If a feature occurs multiple times, all
+    def remove(self, feature, position=None):
+        """Remove a feature from the scale. If a feature occurs multiple times, all
         instances are deleted. If an index position is given, it is used instead."""
         # remove at given index
         if position is not None:
             self.scale = self.scale[:position] + self.scale[position+1:]
             return self.scale
         
-        # find and remove occurrences of features
-        for featureset in self.scale:
-            for feature in features:
-                featureset.discard(feature)
+        # find and remove occurrences of a feature
+        self.scale = list(filter(
+            lambda f: f != feature,
+            self.scale
+        ))
     
         return self.scale
+
+    # TODO: just pairwise left-right depend/undepends, inclusive and exclusive strs/sets
+    #
+    # NOTE: expecting array of sets vs strings. Note the complexity of dealing with
+    # lists of lists of sets in both the scale and dependencies. Start with just
+    # feature keys only? Inclusions/exclusions (dependency left 'exclude')?
 
     def chain(self, *features):
         """Order featuresets below each other in the dependency map from left to right.
         Params:
            *featuresets (list): sequence of sets to add as dependency key-values
         """
-        #if False in [self.is_features_list(featureset) for featureset in featuresets]:
-        #    raise ValueError(f"Cannot create chain using nonexisting feature")
+        for feature in features:
+            if not self.phonology.phonetics.has_feature(feature):
+                raise ValueError(f"Hierarchy scale cannot add unidentified feature {feature}")
         
-        # NOTE: expecting array of sets vs strings. Note the complexity of dealing with
-        # lists of lists of sets in both the scale and dependencies. Start with just
-        # feature keys only? Inclusions/exclusions (dependency left 'exclude')?
-
         if len(features) < 2:
             raise ValueError(f"Phonological hierarchy dependencies expected a multi-element chain, not {features}")
 

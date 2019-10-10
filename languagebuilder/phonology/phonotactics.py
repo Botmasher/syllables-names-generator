@@ -13,16 +13,6 @@ class Phonotactics:
         # feature scale and dependencies
         self.hierarchy = Hierarchy()
 
-        # # feature dependencies - if outer feature is X, inner should be Y
-        # self.dependencies = {
-        #     # each left feature defines its right followers
-        #     # feature: {features}
-        # }
-
-        # # TODO: allow doubles (like nmV or nnV)
-        # # - beyond just adding say "nasal", "nasal" to sonority
-        # self.sonority = []
-
        # configure syllable nucleus
         # TODO: consider defaulting to ['vowel'] if present
         self.nuclei = set()
@@ -64,15 +54,6 @@ class Phonotactics:
         self.nuclei.clear()
         return self.nuclei
 
-    # Syllable parts - onset and coda
-
-    # TODO: when building C sound slots from dependency chains
-    #   - get all dependency chains that are at least as long as cluster
-    #   - apply for onset, reverse for coda
-    # 
-    # TODO: add and read as chains (allows adding sonority scale!)
-    #   - each key is a single string feature or ipa, with ipa checked first
-
     # Split and shape syllable parts phonotactically
 
     def is_features_list_overlap(self, featureslist_a, featureslist_b, all_a_in_b=True):
@@ -105,16 +86,27 @@ class Phonotactics:
         }
 
         return syllable_parts
-    
+
     # TODO: how to ensure gemination not just found down here in phonotactics?
     #   - also syllable interfaces, since san-nas yields gem
     #   - this brings up another q about restrictions along syllable bounds
-    
+    #
     # TODO: for each slot use hierarchy to choose a sound
     #   - no hierarchy -> open choice
+    #   - each key is a single string feature or ipa, with ipa checked first
+    #   - search for minimum same-length hierarchy element for codas, onsets
     #   - restrictions on the next slot are based on actual sounds chosen
+    #
     #   - example: voiced, sibilant then next select sibilant > stop, voiced > voiced
     #   - example: voicing only on certain left-selects (like (voiced, stop) > voiced)
+    #
+    # TODO: allow doubles (like nmV or nnV)
+    #   - beyond just adding say "nasal", "nasal" to sonority
+    #
+    # TODO: when building C sound slots from dependency chains
+    #   - get all dependency chains that are at least as long as cluster
+    #   - apply for onset, reverse for coda
+
     def shape(self, syllable_features, gaps=True, doubles=True, triples=False):
         """Fill out a syllable with all defined phonotactics including dependencies
         and sonority. Features walk hierarchically down the sonority scale (with gaps)
@@ -129,8 +121,6 @@ class Phonotactics:
         if not syllable_pieces:
             return
 
-        # TODO: test, and what if no same-length member in chains? go higher? random?
-        
         # build syllable features shape from sonority and dependencies
         
         syllable_shape = []
