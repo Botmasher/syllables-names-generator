@@ -77,50 +77,58 @@ class Hierarchy:
     # lists of lists of sets in both the scale and dependencies. Start with just
     # feature keys only? Inclusions/exclusions (dependency left 'exclude')?
 
-    def chain(self, *features):
+    def depend(self, left_feature, right_feature, include=True):
+        """Add a left feature to the existing feature dependencies and set one included
+        or excluded right feature."""
+        if not self.phonology.phonetics.has_feature(left_feature):
+            raise KeyError(f"Phonotactics hierarchy failed to set dependencies for unidentified feature {left_feature}")
+        if right_feature is not None and not self.phonology.phonetics.has_feature(right_feature):
+            raise ValueError(f"Phonotactics hierarchy dependencies did not recognize feature {right_feature}")
+        clusives = ('include', 'exclude')
+        include_exclude = clusives[include]
+        dependencies_entry = {clusive: set() for clusive in clusives}
+        self.dependencies.setdefault(left_feature, dependencies_entry)
+        self.dependencies[left_feature][include_exclude].add(right_feature)
+        return {left_feature: self.dependencies[left_feature]}
+
+    def undepend(self, left_feature, right_feature=None):
+        """Remove one left-right feature from dependencies, or just the left feature to
+        remove a whole dependencies entry."""
+        dependencies_entry = self.dependencies[left_feature]
+        # delete entire left feature including entry value
+        if right_feature is None and None not in dependencies_entry['inclusive'] ^ dependencies_entry['exclusive']:
+            self.dependencies.pop(left_feature)
+        # delete from right sets
+        else:
+            for featureset in dependencies_entry:
+                featureset.discard(right_feature)
+        
+        # clear out empty entries
+        if not self.dependencies[left_feature]['include'] and not self.dependencies[left_feature]['exclude']:
+            self.dependencies.pop(left_feature)
+
+        return self.dependencies
+
+    def chain(self, *features, include=True):
         """Order featuresets below each other in the dependency map from left to right.
         Params:
-           *featuresets (list): sequence of sets to add as dependency key-values
+           *featuresets (list): list of feature strings to add as dependency key-values
+           include (bool): whether to add each right entry to include or exclude sets
         """
-        for feature in features:
-            if not self.phonology.phonetics.has_feature(feature):
-                raise ValueError(f"Hierarchy scale cannot add unidentified feature {feature}")
-        
+        # expect multiple 
         if len(features) < 2:
             raise ValueError(f"Phonological hierarchy dependencies expected a multi-element chain, not {features}")
 
         # chain add each left feature as keys and right as associated values
         for left, right in zip(features[:-1], features[1:]):
-            self.dependencies.setdefault(left, set()).add(right)
-        
-        return self.dependencies
-
-    def undepend(self, *features, values_only=False):
-        """Remove one or more features from all dependencies, or from just the right
-        dependency sets if values_only is set."""
-        # remove features from right sets
-        for featureset in self.dependencies.values():
-            for feature in features:
-                featureset.discard(feature)
-        # remove features from left keys
-        if not values_only:
-            for feature in features:
-                self.dependencies.pop(feature, None)
+            self.depend(left, right, include=include)
         
         return self.dependencies
 
     def unchain(self, *features):
         """Remove existing feature dependencies from the map in a left-right chain."""
-        
         # delete chained values from dependencies
-        empty_lefts = []
         for left, right in zip(features[:-1], features[1:]):
-            self.dependencies[left].discard(right)
-            if not self.dependencies[left]:
-                empty_lefts.append(left)
-        
-        # delete empty keys from dependencies
-        for feature in empty_lefts:
-            self.dependencies.pop(feature, None)
+            self.undepend(left, right)
         
         return self.dependencies
