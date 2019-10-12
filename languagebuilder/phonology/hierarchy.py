@@ -1,3 +1,5 @@
+import random
+
 # Hierarchy scale and dependencies for Phonotactics
 # Based around sonority hierarchy (scale) plus variant state paths (dependencies).
 # See Phonotactics.shape for use in practice.
@@ -132,3 +134,54 @@ class Hierarchy:
             self.undepend(left, right)
         
         return self.dependencies
+
+    def recommend(self, features=None, random_start=True, jumps=True, cluster_length=1):
+        """Pick the next (right) features given a selected (left) featureset. If no
+        features are given, pick a random starting position in the hierarchy given
+        cluster length constraints (leave at least that many sounds to the right).
+        Params:
+            features (list): input sound features for left sound
+            random_start (bool): start anywhere in hierarchy if no features given
+            jumps (bool): skip some of the scale sometimes for realistic and varied output
+            cluster_length (int): leave enough right features slots for remaining sounds
+        """
+        recommended_features = set()
+
+        # look for next features in dependencies
+        has_dependencies = False
+        if features:
+            for feature in features:
+                dependencies_entry = self.dependencies.get(feature)
+                if dependencies_entry:
+                    # apply dependencies includes unless input features are excluded
+                    if not features & dependencies_entry['excluded']:
+                        # choose one right feature to include
+                        feature_choice = random.sample(dependencies_entry['included'], 1)
+                        # expect one feature option
+                        if not feature_choice:
+                            continue
+                        included_feature = feature_choice[0]
+                        has_dependencies = True
+                        # end the sound choice and the cluster
+                        if included_feature is None:
+                            return [None]
+                        # choose one feature from includes
+                        recommended_features.add(included_feature)
+
+        # use base hierarchy instead of dependencies
+        if not has_dependencies:
+            feature_choice = None
+            if not features:
+                scale_features = self.scale[:len(self.scale) - cluster_length]
+                feature_choice = random.choice(scale_features)
+            else:
+                for left_feature in features:
+                    for i, right_feature in enumerate(self.scale):
+                        if left_feature == right_feature:
+                            feature_choice == random.choice(self.scale[i:])
+            if not feature_choice:
+                raise KeyError(f"Unable to find next feature for {features}")
+
+        # TODO: take in and recommend sounds (ipa)?    
+        
+        return recommended_features

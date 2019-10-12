@@ -68,7 +68,10 @@ class Phonotactics:
         return True
 
     def partition_syllable(self, syllable_features):
-        """Split syllable list of featureslists into onset, nucleus, coda"""
+        """Split syllable liss into onset, nucleus, coda.
+        Params:
+            syllable_features (list): list of string lists, each string representing a feature
+        """
         nucleus_indexes = []
         for i, features in enumerate(syllable_features):
             for nucleus in self.nuclei:
