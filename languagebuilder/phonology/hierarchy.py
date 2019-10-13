@@ -145,43 +145,55 @@ class Hierarchy:
             jumps (bool): skip some of the scale sometimes for realistic and varied output
             cluster_length (int): leave enough right features slots for remaining sounds
         """
-        recommended_features = set()
+        # pick a starting feature since no left feature input
+        if not features:
+            # start at any available feature in cluster scope
+            if random_start:
+                scale_features = self.scale[:len(self.scale) - cluster_length]
+                return {random.choice(scale_features)}
+            # start at the outermost feature
+            return self.scale[0]
+            
+        # filter for featureset
+        ## TODO: allow ipa/sound input
+        # if isinstance(features, str):
+        #   ipa = features
+        #   features = self.phonology.get_features(ipa)
+        #
+        features = {features} if isinstance(features, str) else features
 
         # look for next features in dependencies
         has_dependencies = False
-        if features:
-            for feature in features:
-                dependencies_entry = self.dependencies.get(feature)
-                if dependencies_entry:
-                    # apply dependencies includes unless input features are excluded
-                    if not features & dependencies_entry['excluded']:
-                        # choose one right feature to include
-                        feature_choice = random.sample(dependencies_entry['included'], 1)
-                        # expect one feature option
-                        if not feature_choice:
-                            continue
-                        included_feature = feature_choice[0]
-                        has_dependencies = True
-                        # end the sound choice and the cluster
-                        if included_feature is None:
-                            return [None]
-                        # choose one feature from includes
-                        recommended_features.add(included_feature)
+        recommended_features = set()
+        for feature in features:
+            dependencies_entry = self.dependencies.get(feature)
+            if dependencies_entry:
+                # apply dependencies includes unless input features are excluded
+                if not features & dependencies_entry['excluded']:
+                    # choose one right feature to include
+                    feature_choice = random.sample(dependencies_entry['included'], 1)
+                    # expect one feature option
+                    if not feature_choice:
+                        continue
+                    included_feature = feature_choice[0]
+                    has_dependencies = True
+                    # end the sound choice and the cluster
+                    if included_feature is None:
+                        return [None]
+                    # choose one feature from includes
+                    recommended_features.add(included_feature)
 
         # use base hierarchy instead of dependencies
         if not has_dependencies:
-            feature_choice = None
-            if not features:
-                scale_features = self.scale[:len(self.scale) - cluster_length]
-                feature_choice = random.choice(scale_features)
-            else:
-                for left_feature in features:
-                    for i, right_feature in enumerate(self.scale):
-                        if left_feature == right_feature:
-                            feature_choice == random.choice(self.scale[i:])
-            if not feature_choice:
-                raise KeyError(f"Unable to find next feature for {features}")
+            for i, right_feature in enumerate(self.scale):
+                if {right_feature} & features:
+                    recommended_features.add(random.choice(self.scale[i:]))
+                    break
+        
+        if not recommended_features:
+            raise KeyError(f"Hierarchy cannot recommend a sound for features {features}")
 
-        # TODO: take in and recommend sounds (ipa)?    
+        # TODO: take in and recommend sounds (ipa)
+        #self.phonology.get_ipa(recommended_features)
         
         return recommended_features

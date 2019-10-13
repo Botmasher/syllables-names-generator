@@ -128,25 +128,10 @@ class Phonotactics:
         
         syllable_shape = []
 
+        # TODO: traverse to pass last chosen as lefts and decide on ipa/sounds/features
+
         # shape base featureset for each onset sound
-        onset_shape = []
-        for onset in syllable_pieces['onset']:
-            # TODO: choose each onset shape
-            # - if last feature has dependencies, follow one
-            # - if not, follow sonority
-            #   - skips
-            #   - plateaux?
-            #   - combine each onset seed and shape
-            #   - track where in sonority and how much left to go (count at outset?)
-            onset_shape.append()
-            left_features = list(filter(
-                lambda feature: feature in self.dependencies,
-                onset_shape[-1]
-            )) if onset_shape else []
-            if left_features:
-                onset_shape.append(random.choice(self.dependencies[left_features[0]]))
-            else:
-                pass
+        onset_shape = [self.hierarchy.recommend(f) for f in syllable_pieces['onset']]
         syllable_shape.append(onset_shape)
 
         # shape nucleus
@@ -154,11 +139,8 @@ class Phonotactics:
         syllable_shape.append(nucleus_shape)
 
         # shape coda
-        coda_shape = []
-        for coda in syllable_pieces['coda']:
-            # TODO: choose in line with onset
-            pass
-        syllable_shape.append(coda_shape)
+        coda_shape = [self.hierarchy.recommend(f) for f in syllable_pieces['onset']]
+        syllable_shape.append(list(reversed(coda_shape)))
 
         # Build Syllable and Sonority Shape
         # Syllable Shape: split syllable into onset, nucleus, coda
