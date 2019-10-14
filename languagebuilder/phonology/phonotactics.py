@@ -2,6 +2,10 @@ from .hierarchy import Hierarchy
 from ..tools import redacc
 import random
 
+# NOTE: Phonotactics esp scale & dep build left-to-right. "Progressive" constraints are
+# unideally handled either during syllable definition, e.g. in specific syllable types,
+# or after syllable build, e.g. through sound changes
+
 # TODO: optional/dependent sonority (see sonority scale list and associated methods below)
 # - add_sonority_dependency()
 # - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
@@ -11,7 +15,10 @@ class Phonotactics:
         self.phonology = phonology
         
         # feature scale and dependencies
-        self.hierarchy = Hierarchy()
+        self.hierarchy = Hierarchy(phonology)
+        self.scale = self.hierarchy.scale
+        self.dependencies = self.hierarchy.dependencies
+        self.recommend = self.hierarchy.recommend
 
        # configure syllable nucleus
         # TODO: consider defaulting to ['vowel'] if present
@@ -126,24 +133,25 @@ class Phonotactics:
 
         # build syllable features shape from sonority and dependencies
         
-        syllable_shape = []
+        syllable_shape = {piece: [] for piece in syllable_pieces}
 
         # TODO: traverse to pass last chosen as lefts and decide on ipa/sounds/features
 
         # shape base featureset for each onset sound
-        onset_shape = [self.hierarchy.recommend(f) for f in syllable_pieces['onset']]
-        syllable_shape.append(onset_shape)
+        last_sound = None
+        for featureset in syllable_pieces['onset']:
+            last_sound = self.hierarchy.recommend(last_sound, featureset)
+            syllable_shape['onset'].append(last_sound)
 
         # shape nucleus
-        nucleus_shape = [random.choice(self.nuclei)] + syllable_pieces['nucleus']
-        syllable_shape.append(nucleus_shape)
+        syllable_shape['nucleus'] = random.choice(self.nuclei)
 
         # shape coda
-        coda_shape = [self.hierarchy.recommend(f) for f in syllable_pieces['onset']]
-        syllable_shape.append(list(reversed(coda_shape)))
+        last_sound = None
+        for featureset in syllable_pieces['onset']:
+            last_sound = self.hierarchy.recommend(last_sound, featureset)
+            syllable_shape['coda'] = [last_sound] + syllable_shape['onset']
 
-        # Build Syllable and Sonority Shape
-        # Syllable Shape: split syllable into onset, nucleus, coda
-        # Sonority Shape: fill out syllable shape following sonority scale
-        
-        return #onset_features + nucleus_features + coda_features
+        # NOTE: "shape" here has turned to a full fillin of sounds/ipa!
+
+        return syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']

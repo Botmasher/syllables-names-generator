@@ -135,41 +135,55 @@ class Hierarchy:
         
         return self.dependencies
 
-    def recommend(self, features=None, random_start=True, jumps=True, cluster_length=1):
-        """Pick the next (right) features given a selected (left) featureset. If no
-        features are given, pick a random starting position in the hierarchy given
-        cluster length constraints (leave at least that many sounds to the right).
+    def recommend(self, left_features=None, right_features=None, random_start=True, jumps=True, length=1):
+        """Pick the next (right) sound given selected (left) features and some filter
+        (right) features. If no left features are given, pick a random starting position
+        in the hierarchy given cluster length constraints (leave at least that many
+        sounds to the right).
         Params:
             features (list): input sound features for left sound
             random_start (bool): start anywhere in hierarchy if no features given
             jumps (bool): skip some of the scale sometimes for realistic and varied output
             cluster_length (int): leave enough right features slots for remaining sounds
         """
+        # structure given right features for conditioning recommendations
+        if right_features:
+            if isinstance(right_features, str):
+                recommended_features = {right_features}
+            else:
+                recommended_features = set(right_features)
+        else:
+            recommended_features = set()
+
         # pick a starting feature since no left feature input
-        if not features:
+        if not left_features:
             # start at any available feature in cluster scope
             if random_start:
-                scale_features = self.scale[:len(self.scale) - cluster_length]
-                return {random.choice(scale_features)}
+                scale_features = self.scale[:len(self.scale) - length]
+                scale_feature = random.choice(scale_features)
             # start at the outermost feature
-            return self.scale[0]
-            
-        # filter for featureset
-        ## TODO: allow ipa/sound input
-        # if isinstance(features, str):
-        #   ipa = features
-        #   features = self.phonology.get_features(ipa)
-        #
-        features = {features} if isinstance(features, str) else features
+            else:
+                scale_feature = self.scale[0]
+            # combine features and suggest a sound
+            recommended_features.add(scale_feature)
+            new_sound = self.phonology.phonetics.get_ipa(recommended_features)
+            return new_sound
+        
+        # create featureset from sound symbol, single-feature string or features list
+        if isinstance(left_features, str):
+            ipa_features = self.phonology.phonetics.get_features(left_features)
+            left_features = ipa_features if ipa_features else {left_features}
+        else:
+            left_features = set(left_features)
 
-        # look for next features in dependencies
+        # look for next (right) features using left features dependencies
         has_dependencies = False
         recommended_features = set()
-        for feature in features:
-            dependencies_entry = self.dependencies.get(feature)
+        for left_feature in left_features:
+            dependencies_entry = self.dependencies.get(left_feature)
             if dependencies_entry:
                 # apply dependencies includes unless input features are excluded
-                if not features & dependencies_entry['excluded']:
+                if not left_features & dependencies_entry['excluded']:
                     # choose one right feature to include
                     feature_choice = random.sample(dependencies_entry['included'], 1)
                     # expect one feature option
@@ -185,15 +199,13 @@ class Hierarchy:
 
         # use base hierarchy instead of dependencies
         if not has_dependencies:
-            for i, right_feature in enumerate(self.scale):
-                if {right_feature} & features:
-                    recommended_features.add(random.choice(self.scale[i:]))
+            for i, scale_feature in enumerate(self.scale):
+                if {scale_feature} & {left_features}:
+                    recommended_features.add(random.choice(self.scale[i+1:]))
                     break
         
         if not recommended_features:
-            raise KeyError(f"Hierarchy cannot recommend a sound for features {features}")
+            raise KeyError(f"Hierarchy cannot recommend a sound for features {right_features} following a sound {left_features}")
 
-        # TODO: take in and recommend sounds (ipa)
-        #self.phonology.get_ipa(recommended_features)
-        
-        return recommended_features
+        # take in features and recommend a sound symbol
+        return self.phonology.phonetics.get_ipa(recommended_features)
