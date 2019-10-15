@@ -42,6 +42,12 @@ my_language.phonetics.add_map({
     'q': ['consonant', 'voiceless', 'uvular', 'stop'],
     'ɢ': ['consonant', 'voiced', 'uvular', 'stop'],
     'ʔ': ['consonant', 'voiceless', 'glottal', 'stop'],
+    'm': ['consonant', 'voiced', 'bilabial', 'nasal'],
+    'ɱ': ['consonant', 'voiced', 'labiodental', 'nasal'],
+    'n': ['consonant', 'voiced', 'alveolar', 'nasal'],
+    'ɲ': ['consonant', 'voiced', 'palatal', 'nasal'],
+    'ŋ': ['consonant', 'voiced', 'velar', 'nasal'],
+    'ɴ': ['consonant', 'voiced', 'uvular', 'nasal'],
     'ϕ': ['consonant', 'voiceless', 'bilabial', 'fricative'],
     'β': ['consonant', 'voiced', 'bilabial', 'fricative'],
     'f': ['consonant', 'voiceless', 'labiodental', 'fricative'],
@@ -62,12 +68,13 @@ my_language.phonetics.add_map({
     'dz': ['consonant', 'voiced', 'alveolar', 'affricate'],
     'tʃ': ['consonant', 'voiceless', 'postalveolar', 'affricate'],
     'dʒ': ['consonant', 'voiced', 'postalveolar', 'affricate'],
-    'r': ['consonant', 'voiced', 'alveolar', 'trill'],
-    'ɾ': ['consonant', 'voiced', 'alveolar', 'tap'],
+    'r': ['consonant', 'voiced', 'alveolar', 'rhotic', 'trill', 'liquid'],
+    'ɾ': ['consonant', 'voiced', 'alveolar', 'rhotic', 'tap', 'liquid'],
+    'l': ['consonant', 'voiced', 'alveolar', 'lateral', 'approximant', 'liquid'],
     'ɬ': ['consonant', 'voiceless', 'alveolar', 'lateral', 'fricative'],
     'ɮ': ['consonant', 'voiced', 'alveolar', 'lateral', 'fricative'],
-    'j': ['consonant', 'voiced', 'palatal', 'approximant'],
-    'w': ['consonant', 'voiced', 'velar', 'approximant']
+    'j': ['consonant', 'voiced', 'palatal', 'approximant', 'glide'],
+    'w': ['consonant', 'voiced', 'velar', 'approximant', 'glide']
 })
 
 # inventory to language
@@ -324,6 +331,43 @@ sentence = my_language.grammar.sentences.apply(
 print(sentence)
 print("".join(sentence['sound']))
 print(" ".join(sentence['translation']))
+
+
+# Phonotactics
+# TODO: if dependency points back to scale, allow choices at or beyond that point
+my_language.phonology.syllables.phonotactics.add_nucleus("V")
+my_language.phonology.syllables.phonotactics.add_nucleus("vowel", "glide")
+my_language.phonology.syllables.phonotactics.hierarchy.add(
+    "stop", "fricative", "nasal", "approximant", "liquid", "glide"
+)
+my_language.phonology.syllables.phonotactics.hierarchy.depend("sibilant", "stop")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("sibilant", "fricative")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("stop", "liquid")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("stop", "glide")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("fricative", "liquid")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("approximant", None)
+my_language.phonology.syllables.phonotactics.hierarchy.depend("liquid", None)
+my_language.phonology.syllables.phonotactics.hierarchy.depend("fricative", "glide")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("voiceless", "voiceless")
+my_language.phonology.syllables.phonotactics.hierarchy.depend("voiced", "voiced")
+
+syllable = my_language.phonology.syllables.phonotactics.shape("V")
+print(f"V syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CV")
+print(f"CV syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCV")
+print(f"CCV syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCVC")
+print(f"CCVC syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCVCCC")
+print(f"CCVCCC syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCCV")
+print(f"CCCV syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCCCV")
+print(f"CCCCV syllable: {syllable}")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCCCVCCCC")
+print(f"CCCCVCCCC syllable: {syllable}")
+
 
 # TODO:
 #   - [ ] more refined management of syllable building

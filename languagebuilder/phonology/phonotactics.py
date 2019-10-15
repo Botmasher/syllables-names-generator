@@ -42,10 +42,15 @@ class Phonotactics:
         else:
             return True
 
-    def add_nucleus(self, features):
-        if not self.is_features_list(features):
+    def add_nucleus(self, *features):
+        featuresets = list(map(
+            lambda f: {f} if isinstance(f, str) else set(f),
+            features
+        ))
+        if not all([self.is_features_list(featureset) for featureset in featuresets]):
             return
-        self.nuclei.add(features)
+        for featureset in featuresets:
+            self.nuclei.add(featureset)
         return self.nuclei
 
     def get_nuclei(self):
@@ -124,34 +129,26 @@ class Phonotactics:
         chain is followed until a sound with no dependency is found, at which point
         vetting switches back to the sonority scale.      
         """
-
         # break up and check syllables
         syllable_pieces = self.partition_syllable(syllable_features)
-
         if not syllable_pieces:
-            return
+            raise ValueError(f"Phonotactics failed to shape syllable - unknown syllable {syllable_features}")
 
-        # build syllable features shape from sonority and dependencies
-        
+        # prepare to build syllable features shape from scale and dependencies
         syllable_shape = {piece: [] for piece in syllable_pieces}
 
-        # TODO: traverse to pass last chosen as lefts and decide on ipa/sounds/features
-
         # shape base featureset for each onset sound
-        last_sound = None
-        for featureset in syllable_pieces['onset']:
-            last_sound = self.hierarchy.recommend(last_sound, featureset)
-            syllable_shape['onset'].append(last_sound)
+        for current_features in syllable_pieces['onset']:
+            last_sound = syllable_shape['onset'][-1] if syllable_shape['onset'] else None
+            syllable_shape['onset'] += [self.recommend(last_sound, current_features)]
 
         # shape nucleus
-        syllable_shape['nucleus'] = random.choice(self.nuclei)
+        syllable_shape['nucleus'] = list(random.choice(self.nuclei))
 
         # shape coda
-        last_sound = None
-        for featureset in syllable_pieces['onset']:
-            last_sound = self.hierarchy.recommend(last_sound, featureset)
-            syllable_shape['coda'] = [last_sound] + syllable_shape['onset']
+        for current_features in syllable_pieces['coda']:
+            last_sound = syllable_shape['coda'][0] if syllable_shape['coda'] else None
+            syllable_shape['coda'] = [self.recommend(last_sound, current_features)] + syllable_shape['coda']
 
-        # NOTE: "shape" here has turned to a full fillin of sounds/ipa!
-
+        # NOTE: syllable_shape has turned to a full fill-in of sound symbols
         return syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']
