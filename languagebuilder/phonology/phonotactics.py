@@ -43,12 +43,16 @@ class Phonotactics:
             return True
 
     def add_nucleus(self, *features):
-        featuresets = list(map(
-            lambda f: {f} if isinstance(f, str) else set(f),
-            features
-        ))
-        if not all([self.is_features_list(featureset) for featureset in featuresets]):
-            return
+        # vet features
+        vetted_features = self.phonology.syllables.structure(features)
+        # build and check featuresets
+        featuresets = []
+        for feature in vetted_features:
+            featureset = {feature} if isinstance(feature, str) else set(feature)
+            if not self.is_features_list(featureset):
+                raise ValueError(f"Phonotactics failed to add nucleus with invalid features - {features}")
+            featuresets.append(featureset)
+        # add featuresets to nuclei
         for featureset in featuresets:
             self.nuclei.add(featureset)
         return self.nuclei
@@ -92,7 +96,7 @@ class Phonotactics:
                     break
         
         if not nucleus_indexes:
-            return
+            raise ValueError(f"Phonotactics failed to partition syllable with unknown nucleus - {syllable_features} not in {self.nuclei}")
 
         syllable_parts = {
             'onset': syllable_features[:nucleus_indexes[0]],
@@ -122,13 +126,16 @@ class Phonotactics:
     #   - get all dependency chains that are at least as long as cluster
     #   - apply for onset, reverse for coda
 
-    def shape(self, syllable_features, gaps=True, doubles=True, triples=False):
+    def shape(self, raw_syllable, gaps=True, doubles=True, triples=False):
         """Fill out a syllable with all defined phonotactics including dependencies
         and sonority. Features walk hierarchically down the sonority scale (with gaps)
         until a dependency chain inclusion/exclusion is found, then the dependency
         chain is followed until a sound with no dependency is found, at which point
         vetting switches back to the sonority scale.      
         """
+        # vet syllable for valid features
+        syllable_features = self.phonology.syllables.structure(raw_syllable)
+
         # break up and check syllables
         syllable_pieces = self.partition_syllable(syllable_features)
         if not syllable_pieces:

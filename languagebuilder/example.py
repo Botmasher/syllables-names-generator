@@ -351,6 +351,9 @@ my_language.phonology.syllables.phonotactics.hierarchy.depend("fricative", "glid
 my_language.phonology.syllables.phonotactics.hierarchy.depend("voiceless", "voiceless")
 my_language.phonology.syllables.phonotactics.hierarchy.depend("voiced", "voiced")
 
+my_language.phonology.syllables.add(
+    "V", "CV", "CCV", "CCCV", "CCCV", "CCVC", "CCCVCCC", "CCCCVCCCC"
+)
 syllable = my_language.phonology.syllables.phonotactics.shape("V")
 print(f"V syllable: {syllable}")
 syllable = my_language.phonology.syllables.phonotactics.shape("CV")
@@ -359,7 +362,7 @@ syllable = my_language.phonology.syllables.phonotactics.shape("CCV")
 print(f"CCV syllable: {syllable}")
 syllable = my_language.phonology.syllables.phonotactics.shape("CCVC")
 print(f"CCVC syllable: {syllable}")
-syllable = my_language.phonology.syllables.phonotactics.shape("CCVCCC")
+syllable = my_language.phonology.syllables.phonotactics.shape("CCCVCCC")
 print(f"CCVCCC syllable: {syllable}")
 syllable = my_language.phonology.syllables.phonotactics.shape("CCCV")
 print(f"CCCV syllable: {syllable}")

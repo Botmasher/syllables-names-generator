@@ -104,22 +104,30 @@ class Syllables():
         
         return structure
     
-    def add(self, structure):
-        """Add a new syllable to the syllables map"""
-        
+    def add(self, *structures):
+        """Add one or more new syllables to the syllables map"""
         # store valid terms for added structure
-        new_structure = self.structure(structure)
+        vetted_structures = []
+        for structure in structures:
+            vetted_structure = self.structure(structure)
+            # verify valid vetted structure
+            if not vetted_structure:
+                print(f"Syllables failed to add invalid structure {structure}")
+                return
+            vetted_structures.append(vetted_structure)
+     
+        # add created syllables to the map
+        syllable_ids = []
+        for vetted_structure in vetted_structures:
+            syllable_id = f"syllable-{uuid4()}"
+            self.syllables[syllable_id] = vetted_structure
+            syllable_ids.append(syllable_id)
 
-        # verify valid vetted structure
-        if not new_structure:
-            print(f"Syllables failed to add invalid structure {structure}")
-            return
+        # return created syllable ids
+        if len(syllable_ids) < 2:
+            return syllable_ids[0]
+        return syllable_ids
         
-        # add created syllable to the map
-        syllable_id = f"syllable-{uuid4()}"
-        self.syllables[syllable_id] = new_structure
-        return syllable_id
-
     def update(self, syllable_id, structure):
         """Modify an existing syllable"""
         # check if syllable exists
