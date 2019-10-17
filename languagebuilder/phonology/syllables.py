@@ -57,8 +57,7 @@ class Syllables():
     def structure(self, raw_structure):
         """Clean up and format a list or string as a list of features and syllable characters"""
         if not isinstance(raw_structure, (list, tuple, str)):
-            print(f"Failed to structure syllable - expected list or string not {raw_structure}")
-            return
+            raise TypeError(f"Failed to structure syllable - expected list or string not {raw_structure}")
         
         # treat string as list of special syllable characters
         #
@@ -87,8 +86,7 @@ class Syllables():
                 else:
                     for syllable_subitem in syllable_subitems:
                         if not self.phonology.phonetics.has_feature(syllable_subitem):
-                            print(f"Syllables add failed - invalid syllable item {syllable_item}")
-                            return
+                            raise ValueError(f"Syllables failed to structure syllable with invalid item {syllable_item}")
                     structure.append(syllable_subitems)
                 
             # catch and add syllable characters within a one-element list
@@ -96,11 +94,16 @@ class Syllables():
                 structure.append(self.syllable_characters[syllable_item[0]])
             # add good list of features directly to new structure
             elif isinstance(syllable_item, list):
-                for feature in syllable_item:
-                    if not self.phonology.phonetics.has_feature(syllable_item):
-                        print("Phonology add_syllable failed - invalid syllable feature {0}".format(feature))
-                        return
-                structure.append(syllable_item)
+                # turn shallow list into list of featurelists
+                featureslist = [
+                    [f] if isinstance(f, str) else f
+                    for f in syllable_item
+                ]
+                # check for invalid features
+                for features in featureslist:
+                    if not all([self.phonology.phonetics.has_feature(f) for f in features]):
+                        raise ValueError(f"Syllables failed to structure syllable with invalid sound {features}")
+                structure.append(featureslist)
         
         return structure
     

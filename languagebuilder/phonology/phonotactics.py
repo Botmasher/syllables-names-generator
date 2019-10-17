@@ -1,6 +1,7 @@
 from .hierarchy import Hierarchy
 from ..tools import redacc
 import random
+from uuid import uuid4
 
 # NOTE: Phonotactics esp scale & dep build left-to-right. "Progressive" constraints are
 # unideally handled either during syllable definition, e.g. in specific syllable types,
@@ -20,12 +21,14 @@ class Phonotactics:
         self.dependencies = self.hierarchy.dependencies
         self.recommend = self.hierarchy.recommend
 
-       # configure syllable nucleus
-        # TODO: consider defaulting to ['vowel'] if present
-        self.nuclei = set()
+       # syllable nuclei map
+        # TODO: consider weighting and defaulting to ['vowel'] if present
+        self.nuclei = {
+            # 'id': [featuresets],
+        }
 
         # first draw likelihoods
-        # TODO: how likely each is to be chosen
+        # TODO: how likely each is to be chosen - see nuclei weight comment above
         # OR just select from chains/sonority that are at onset/coda length?
         # self.lihelihoods = {
         #     'onset': {},
@@ -35,39 +38,50 @@ class Phonotactics:
 
     # Syllable parts - nucleus
     def is_features_list(self, features):
-        if not isinstance(features, (list, tuple)):
+        """Check if a featureset or featurelist contains only valid features"""
+        if not isinstance(features, (list, tuple, set)):
             return False
-        elif False in [self.phonology.phonetics.has_feature(feature) for feature in features]:
-            return False
-        else:
-            return True
+        return all([self.phonology.phonetics.has_feature(f) for f in features])
 
     def add_nucleus(self, *features):
-        # vet features
+        """Vet, build and add one new nucleus. Each nucleus is a list of featuresets.
+        Input may contain single feature strings or syllable abbreviations."""
+        # structure features as a single formatted list even if passed in
+        # as a sequence of sound-by-sound inputs
+        if len(features) == 1:
+            features = features[0]
+        else:
+            features = [[f] if isinstance(f, str) else f for f in features ]
+        # vet features for valid elements
         vetted_features = self.phonology.syllables.structure(features)
-        # build and check featuresets
-        featuresets = []
-        for feature in vetted_features:
-            featureset = {feature} if isinstance(feature, str) else set(feature)
-            if not self.is_features_list(featureset):
+        #raise ValueError(f"vetted features {vetted_features}")
+        
+        # build nucleus as a featuresets list
+        nucleus = []
+        for featurelist in vetted_features:
+            if not self.is_features_list(featurelist):
                 raise ValueError(f"Phonotactics failed to add nucleus with invalid features - {features}")
-            featuresets.append(featureset)
-        # add featuresets to nuclei
-        for featureset in featuresets:
-            self.nuclei.add(featureset)
+            featureset = set(featurelist)
+            nucleus.append(featureset)
+        # add nucleus to nuclei
+        nucleus_id = f"nucleus-{uuid4()}"
+        self.nuclei[nucleus_id] = nucleus
         return self.nuclei
 
     def get_nuclei(self):
+        """Read the entire nuclei map"""
         return self.nuclei
 
-    def remove_nucleus(self, features):
-        if features in self.nuclei:
-            self.nuclei.remove(features)
-            return True
-        return False
-
-    def clear_nuclei(self):
+    def remove_nucleus(self, nucleus_id):
+        """Delete one nucleus entry and key in the nuclei map"""
+        return self.nuclei.pop(nucleus_id)
+    
+    def clear_nuclei(self, return_old=False):
+        """Empty out the entire nuclei map"""
+        nuclei_copy = dict(self.nuclei)
         self.nuclei.clear()
+        if return_old:
+            return nuclei_copy
         return self.nuclei
 
     # Split and shape syllable parts phonotactically
@@ -90,7 +104,7 @@ class Phonotactics:
         """
         nucleus_indexes = []
         for i, features in enumerate(syllable_features):
-            for nucleus in self.nuclei:
+            for nucleus in self.nuclei.values():
                 if self.is_features_list_overlap(features[i:i+len(nucleus)], nucleus):
                     nucleus_indexes += [i, i+len(nucleus)]
                     break
@@ -150,7 +164,7 @@ class Phonotactics:
             syllable_shape['onset'] += [self.recommend(last_sound, current_features)]
 
         # shape nucleus
-        syllable_shape['nucleus'] = list(random.choice(self.nuclei))
+        syllable_shape['nucleus'] = self.nuclei[random.choice(self.nuclei)]
 
         # shape coda
         for current_features in syllable_pieces['coda']:
