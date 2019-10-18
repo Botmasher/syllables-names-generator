@@ -337,6 +337,7 @@ print(" ".join(sentence['translation']))
 # TODO: if dependency points back to scale, allow choices at or beyond that point
 my_language.phonology.syllables.phonotactics.add_nucleus("V")
 my_language.phonology.syllables.phonotactics.add_nucleus("vowel", "glide")
+my_language.phonology.syllables.phonotactics.add_nucleus(["vowel"], ["vowel", "close"])
 my_language.phonology.syllables.phonotactics.hierarchy.add(
     "stop", "fricative", "nasal", "approximant", "liquid", "glide"
 )

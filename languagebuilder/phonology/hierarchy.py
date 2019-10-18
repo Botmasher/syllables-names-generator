@@ -135,6 +135,16 @@ class Hierarchy:
         
         return self.dependencies
 
+    def build_featureset(self, features):
+        """Convert features or ipa string or collection into a formatted featureset"""
+        if not features:
+            return set()
+        elif isinstance(features, str):
+            ipa_features = self.phonology.phonetics.get_features(features)
+            return ipa_features if ipa_features else {features}
+        else:
+            return set(features)
+
     def recommend(self, left_features=None, right_features=None, random_start=True, jumps=True, length=1):
         """Pick the next (right) sound given selected (left) features and some filter
         (right) features. If no left features are given, pick a random starting position
@@ -147,13 +157,7 @@ class Hierarchy:
             cluster_length (int): leave enough right features slots for remaining sounds
         """
         # structure given right features for conditioning recommendations
-        if right_features:
-            if isinstance(right_features, str):
-                recommended_features = {right_features}
-            else:
-                recommended_features = set(right_features)
-        else:
-            recommended_features = set()
+        recommended_features = self.build_featureset(right_features)
 
         # pick a starting feature since no left feature input
         if not left_features:
@@ -170,11 +174,7 @@ class Hierarchy:
             return new_sound
         
         # create featureset from sound symbol, single-feature string or features list
-        if isinstance(left_features, str):
-            ipa_features = self.phonology.phonetics.get_features(left_features)
-            left_features = ipa_features if ipa_features else {left_features}
-        else:
-            left_features = set(left_features)
+        left_features = self.build_featureset(left_features)
 
         # look for next (right) features using left features dependencies
         has_dependencies = False
@@ -200,7 +200,7 @@ class Hierarchy:
         # use base hierarchy instead of dependencies
         if not has_dependencies:
             for i, scale_feature in enumerate(self.scale):
-                if {scale_feature} & {left_features}:
+                if {scale_feature} & left_features:
                     recommended_features.add(random.choice(self.scale[i+1:]))
                     break
         

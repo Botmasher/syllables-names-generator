@@ -94,16 +94,11 @@ class Syllables():
                 structure.append(self.syllable_characters[syllable_item[0]])
             # add good list of features directly to new structure
             elif isinstance(syllable_item, list):
-                # turn shallow list into list of featurelists
-                featureslist = [
-                    [f] if isinstance(f, str) else f
-                    for f in syllable_item
-                ]
                 # check for invalid features
-                for features in featureslist:
-                    if not all([self.phonology.phonetics.has_feature(f) for f in features]):
-                        raise ValueError(f"Syllables failed to structure syllable with invalid sound {features}")
-                structure.append(featureslist)
+                for feature in syllable_item:
+                    if not self.phonology.phonetics.has_feature(feature):
+                        raise ValueError(f"Syllables failed to structure syllable with invalid sound {feature}")
+                structure.append(syllable_item)
         
         return structure
     

@@ -38,29 +38,19 @@ class Phonotactics:
 
     # Syllable parts - nucleus
     def is_features_list(self, features):
-        """Check if a featureset or featurelist contains only valid features"""
-        if not isinstance(features, (list, tuple, set)):
-            return False
+        """Check that input is a collection containing only valid features"""
         return all([self.phonology.phonetics.has_feature(f) for f in features])
 
     def add_nucleus(self, *features):
         """Vet, build and add one new nucleus. Each nucleus is a list of featuresets.
         Input may contain single feature strings or syllable abbreviations."""
-        # structure features as a single formatted list even if passed in
-        # as a sequence of sound-by-sound inputs
-        if len(features) == 1:
-            features = features[0]
-        else:
-            features = [[f] if isinstance(f, str) else f for f in features ]
         # vet features for valid elements
         vetted_features = self.phonology.syllables.structure(features)
-        #raise ValueError(f"vetted features {vetted_features}")
-        
         # build nucleus as a featuresets list
         nucleus = []
         for featurelist in vetted_features:
             if not self.is_features_list(featurelist):
-                raise ValueError(f"Phonotactics failed to add nucleus with invalid features - {features}")
+                raise ValueError(f"Phonotactics failed to add nucleus with invalid features - {featurelist}")
             featureset = set(featurelist)
             nucleus.append(featureset)
         # add nucleus to nuclei
@@ -87,13 +77,13 @@ class Phonotactics:
     # Split and shape syllable parts phonotactically
 
     def is_features_list_overlap(self, featureslist_a, featureslist_b, all_a_in_b=True):
-        """Compare two lists of featuresets to determine if they are same-length
-        overlapping features collections."""
+        """Compare two lists of featuresets to determine if they are overlapping
+        features collections."""
         if len(featureslist_a) != len(featureslist_b):
             return False
         for i in range(len(featureslist_a)):
             feature_overlap = set(featureslist_a[i]) & set(featureslist_b[i])
-            if not feature_overlap or (all_a_in_b and len(feature_overlap) != len(featureslist_a)):
+            if not feature_overlap or (all_a_in_b and len(feature_overlap) != len(featureslist_a[i])):
                 return False
         return True
 
@@ -103,9 +93,9 @@ class Phonotactics:
             syllable_features (list): list of string lists, each string representing a feature
         """
         nucleus_indexes = []
-        for i, features in enumerate(syllable_features):
+        for i in range(len(syllable_features)):
             for nucleus in self.nuclei.values():
-                if self.is_features_list_overlap(features[i:i+len(nucleus)], nucleus):
+                if self.is_features_list_overlap(syllable_features[i:i+len(nucleus)], nucleus):
                     nucleus_indexes += [i, i+len(nucleus)]
                     break
         
@@ -164,7 +154,8 @@ class Phonotactics:
             syllable_shape['onset'] += [self.recommend(last_sound, current_features)]
 
         # shape nucleus
-        syllable_shape['nucleus'] = self.nuclei[random.choice(self.nuclei)]
+        nucleus_id = random.sample(self.nuclei.keys(), 1)[0]
+        syllable_shape['nucleus'] = self.nuclei[nucleus_id]
 
         # shape coda
         for current_features in syllable_pieces['coda']:
