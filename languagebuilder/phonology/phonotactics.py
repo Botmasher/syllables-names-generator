@@ -102,13 +102,11 @@ class Phonotactics:
         if not nucleus_indexes:
             raise ValueError(f"Phonotactics failed to partition syllable with unknown nucleus - {syllable_features} not in {self.nuclei}")
 
-        syllable_parts = {
+        return {
             'onset': syllable_features[:nucleus_indexes[0]],
-            'coda': syllable_features[nucleus_indexes[0]:nucleus_indexes[1]],
-            'nucleus': nucleus_indexes[1]
+            'nucleus': syllable_features[nucleus_indexes[0]:nucleus_indexes[1]],
+            'coda': syllable_features[nucleus_indexes[1]:]
         }
-
-        return syllable_parts
 
     # TODO: how to ensure gemination not just found down here in phonotactics?
     #   - also syllable interfaces, since san-nas yields gem
@@ -150,12 +148,18 @@ class Phonotactics:
 
         # shape base featureset for each onset sound
         for current_features in syllable_pieces['onset']:
+            #if len(syllable_shape['onset']) == 2:
+            #    raise Exception(f"Current onset features: {current_features}\nStored shape: {syllable_shape}\nPartition: {syllable_pieces}")
             last_sound = syllable_shape['onset'][-1] if syllable_shape['onset'] else None
-            syllable_shape['onset'] += [self.recommend(last_sound, current_features)]
+            syllable_shape['onset'].append(self.recommend(last_sound, current_features))
 
         # shape nucleus
-        nucleus_id = random.sample(self.nuclei.keys(), 1)[0]
-        syllable_shape['nucleus'] = self.nuclei[nucleus_id]
+        nucleus_id = random.choice(list(self.nuclei))
+        nucleus_shape = self.nuclei[nucleus_id]
+        # TODO: also recommend through Hierarchy (could recommend handle nuclei?)
+        for featureset in nucleus_shape:
+            nucleus_sound = random.choice(self.phonology.phonetics.get_ipa(featureset))[0]
+            syllable_shape['nucleus'].append(nucleus_sound)
 
         # shape coda
         for current_features in syllable_pieces['coda']:
@@ -163,4 +167,10 @@ class Phonotactics:
             syllable_shape['coda'] = [self.recommend(last_sound, current_features)] + syllable_shape['coda']
 
         # NOTE: syllable_shape has turned to a full fill-in of sound symbols
-        return syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']
+        syllable_sounds = [
+            sound for sound in 
+            syllable_shape['onset'] + syllable_shape['nucleus'] + syllable_shape['coda']
+        ]
+        syllable_shape.clear()
+        return syllable_sounds
+

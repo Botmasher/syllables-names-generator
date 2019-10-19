@@ -141,7 +141,7 @@ class Hierarchy:
             return set()
         elif isinstance(features, str):
             ipa_features = self.phonology.phonetics.get_features(features)
-            return ipa_features if ipa_features else {features}
+            return set(ipa_features) if ipa_features else {features}
         else:
             return set(features)
 
@@ -151,7 +151,8 @@ class Hierarchy:
         in the hierarchy given cluster length constraints (leave at least that many
         sounds to the right).
         Params:
-            features (list): input sound features for left sound
+            left_features (str, list): input features defining for previous sound
+            right_features (str, list): input features constraining selected sound
             random_start (bool): start anywhere in hierarchy if no features given
             jumps (bool): skip some of the scale sometimes for realistic and varied output
             cluster_length (int): leave enough right features slots for remaining sounds
@@ -170,11 +171,12 @@ class Hierarchy:
                 scale_feature = self.scale[0]
             # combine features and suggest a sound
             recommended_features.add(scale_feature)
-            new_sound = self.phonology.phonetics.get_ipa(recommended_features)
-            return new_sound
+            recommended_ipa = random.choice(self.phonology.phonetics.get_ipa(recommended_features))[0]
+            return recommended_ipa
         
         # create featureset from sound symbol, single-feature string or features list
         left_features = self.build_featureset(left_features)
+        #raise ValueError(f"Left features: {left_features}")
 
         # look for next (right) features using left features dependencies
         has_dependencies = False
@@ -183,9 +185,11 @@ class Hierarchy:
             dependencies_entry = self.dependencies.get(left_feature)
             if dependencies_entry:
                 # apply dependencies includes unless input features are excluded
-                if not left_features & dependencies_entry['excluded']:
+                if not left_features & dependencies_entry['exclude']:
+                    if not dependencies_entry['include']:
+                        continue
                     # choose one right feature to include
-                    feature_choice = random.sample(dependencies_entry['included'], 1)
+                    feature_choice = random.sample(dependencies_entry['include'], 1)
                     # expect one feature option
                     if not feature_choice:
                         continue
@@ -208,4 +212,4 @@ class Hierarchy:
             raise KeyError(f"Hierarchy cannot recommend a sound for features {right_features} following a sound {left_features}")
 
         # take in features and recommend a sound symbol
-        return self.phonology.phonetics.get_ipa(recommended_features)
+        return random.choice(self.phonology.phonetics.get_ipa(recommended_features))[0]
