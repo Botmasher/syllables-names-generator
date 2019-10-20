@@ -171,7 +171,11 @@ class Hierarchy:
                 scale_feature = self.scale[0]
             # combine features and suggest a sound
             recommended_features.add(scale_feature)
-            recommended_ipa = random.choice(self.phonology.phonetics.get_ipa(recommended_features))[0]
+            
+            # TODO: on empty features/phonemes, recommend a different feature/sound
+            #   - see calling Phonotactics shape method
+            recommended_ipa = random.choice(self.phonology.get_phonemes(recommended_features))[0]
+            
             return recommended_ipa
         
         # create featureset from sound symbol, single-feature string or features list
@@ -212,4 +216,4 @@ class Hierarchy:
             raise KeyError(f"Hierarchy cannot recommend a sound for features {right_features} following a sound {left_features}")
 
         # take in features and recommend a sound symbol
-        return random.choice(self.phonology.phonetics.get_ipa(recommended_features))[0]
+        return random.choice(self.phonology.get_phonemes(recommended_features))[0]

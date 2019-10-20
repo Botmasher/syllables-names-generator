@@ -147,9 +147,13 @@ class Phonotactics:
         syllable_shape = {piece: [] for piece in syllable_pieces}
 
         # shape base featureset for each onset sound
+
+        # TODO: on no phonemes available recommend a different feature from scale
+        #   - if scale look for anything on the right on scale
+        #   - if dependencies look down the chain
+        #   - but what if still sounds to fill but no good sound left?
+        #   - do we need to check that features in phonol not just features in scale?
         for current_features in syllable_pieces['onset']:
-            #if len(syllable_shape['onset']) == 2:
-            #    raise Exception(f"Current onset features: {current_features}\nStored shape: {syllable_shape}\nPartition: {syllable_pieces}")
             last_sound = syllable_shape['onset'][-1] if syllable_shape['onset'] else None
             syllable_shape['onset'].append(self.recommend(last_sound, current_features))
 
@@ -158,7 +162,7 @@ class Phonotactics:
         nucleus_shape = self.nuclei[nucleus_id]
         # TODO: also recommend through Hierarchy (could recommend handle nuclei?)
         for featureset in nucleus_shape:
-            nucleus_sound = random.choice(self.phonology.phonetics.get_ipa(featureset))[0]
+            nucleus_sound = random.choice(self.phonology.get_phonemes(featureset))[0]
             syllable_shape['nucleus'].append(nucleus_sound)
 
         # shape coda

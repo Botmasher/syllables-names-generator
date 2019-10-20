@@ -123,7 +123,26 @@ class Phonology:
             print(f"Phonology get_sound_weight failed - unknown symbol {ipa}")
             return
         return self.phonemes.get_weight(ipa)
-    #
+
+    def get_phoneme_features(self, ipa=None):
+        """Read features for a symbol, or all features if no specific symbol input"""
+        if not ipa:
+            return list(self.phonemes.phonemes.values())
+        if not self.phonemes.has(ipa):
+            return None
+        return self.phonetics.get_features(ipa)
+
+    def get_phoneme_symbols(self, features=None):
+        """Find any sounds that exist as phonemes and contain the given features"""
+        if not features:
+            return list(self.phonemes.phonemes.keys())
+        phones = self.phonetics.get_ipa(features)
+        phonemes = list(filter(
+            lambda phone: self.phonemes.has(phone),
+            phones
+        ))
+        return phonemes
+
     # TODO: add weights for letter choice
     #   - current weight intended for distributing phon freq
     def add_sound(self, ipa, letters=[], weight=0):
