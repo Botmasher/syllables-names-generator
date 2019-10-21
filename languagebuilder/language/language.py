@@ -7,6 +7,12 @@ from ..reference.corpus import Corpus
 from .paradigms import Paradigms
 import random
 
+# TODO: main LanguageBuilder class
+#   - phonetics, grammemes, word classes, grammeme-sentence structures
+#   - then this has languages, each with own phonology, vocabulary, grammar
+#   - reason: same ipa and grammatical terms across langs
+#       - then do this for accent/supraseg symbols too?
+
 # TODO: Accentuation, suprasegmentals
 
 # TODO: medial manipulation requiring replacement: același/aceeași, sing/sang, ...

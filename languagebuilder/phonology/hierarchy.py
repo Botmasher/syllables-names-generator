@@ -160,15 +160,21 @@ class Hierarchy:
         # structure given right features for conditioning recommendations
         recommended_features = self.build_featureset(right_features)
 
+        # filter scale for only features with existing sounds to the right
+        available_scale = [
+            scale_feature for scale_feature in self.scale
+            if self.phonology.get_phonemes(list(recommended_features) + [scale_feature])
+        ]
+
         # pick a starting feature since no left feature input
         if not left_features:
             # start at any available feature in cluster scope
             if random_start:
-                scale_features = self.scale[:len(self.scale) - length]
+                scale_features = available_scale[:len(available_scale) - length]
                 scale_feature = random.choice(scale_features)
             # start at the outermost feature
             else:
-                scale_feature = self.scale[0]
+                scale_feature = available_scale[0]
             # combine features and suggest a sound
             recommended_features.add(scale_feature)
             
@@ -180,8 +186,7 @@ class Hierarchy:
         
         # create featureset from sound symbol, single-feature string or features list
         left_features = self.build_featureset(left_features)
-        #raise ValueError(f"Left features: {left_features}")
-
+        
         # look for next (right) features using left features dependencies
         has_dependencies = False
         recommended_features = set()
@@ -207,9 +212,9 @@ class Hierarchy:
 
         # use base hierarchy instead of dependencies
         if not has_dependencies:
-            for i, scale_feature in enumerate(self.scale):
+            for i, scale_feature in enumerate(available_scale):
                 if {scale_feature} & left_features:
-                    recommended_features.add(random.choice(self.scale[i+1:]))
+                    recommended_features.add(random.choice(available_scale[i+1:]))
                     break
         
         if not recommended_features:

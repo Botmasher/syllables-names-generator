@@ -124,23 +124,26 @@ class Phonology:
             return
         return self.phonemes.get_weight(ipa)
 
-    def get_phoneme_features(self, ipa=None):
-        """Read features for a symbol, or all features if no specific symbol input"""
-        if not ipa:
-            return list(self.phonemes.phonemes.values())
-        if not self.phonemes.has(ipa):
-            return None
-        return self.phonetics.get_features(ipa)
-
-    def get_phoneme_symbols(self, features=None):
-        """Find any sounds that exist as phonemes and contain the given features"""
-        if not features:
-            return list(self.phonemes.phonemes.keys())
-        phones = self.phonetics.get_ipa(features)
-        phonemes = list(filter(
-            lambda phone: self.phonemes.has(phone),
-            phones
-        ))
+    def get_phonemes(self, features=None, ipa=None):
+        """Find any sounds that are phonemes by their ipa or their features. If ipa are
+        given, features are returned. If features are given, ipa are returned. If
+        neither are given, an ipa:features map is returned including all phonemes."""
+        if not ipa and not features:
+            ipa = list(self.phonemes.phonemes)
+            phonemes = {
+                symbol: self.phonetics.get_features(symbol)
+                for symbol in ipa
+            }
+        elif ipa:
+            if not self.phonemes.has(ipa):
+                return None
+            phonemes = self.phonetics.get_features(ipa)
+        else:
+            phones = self.phonetics.get_ipa(features)
+            phonemes = list(filter(
+                lambda phone: self.phonemes.has(phone),
+                phones
+            ))
         return phonemes
 
     # TODO: add weights for letter choice
