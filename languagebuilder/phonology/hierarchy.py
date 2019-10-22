@@ -185,16 +185,16 @@ class Hierarchy:
             return recommended_ipa
         
         # create featureset from sound symbol, single-feature string or features list
-        left_features = self.build_featureset(left_features)
+        left_featureset = self.build_featureset(left_features)
         
         # look for next (right) features using left features dependencies
         has_dependencies = False
         recommended_features = set()
-        for left_feature in left_features:
+        for left_feature in left_featureset:
             dependencies_entry = self.dependencies.get(left_feature)
             if dependencies_entry:
                 # apply dependencies includes unless input features are excluded
-                if not left_features & dependencies_entry['exclude']:
+                if not left_featureset & dependencies_entry['exclude']:
                     if not dependencies_entry['include']:
                         continue
                     # choose one right feature to include
@@ -213,12 +213,22 @@ class Hierarchy:
         # use base hierarchy instead of dependencies
         if not has_dependencies:
             for i, scale_feature in enumerate(available_scale):
-                if {scale_feature} & left_features:
-                    recommended_features.add(random.choice(available_scale[i+1:]))
+                if {scale_feature} & left_featureset:
+                    next_features = available_scale[i+1:]
+                    if not next_features:
+                        raise Exception(f"Failed to choose sounds - no more features along scale")
+                    recommended_features.add(random.choice(next_features))
                     break
         
         if not recommended_features:
             raise KeyError(f"Hierarchy cannot recommend a sound for features {right_features} following a sound {left_features}")
 
-        # take in features and recommend a sound symbol
-        return random.choice(self.phonology.get_phonemes(recommended_features))[0]
+        # take in features and recommend a new sound symbol
+        chosen_ipa = random.choice(self.phonology.get_phonemes(recommended_features))[0]
+        if left_featureset == self.phonology.phonetics.get_features(chosen_ipa):
+            return None
+        # TODO: handle repeats (getting many of the last feature in scale in demos)
+        #   - option to allow geminates? repeated rung on feature scale?
+        if chosen_ipa == left_features:
+            raise Exception(f"Selected repeated sound {chosen_ipa}")
+        return chosen_ipa

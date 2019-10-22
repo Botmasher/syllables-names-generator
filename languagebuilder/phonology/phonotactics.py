@@ -162,6 +162,8 @@ class Phonotactics:
         nucleus_shape = self.nuclei[nucleus_id]
         # TODO: also recommend through Hierarchy (could recommend handle nuclei?)
         for featureset in nucleus_shape:
+            if not self.phonology.get_phonemes(featureset):
+                raise Exception(f"Phonotactics failed to shape nucleus - invalid features {featureset}")
             nucleus_sound = random.choice(self.phonology.get_phonemes(featureset))[0]
             syllable_shape['nucleus'].append(nucleus_sound)
 

@@ -91,8 +91,12 @@ my_language.phonology.add_sounds({
     'k': ['k', 'g'],
     'kʰ': ['gh'],
     'x': ['kh', 'hh'],
+    'f': ['kh', 'hh'],
     's': ['s'],
-    'ts': ['ds']
+    'ts': ['ds'],
+    'j': ['y'],
+    'n': ['n'],
+    'm': ['m']
 })
 
 # NOTE: three methods for getting features for an IPA char
