@@ -6,10 +6,38 @@ from uuid import uuid4
 # NOTE: Phonotactics esp scale & dep build left-to-right. "Progressive" constraints are
 # unideally handled either during syllable definition, e.g. in specific syllable types,
 # or after syllable build, e.g. through sound changes
+#
+# NOTE: history, thoughts and issues leading to current solution
+#   Recall that features passed can be any at the syllable type level, and any
+#   at the syllable shape level (phonotactics)
+#   OLD: scale or dependencies, then expanded to scale + dependencies
+#       - both defined right options/filters given left sounds
+#       - dependencies stored excluded or included right features/sounds for a left
+#       - dependencies allowed looping back to scale if chain ended but feature in scale
+#       - scale not only sonority, any feature pluggable (could do based on places, ...)
+#       - loops, repetitions, ends, skips, and count were tricky to manage and generate
+#       - e.g. CCCV: if s -> {p,t,k,l,w}, t -> {r}, no dependencies key r -> scale for say strj-
+#       - e.g. CCCV: if s -> {p,t,k,l,w}, t -> None, end shape at st- (note it's CV!)
+#  NEW: simplify to whole shapes - Types define syllables. Shapes refine types.
+#       - keep scales and excludes in separate maps (each is a list of featuresets)
+#           - dos are whole sequential shapes
+#           - dos can be set to be gappable (have skippable sound slots)
+#           - donts are feature or sound sequences that should not be built
+#           - use donts to avoid building specific sequences
+#       - flexibility: each set in a list is either features or ipa (but not mixed)
+#       - if no dos or donts available, choose any sounds matching typeslots while shaping
+#       - multiple ways to do options:
+#           - skippable syntax: [featureset, [skippable featureset]]
+#           - multiples: scale 1 [featureset, optional_featureset], scale 2 just [featureset]
+#       - one scale can be marked as the hierarchy (id stored) and so used as the goto
+#           - in this case prefer while shaping?
+#           - choose maybe 50% of the time?
+#           - or default to it and only use other scales when combinations chosen?
+#       - repeatables/geminates are meant to be explicit like [nasal, nasal]
+#       - storing the entire shape allows straightforward adding for users
 
-# TODO: optional/dependent sonority (see sonority scale list and associated methods below)
-# - add_sonority_dependency()
-# - e.g. CCV: if s -> {p,t,k,l,w}, then if st -> {r}
+# TODO: features across syllable boundaries
+
 class Phonotactics:
     def __init__(self, phonology):
         # check that features exist

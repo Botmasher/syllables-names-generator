@@ -14,6 +14,19 @@ class Hierarchy:
             # as usual, guess it's a sound first before going to more spec feature
         }
 
+        # TODO: build based on scales
+        self.shape = {
+            # 'shape_id': {
+            #   'onset': [{features/letters}, [{skippables}, {skippables}]...],
+            #   'nucleus': [[{skippables}], {features/letters}, ...],
+            #   'coda': [[{skippables}], {features/letters}, ...]
+            # }
+        }
+        self.hierarchy = ""     # set one id as the syllable scale
+
+    
+    # NOTE: last take on attempt 1 below (see Phonotactics) - refining above
+
     def get_scale(self):
         """Read the left-to-right sequence scale"""
         return self.scale
