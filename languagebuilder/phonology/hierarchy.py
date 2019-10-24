@@ -1,4 +1,5 @@
 import random
+from uuid import uuid4
 
 # Hierarchy scale and dependencies for Phonotactics
 # Based around sonority hierarchy (scale) plus variant state paths (dependencies).
@@ -15,7 +16,7 @@ class Hierarchy:
         }
 
         # TODO: build based on scales
-        self.shape = {
+        self.shapes = {
             # 'shape_id': {
             #   'onset': [{features/letters}, [{skippables}, {skippables}]...],
             #   'nucleus': [[{skippables}], {features/letters}, ...],
@@ -24,7 +25,57 @@ class Hierarchy:
         }
         self.hierarchy = ""     # set one id as the syllable scale
 
-    
+    # NOTE: latest take (see attempt 2 in Phonotactics comment)
+    #
+    def add_shape(self, shape):
+        """Add one syllable shape to the shapes map. Each shape is a list of featuresets
+        or ipasets. Sets nested in an inner list are read as optional sets. Each set
+        contains either only features to build with or only ipa to pick from at one
+        slot in the syllable shape. Each string is first interpreted as an ipa before
+        attempting to read it as a feature."""
+        vetted_shape = []
+        for element in shape:
+            # ipa string or feature string to store in set
+            if isinstance(element, str):
+                # see if a string is an ipa or a feature
+                if self.phonology.get_phonemes(ipa=element):
+                    vetted_shape.append({element})
+                elif self.phonology.get_phonemes(features=[element]):
+                    vetted_shape.append({element})
+                else:
+                    raise ValueError(f"Phonotactics failed to add shape - invalid ipa or feature string {element}")
+            # nested options list
+            elif isinstance(element, list):
+                # TODO: iterate through check if it's full of valid strings or sets
+                vetted_shape.append(element)
+            # ipaset or featureset
+            elif isinstance(element, set):
+                # vet for ipa strings
+                if [self.phonology.get_phonemes(ipa=ipa) for ipa in element]:
+                    vetted_shape.append(element)
+                # vet for feature strings
+                elif self.phonology.get_phonemes(features=element):
+                    vetted_shape.append(element)
+                else:
+                    raise ValueError(f"Phonotactics failed to add shape - expected valid phonemes ipa or featureset not {element}")
+            else:
+                raise ValueError(f"Phonotactics failed to add shape - invalid element {element}")
+        shape_id = f"shape-{uuid4()}"
+        self.shapes[shape_id] = vetted_shape
+        return self.shapes[shape_id]
+    #
+    def remove_shape(self, shape_id):
+        """Delete one shape entry and its key from the shapes map"""
+        return self.shapes.pop(shape_id, None)
+    #
+    def set_hierarchy(self, shape_id):
+        """Update the scale id set as the main hierarchy"""
+        if shape_id not in self.shapes:
+            return
+        self.hierarchy = shape_id
+        return {shape_id: self.shapes[shape_id]}
+    #
+    #
     # NOTE: last take on attempt 1 below (see Phonotactics) - refining above
 
     def get_scale(self):
