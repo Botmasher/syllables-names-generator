@@ -91,7 +91,7 @@ my_language.phonology.add_sounds({
     'k': ['k', 'g'],
     'kʰ': ['gh'],
     'x': ['kh', 'hh'],
-    'f': ['kh', 'hh'],
+    'f': ['f'],
     's': ['s'],
     'ts': ['ds'],
     'j': ['y'],

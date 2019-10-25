@@ -27,42 +27,57 @@ class Hierarchy:
 
     # NOTE: latest take (see attempt 2 in Phonotactics comment)
     #
+    def format_shapeset(self, shape_element):
+        """Interpret a string or collection as a phonemic featureset or ipaset for
+        shape storage."""
+        # set up to build featureset
+        formatted_set = set()
+        # track to report featureset invalidity
+        did_format = True
+        # turn ipa/feature string into a one-member set
+        if isinstance(shape_element, str):
+            if self.phonology.get_phonemes(ipa=shape_element) or self.phonology.get_phonemes(features=[shape_element]):
+                formatted_set.add(shape_element)
+            else:
+                did_format = False
+        # store feature/ipa collection as ipaset or featureset
+        elif isinstance(shape_element, set, list, tuple):
+            if all([self.phonology.get_phonemes(ipa=ipa) for ipa in shape_element]):
+                formatted_set = set(shape_element)
+            elif all([self.phonology.phonetics.has_feature(feature) for feature in shape_element]):
+                formatted_set = set(shape_element)
+            else:
+                did_format = False
+        # send back built set
+        if not did_format:     
+            raise ValueError(f"Phonotactics failed to add invalid shape element {shape_element}")
+        return formatted_set
+    #
+    def format_shapelist(self, shape_list, depth=0):
+        """Vet and format a list of shape elements to contain only shapesets"""
+        formatted_list = []
+        # build a sequence of featuresets/ipasets
+        for element in shape_list:
+            # nested list containing optional shapesets
+            if isinstance(element, list, tuple) and not depth:
+                formatted_list.append(self.format_shapelist, depth=1)
+            # base set containing shape ipa/feature strings
+            else:
+                formatted_set = self.format_shapeset(element)
+                formatted_list.append(formatted_set)
+        return formatted_list
+    #
     def add_shape(self, shape):
         """Add one syllable shape to the shapes map. Each shape is a list of featuresets
         or ipasets. Sets nested in an inner list are read as optional sets. Each set
         contains either only features to build with or only ipa to pick from at one
         slot in the syllable shape. Each string is first interpreted as an ipa before
         attempting to read it as a feature."""
-        vetted_shape = []
-        for element in shape:
-            # ipa string or feature string to store in set
-            if isinstance(element, str):
-                # see if a string is an ipa or a feature
-                if self.phonology.get_phonemes(ipa=element):
-                    vetted_shape.append({element})
-                elif self.phonology.get_phonemes(features=[element]):
-                    vetted_shape.append({element})
-                else:
-                    raise ValueError(f"Phonotactics failed to add shape - invalid ipa or feature string {element}")
-            # nested options list
-            elif isinstance(element, list):
-                # TODO: iterate through check if it's full of valid strings or sets
-                vetted_shape.append(element)
-            # ipaset or featureset
-            elif isinstance(element, set):
-                # vet for ipa strings
-                if [self.phonology.get_phonemes(ipa=ipa) for ipa in element]:
-                    vetted_shape.append(element)
-                # vet for feature strings
-                elif self.phonology.get_phonemes(features=element):
-                    vetted_shape.append(element)
-                else:
-                    raise ValueError(f"Phonotactics failed to add shape - expected valid phonemes ipa or featureset not {element}")
-            else:
-                raise ValueError(f"Phonotactics failed to add shape - invalid element {element}")
+        vetted_shape = self.format_shapelist(shape)
         shape_id = f"shape-{uuid4()}"
         self.shapes[shape_id] = vetted_shape
         return self.shapes[shape_id]
+    #
     #
     def remove_shape(self, shape_id):
         """Delete one shape entry and its key from the shapes map"""
