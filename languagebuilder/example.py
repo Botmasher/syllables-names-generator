@@ -338,6 +338,19 @@ print(" ".join(sentence['translation']))
 
 
 # Phonotactics
+shape_1 = my_language.phonology.syllables.phonotactics.hierarchy.add_shape(
+    ['ts', ['glide'], {'a', 'u'}]
+)   # => [{'ts'}, [{'glide'}], {'a', 'u'}]
+shape_2 = my_language.phonology.syllables.phonotactics.hierarchy.add_shape(
+    ['stop', 'fricative', 'nasal', 'approximant', 'liquid', 'glide'],
+    as_hierarchy=True
+)   # => [{'stop'}, {'fricative'}, {'nasal'}, {'approximant'}, {'liquid'}, {'glide'}]
+shape_3 = my_language.phonology.syllables.phonotactics.hierarchy.add_shape(
+    [['voiced', 'sibilant'], {'voiced', 'fricative'}, 'glide'],
+)   # => [[{'voiced', 'sibilant'}], {'voiced', 'fricative'}, 'glide']
+
+# NOTE: new shapes access above - older way below
+
 # TODO: if dependency points back to scale, allow choices at or beyond that point
 my_language.phonology.syllables.phonotactics.add_nucleus("V")
 my_language.phonology.syllables.phonotactics.add_nucleus("vowel", "glide")

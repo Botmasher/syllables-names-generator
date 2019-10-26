@@ -403,7 +403,21 @@ class SyllablePhonotactics(unittest.TestCase):
         this_class.phonology.phonemes.add("l", ["l"])
         this_class.phonology.phonemes.add("j", ["j"])
         this_class.phonology.phonemes.add("n", ["n"])
-    
+
+    def test_add_shape(self):
+        self.phonology.syllables.phonotactics.add_shape(
+            onset = [],
+            nucleus = [],
+            coda = [],
+            as_scale = True
+        )
+        self.assertIn(
+            None,
+            []
+        )    
+
+    # TODO: adjust for old vs new Hierarchy (see Phonotactics comments)
+
     # TODO: vet features for add
     def test_add_nucleus(self):
         nucleus = [['vowel'], ['glide']]

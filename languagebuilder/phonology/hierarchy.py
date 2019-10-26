@@ -67,17 +67,27 @@ class Hierarchy:
                 formatted_list.append(formatted_set)
         return formatted_list
     #
-    def add_shape(self, shape):
+    def add_shape(self, onset=None, nucleus=None, coda=None, as_scale=False):
         """Add one syllable shape to the shapes map. Each shape is a list of featuresets
         or ipasets. Sets nested in an inner list are read as optional sets. Each set
         contains either only features to build with or only ipa to pick from at one
         slot in the syllable shape. Each string is first interpreted as an ipa before
         attempting to read it as a feature."""
-        vetted_shape = self.format_shapelist(shape)
+        vetted_onset = self.format_shapelist(onset)
+        vetted_nucleus = self.format_shapelist(nucleus)
+        vetted_coda = self.format_shapelist(coda)
         shape_id = f"shape-{uuid4()}"
-        self.shapes[shape_id] = vetted_shape
+        # TODO: consider: why break down theoretically anymore?
+        #   - as long as features match linearly does it matter?
+        #   - so line features up! see how much play each seq gives
+        self.shapes[shape_id] = {
+            'onset': vetted_onset,
+            'nucleus': vetted_nucleus,
+            'coda': vetted_coda
+        }
+        if as_scale:
+            self.set_hierarchy(shape_id)
         return self.shapes[shape_id]
-    #
     #
     def remove_shape(self, shape_id):
         """Delete one shape entry and its key from the shapes map"""
