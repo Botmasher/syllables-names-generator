@@ -2,6 +2,8 @@
 
 Define a language, then generate words that fit in the language.
 
+NOTE: I'm still working on this code, but no longer on GitHub. Please [see this issue](https://github.com/Botmasher/syllables-names-generator/issues/1#issuecomment-539785466) for instructions on running a previous working version. The latest commit does not work as a whole, though many of its API calls do.
+
 ## Description
 
 This tool provides classes and methods for building out a custom language. First, do some building and shaping for your language. Assign features to symbols. Define a basic inventory with phonetic symbols and associated graphemes. Define possile syllable structures, grammatical affixes and sound changes. Then, use your language to generate words, including proper names (the original motivation).
